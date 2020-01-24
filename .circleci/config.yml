@@ -1,0 +1,25 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: lbry/lbrytv-ci:latest
+      - image: lbry/lbrynet-tv:latest
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-cache-{{ checksum "go.sum" }}
+      - run: make test_circleci
+      - run: git reset --hard HEAD
+      - save_cache:
+          key: go-mod-cache-{{ checksum "go.sum" }}
+          paths:
+            - /go/pkg
+            - /go/src
+            - /go/bin
+
+workflows:
+  version: 2
+  integrate:
+    jobs:
+      - test
