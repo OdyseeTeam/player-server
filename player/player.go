@@ -60,7 +60,7 @@ type Opts struct {
 }
 
 var defaultOpts = Opts{
-	LbrynetAddress:   "http://localhost:5581",
+	LbrynetAddress:   "http://localhost:5279",
 	ReflectorAddress: "refractor.lbry.com:5567",
 	ReflectorTimeout: 30 * time.Second,
 	CachePath:        path.Join(os.TempDir(), "blob_cache"),
