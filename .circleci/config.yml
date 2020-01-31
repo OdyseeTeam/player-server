@@ -52,6 +52,9 @@ workflows:
       - build_snapshot:
           requires:
             - test
+          filters:
+            branches:
+              ignore: master
       - publish:
           requires:
             - test
