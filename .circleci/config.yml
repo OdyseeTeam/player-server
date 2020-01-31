@@ -17,21 +17,31 @@ jobs:
             - /go/pkg
             - /go/src
             - /go/bin
-  release:
+  build_snapshot:
     docker:
       - image: circleci/golang:1.13
     steps:
       - checkout
-      - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
-      - run:
-          name: Build
-          command: make release
+      - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser
       - setup_remote_docker
+      - run:
+          name: Build Snapshot
+          command: make snapshot
+  publish:
+    docker:
+      - image: circleci/golang:1.13
+    steps:
+      - checkout
+      - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser
+      - setup_remote_docker
+      - run:
+          name: Build Release
+          command: make release
       - run:
           name: Publish Docker image to Docker Hub
           command: |
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            make
+            make publish_image
 
 
 workflows:
@@ -39,7 +49,10 @@ workflows:
   integrate:
     jobs:
       - test
-      - release:
+      - build_snapshot:
+          requires:
+            - test
+      - publish:
           requires:
             - test
           filters:

@@ -44,5 +44,4 @@ dockers:
     binaries:
     - lbrytv_player
     image_templates:
-    - "lbry/lbrytv-player:latest"
     - "lbry/lbrytv-player:{{ .Version }}"
