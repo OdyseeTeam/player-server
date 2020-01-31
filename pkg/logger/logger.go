@@ -11,7 +11,7 @@ var textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "
 
 func getBaseLogger() *logrus.Logger {
 	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel)
+	logger.SetLevel(logrus.InfoLevel)
 	logger.SetFormatter(&textFormatter)
 	return logger
 }
@@ -49,6 +49,9 @@ func (l ModuleLogger) LogF(fields F) *logrus.Entry { return l.WithFields(fields)
 func (l ModuleLogger) WithFields(fields F) *logrus.Entry {
 	logFields := logrus.Fields{}
 	logFields["module"] = l.ModuleName
+	for k, v := range fields {
+		logFields[k] = v
+	}
 	return l.Logger.WithFields(logFields)
 }
 

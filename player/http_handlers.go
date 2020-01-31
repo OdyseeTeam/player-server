@@ -105,10 +105,3 @@ func (h *RequestHandler) HandleHead(w http.ResponseWriter, r *http.Request) {
 	h.writeHeaders(w, r, s)
 	w.WriteHeader(http.StatusOK)
 }
-
-func InstallPlayerRoutes(r *mux.Router, p *Player) {
-	playerHandler := NewRequestHandler(p)
-	playerRouter := r.Path("/content/claims/{uri}/{claim}/{filename}").Subrouter()
-	playerRouter.HandleFunc("", playerHandler.Handle).Methods(http.MethodGet)
-	playerRouter.HandleFunc("", playerHandler.HandleHead).Methods(http.MethodHead)
-}
