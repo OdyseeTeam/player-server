@@ -37,3 +37,12 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+
+dockers:
+  - goos: linux
+    goarch: amd64
+    binaries:
+    - lbrytv_player
+    image_templates:
+    - "lbry/lbrytv-player:latest"
+    - "lbry/lbrytv-player:{{ .Version }}"

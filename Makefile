@@ -13,10 +13,10 @@ test_circleci:
 	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
 
 release:
-	goreleaser --rm-dist
+	goreleaser --rm-dist --skip-publish
 
 snapshot:
-	goreleaser --snapshot --rm-dist
+	goreleaser --rm-dist --snapshot
 
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: image

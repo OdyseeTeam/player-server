@@ -8,6 +8,6 @@ RUN apk --update upgrade && \
     rm -rf /var/cache/apk/*
 
 WORKDIR /app
-COPY dist/lbrytv-player_linux_amd64/lbrytv_player /app/
+COPY lbrytv_player /app/
 
 CMD ["./lbrytv_player"]
