@@ -17,6 +17,7 @@ var (
 	cachePath        string
 	cacheSize        string
 	enablePrefetch   bool
+	enableProfile    bool
 	reflectorAddress string
 	reflectorTimeout int
 	lbrynetAddress   string
@@ -53,6 +54,9 @@ var (
 
 			player.InstallPlayerRoutes(s.Router, p)
 			player.InstallMetricsRoutes(s.Router)
+			if enableProfile {
+				player.InstallProfilingRoutes(s.Router)
+			}
 
 			s.Start()
 			s.ServeUntilShutdown()
@@ -67,7 +71,8 @@ func init() {
 	rootCmd.Flags().StringVar(&reflectorAddress, "reflector", "", "reflector address (with port)")
 	rootCmd.Flags().IntVar(&reflectorTimeout, "reflector_timeout", 30, "reflector timeout in seconds")
 	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
-	rootCmd.Flags().BoolVar(&enablePrefetch, "enable_prefetch", true, "enable prefetch for blobs")
+	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", true, "enable prefetch for blobs")
+	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
 }
 
 func Execute() {
