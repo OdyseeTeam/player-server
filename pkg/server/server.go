@@ -45,6 +45,7 @@ func NewServer(opts Opts) *Server {
 		s.stopWait = time.Second * 15
 	}
 	s.DefaultHeaders["Server"] = "lbrytv media player"
+	s.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
 
 	s.Router = s.newRouter()
 	s.listener = s.newListener()
