@@ -17,6 +17,25 @@ jobs:
             - /go/pkg
             - /go/src
             - /go/bin
+  publish-image:
+    docker:
+      - image: circleci/golang:1.13
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-cache-{{ checksum "go.sum" }}
+      - run: curl -sLO https://git.io/goreleaser && chmod +x goreleaser
+      - run:
+          name: Build
+          command: make release
+      - setup_remote_docker
+      - run:
+          name: Publish Docker image to Docker Hub
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            make
+
 
 workflows:
   version: 2
