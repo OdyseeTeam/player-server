@@ -18,6 +18,17 @@ release:
 snapshot:
 	goreleaser --snapshot --rm-dist
 
+version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
+.PHONY: image
+image:
+	docker build -t lbry/lbrytv-player:$(version) -t lbry/lbrytv-player:latest .
+
+version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
+.PHONY: publish_image
+publish_image:
+	docker push lbry/lbrytv-player:$(version)
+	docker push lbry/lbrytv-player:latest
+
 tag := $(shell git describe --abbrev=0 --tags)
 .PHONY: retag
 retag:
