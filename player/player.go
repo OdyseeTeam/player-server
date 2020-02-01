@@ -239,8 +239,7 @@ func (s *Stream) Timestamp() time.Time {
 // Seek implements io.ReadSeeker interface and is meant to be called by http.ServeContent.
 func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 	var (
-		newOffset  int64
-		whenceText string
+		newOffset int64
 	)
 
 	if s.Size == 0 {
@@ -251,13 +250,10 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 
 	if whence == io.SeekEnd {
 		newOffset = s.Size - offset
-		whenceText = "relative to end"
 	} else if whence == io.SeekStart {
 		newOffset = offset
-		whenceText = "relative to start"
 	} else if whence == io.SeekCurrent {
 		newOffset = s.seekOffset + offset
-		whenceText = "relative to current"
 	} else {
 		return 0, errors.New("invalid seek whence argument")
 	}
@@ -265,8 +261,6 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 	if 0 > newOffset {
 		return 0, errSeekingBeforeStart
 	}
-
-	Logger.streamSeek(s, offset, newOffset, whenceText)
 	s.seekOffset = newOffset
 
 	return newOffset, nil
@@ -277,9 +271,7 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 func (s *Stream) Read(dest []byte) (n int, err error) {
 	calc := NewChunkCalculator(s.Size, s.seekOffset, len(dest))
 
-	Logger.Log().Tracef("reading %v-%v bytes from stream (size=%v, dest len=%v)", s.seekOffset, s.seekOffset+int64(calc.ReadLen), s.Size, len(dest))
 	n, err = s.readFromChunks(calc, dest)
-	Logger.Log().Tracef("done reading %v-%v bytes from stream", s.seekOffset, s.seekOffset+int64(n))
 	s.seekOffset += int64(n)
 
 	MetOutBytes.Add(float64(n))
