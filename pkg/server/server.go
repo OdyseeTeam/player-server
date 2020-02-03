@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var Logger = logger.NewModuleLogger("server")
+var Logger = logger.GetLogger()
 
 // Server holds entities that can be used to control the web server
 type Server struct {
@@ -84,11 +84,11 @@ func (s *Server) Start() error {
 	go func() {
 		if err := s.listener.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
-				Logger.Log().Error(err)
+				Logger.Error(err)
 			}
 		}
 	}()
-	Logger.Log().Infof("http server listening on %v", s.address)
+	Logger.Infof("http server listening on %v", s.address)
 	return nil
 }
 
@@ -97,13 +97,13 @@ func (s *Server) ServeUntilShutdown() {
 	signal.Notify(s.stopChan, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-s.stopChan
 
-	Logger.Log().Printf("caught a signal (%v), shutting down http server...", sig)
+	Logger.Printf("caught a signal (%v), shutting down http server...", sig)
 
 	err := s.Shutdown()
 	if err != nil {
-		Logger.Log().Error("error shutting down server: ", err)
+		Logger.Error("error shutting down server: ", err)
 	} else {
-		Logger.Log().Info("http server shut down")
+		Logger.Info("http server shut down")
 	}
 }
 

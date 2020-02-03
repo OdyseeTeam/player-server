@@ -22,6 +22,8 @@ import (
 	"github.com/lbryio/reflector.go/store"
 )
 
+var Logger = logger.GetLogger()
+
 const (
 	// ChunkSize is a size of decrypted blob.
 	ChunkSize = stream.MaxBlobSize - 1
@@ -124,9 +126,9 @@ func NewPlayer(opts *Opts) *Player {
 	if opts.EnableL2Cache {
 		cache, err := InitFSCache(&FSCacheOpts{Path: opts.CachePath, Size: uint64(opts.CacheSize)})
 		if err != nil {
-			Logger.Log().Error("unable to initialize cache: ", err)
+			Logger.Error("unable to initialize cache: ", err)
 		} else {
-			Logger.Log().Infof("player cache initialized at %v (%v)", opts.CachePath, opts.CacheSize)
+			Logger.Infof("player cache initialized at %v (%v)", opts.CachePath, opts.CacheSize)
 			p.localCache = cache
 			p.enablePrefetch = opts.EnablePrefetch
 		}
@@ -213,10 +215,7 @@ func (s *Stream) setSize(blobs *[]stream.BlobInfo) {
 	size, err := s.Claim.GetStreamSizeByMagic()
 
 	if err != nil {
-		Logger.LogF(logger.F{
-			"uri":  s.URI,
-			"size": s.Size,
-		}).Infof("couldn't figure out size by magic (%v)", err)
+		Logger.Infof("couldn't figure out stream %v size by magic: %v", s.URI, err)
 		for _, blob := range *blobs {
 			if blob.Length == stream.MaxBlobSize {
 				size += ChunkSize
@@ -277,7 +276,7 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	MetOutBytes.Add(float64(n))
 
 	if err != nil {
-		Logger.streamReadFailed(s, calc, err)
+		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
 	}
 
 	return n, err
@@ -287,8 +286,6 @@ func (s *Stream) readFromChunks(calc ChunkCalculator, dest []byte) (int, error) 
 	var b ReadableChunk
 	var err error
 	var read int
-
-	log := Logger.WithField("stream", s.URI)
 
 	for i := calc.FirstChunkIdx; i < calc.LastChunkIdx+1; i++ {
 		var start, readLen int
@@ -303,7 +300,6 @@ func (s *Stream) readFromChunks(calc ChunkCalculator, dest []byte) (int, error) 
 			start = calc.FirstChunkOffset
 			readLen = calc.LastChunkReadLen
 		}
-		log.Debugf("requesting %v-%v bytes from chunk #%v", start, start+readLen, i)
 
 		b, err = s.chunkGetter.Get(i)
 		if err != nil {
@@ -315,7 +311,6 @@ func (s *Stream) readFromChunks(calc ChunkCalculator, dest []byte) (int, error) 
 		if err != nil {
 			return read, err
 		}
-		log.Debugf("read %v-%v bytes from chunk #%v (%v read, %v total)", start, start+readLen, i, n, read)
 	}
 
 	return read, nil
@@ -354,14 +349,6 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 		rate := float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration * 8
 		MetRetrieverSpeed.With(map[string]string{MetLabelSource: RetrieverSourceL2Cache}).Set(rate)
 		MetCacheHitCount.Inc()
-
-		RetLogger.WithFields(logger.F{
-			"hash":      hash,
-			"duration":  timerCache.String(),
-			"source":    RetrieverSourceL2Cache,
-			"rate_mbps": rate,
-		}).Info("chunk retrieved")
-
 		b.saveToHotCache(n, cChunk)
 		return cChunk, nil
 	}
@@ -376,13 +363,6 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 
 	rate := float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration * 8
 	MetRetrieverSpeed.With(map[string]string{MetLabelSource: RetrieverSourceReflector}).Set(rate)
-
-	RetLogger.WithFields(logger.F{
-		"hash":      hash,
-		"duration":  timerReflector.String(),
-		"source":    RetrieverSourceReflector,
-		"rate_mbps": rate,
-	}).Info("chunk retrieved")
 
 	b.saveToHotCache(n, rChunk)
 	go b.saveToCache(hash, rChunk)
@@ -407,7 +387,7 @@ func (b *chunkGetter) saveToCache(hash string, chunk *reflectedChunk) (ReadableC
 
 	body := make([]byte, len(chunk.body))
 	if _, err := chunk.Read(0, ChunkSize, body); err != nil {
-		RetLogger.Log().Errorf("couldn't read from chunk %v: %v", hash, err)
+		Logger.Errorf("couldn't read from chunk %v: %v", hash, err)
 		return nil, err
 	}
 	return b.localCache.Set(hash, body)
@@ -426,20 +406,19 @@ func (b *chunkGetter) prefetchToCache(startN int) {
 		prefetchLen = chunksLeft
 	}
 
-	RetLogger.Log().Debugf("prefetching %v chunks to local cache", prefetchLen)
+	Logger.Debugf("prefetching %v chunks to local cache", prefetchLen)
 	for _, bi := range b.sdBlob.BlobInfos[startN : startN+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 		if b.localCache.Has(hash) {
-			RetLogger.Log().Debugf("chunk %v found in cache, not prefetching", hash)
+			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
-		RetLogger.Log().Debugf("prefetching chunk %v", hash)
+		Logger.Debugf("prefetching chunk %v", hash)
 		reflected, err := b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
 		if err != nil {
-			RetLogger.Log().Warnf("failed to prefetch chunk %v: %v", hash, err)
+			Logger.Errorf("failed to prefetch chunk %v: %v", hash, err)
 			return
 		}
-		Logger.blobRetrieved(b.sdBlob.StreamName, bi.BlobNum)
 		b.saveToCache(hash, reflected)
 	}
 
@@ -454,7 +433,6 @@ func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*refle
 	bStore := b.getBlobStore()
 	blob, err := bStore.Get(hash)
 	if err != nil {
-		Logger.blobDownloadFailed(blob, err)
 		return nil, err
 	}
 

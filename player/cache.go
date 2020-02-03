@@ -158,20 +158,20 @@ func (c *fsCache) Get(hash string) (ReadableChunk, bool) {
 		f, err := c.storage.open(value)
 		if err != nil {
 			MetCacheErrorCount.Inc()
-			CacheLogger.Log().Errorf("chunk %v found in cache but couldn't open the file: %v", hash, err)
+			Logger.Errorf("chunk %v found in cache but couldn't open the file: %v", hash, err)
 			c.rCache.Del(value)
 			return nil, false
 		}
 		cb, err := initCachedChunk(f)
 		if err != nil {
-			CacheLogger.Log().Errorf("chunk %v found in cache but couldn't read the file: %v", hash, err)
+			Logger.Errorf("chunk %v found in cache but couldn't read the file: %v", hash, err)
 			return nil, false
 		}
 		defer f.Close()
 		return cb, true
 	}
 
-	CacheLogger.Log().Debugf("cache miss for chunk %v", hash)
+	Logger.Debugf("cache miss for chunk %v", hash)
 	return nil, false
 }
 
@@ -179,43 +179,43 @@ func (c *fsCache) Get(hash string) (ReadableChunk, bool) {
 func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 	cacheCost := len(body)
 
-	CacheLogger.Log().Debugf("attempting to cache chunk %v", hash)
+	Logger.Debugf("attempting to cache chunk %v", hash)
 	chunkPath := c.storage.getPath(hash)
 
 	f, err := os.OpenFile(chunkPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
 		MetCacheErrorCount.Inc()
-		CacheLogger.Log().Debugf("chunk %v already exists on the local filesystem, not overwriting", hash)
+		Logger.Debugf("chunk %v already exists on the local filesystem, not overwriting", hash)
 	} else {
 		numWritten, err := f.Write(body)
 		defer f.Close()
 		if err != nil {
 			MetCacheErrorCount.Inc()
-			CacheLogger.Log().Errorf("error saving cache file %v: %v", chunkPath, err)
+			Logger.Errorf("error saving cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
 
 		err = f.Close()
 		if err != nil {
 			MetCacheErrorCount.Inc()
-			CacheLogger.Log().Errorf("error closing cache file %v: %v", chunkPath, err)
+			Logger.Errorf("error closing cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
 
-		CacheLogger.Log().Debugf("written %v bytes for chunk %v", numWritten, hash)
+		Logger.Debugf("written %v bytes for chunk %v", numWritten, hash)
 	}
 
 	added := c.rCache.Set(hash, hash, int64(cacheCost))
 	if !added {
 		err := os.Remove(chunkPath)
 		if err != nil {
-			CacheLogger.Log().Errorf("chunk was not admitted and an error occured removing chunk file: %v", err)
+			Logger.Errorf("chunk was not admitted and an error occured removing chunk file: %v", err)
 		} else {
-			CacheLogger.Log().Infof("chunk %v was not admitted", hash)
+			Logger.Infof("chunk %v was not admitted", hash)
 		}
 		return nil, err
 	}
-	CacheLogger.Log().Debugf("chunk %v successfully cached", hash)
+	Logger.Debugf("chunk %v successfully cached", hash)
 
 	return &cachedChunk{reflectedChunk{body}}, nil
 }
@@ -253,9 +253,9 @@ func (c *fsCache) sweep() {
 		return nil
 	})
 	if err != nil {
-		CacheLogger.Log().Errorf("error sweeping cache folder: %v", err)
+		Logger.Errorf("error sweeping cache folder: %v", err)
 	} else {
-		CacheLogger.Log().Infof("swept cache folder, %v chunks removed", removed)
+		Logger.Infof("swept cache folder, %v chunks removed", removed)
 	}
 }
 
