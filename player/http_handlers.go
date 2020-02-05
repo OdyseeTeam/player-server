@@ -59,23 +59,22 @@ func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, er
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	uri := h.getURI(r)
-	Logger.streamPlaybackRequested(uri, "") // , users.GetIPAddressForRequest(r))
+	Logger.Infof("GET stream %v", uri) // , users.GetIPAddressForRequest(r))
 
 	s, err := h.player.ResolveStream(uri)
 	if err != nil {
-		Logger.streamResolveFailed(uri, err)
+		Logger.Errorf("GET stream %v - resolve error: %v", uri, err)
 		h.processStreamError(w, uri, err)
 		return
 	}
-	Logger.streamResolved(s)
 
 	err = h.player.RetrieveStream(s)
 	if err != nil {
-		Logger.streamRetrievalFailed(uri, err)
+		Logger.Errorf("GET stream %v - retrieval error: %v", uri, err)
 		h.processStreamError(w, uri, err)
 		return
 	}
-	Logger.streamRetrieved(s)
+	Logger.Errorf("GET stream %v", uri)
 
 	h.writeHeaders(w, r, s)
 
