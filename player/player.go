@@ -273,8 +273,6 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	n, err = s.readFromChunks(calc, dest)
 	s.seekOffset += int64(n)
 
-	MetOutBytes.Add(float64(n))
-
 	if err != nil {
 		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
 	}
