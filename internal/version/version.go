@@ -19,7 +19,7 @@ func Version() string {
 	return version
 }
 
-// BuildName returns current app version, commit and build time
-func BuildName() string {
+// FullName returns current app version, commit and build time
+func FullName() string {
 	return fmt.Sprintf("%v %v, commit %v, built at %v", Name(), Version(), commit, date)
 }

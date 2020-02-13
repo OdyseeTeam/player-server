@@ -84,16 +84,15 @@ func (a *App) defaultHeadersMiddleware(next http.Handler) http.Handler {
 }
 
 // Start starts a HTTP server and returns immediately.
-func (a *App) Start() error {
+func (a *App) Start() {
 	go func() {
+		Logger.Infof("starting app server on %v", a.Address)
 		if err := a.server.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
-				Logger.Error(err)
+				Logger.Fatal(err)
 			}
 		}
 	}()
-	Logger.Infof("app listening on %v", a.Address)
-	return nil
 }
 
 // ServeUntilShutdown blocks until a shutdown signal is received, then shuts down the HTTP server.

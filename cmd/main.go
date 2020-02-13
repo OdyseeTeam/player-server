@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/version"
@@ -13,6 +12,8 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/spf13/cobra"
 )
+
+var Logger = logger.GetLogger()
 
 var (
 	bindAddress      string
@@ -30,13 +31,13 @@ var (
 		Use:   "lbrytv_player",
 		Short: "media server for lbrytv",
 		Run: func(cmd *cobra.Command, args []string) {
+			Logger.Infof("initializing %v\n", version.FullName())
 			logger.ConfigureSentry(version.Version(), logger.EnvProd)
 			defer logger.Flush()
 
 			err := cacheSizeBytes.UnmarshalText([]byte(cacheSize))
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				os.Exit(1)
+				Logger.Fatalf("error: %v\n", err)
 			}
 
 			pOpts := &player.Opts{
@@ -51,8 +52,8 @@ var (
 			if pOpts.CacheSize == 0 {
 				pOpts.EnableL2Cache = false
 			}
-			p := player.NewPlayer(pOpts)
 
+			p := player.NewPlayer(pOpts)
 			a := app.New(app.Opts{
 				Address: bindAddress,
 			})
@@ -82,7 +83,6 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		Logger.Fatalf("error: %v\n", err)
 	}
 }
