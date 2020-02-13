@@ -5,7 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/pkg/server"
+	"github.com/lbryio/lbrytv-player/internal/version"
+	"github.com/lbryio/lbrytv-player/pkg/app"
+	"github.com/lbryio/lbrytv-player/pkg/logger"
 	"github.com/lbryio/lbrytv-player/player"
 
 	"github.com/c2h5oh/datasize"
@@ -28,6 +30,9 @@ var (
 		Use:   "lbrytv_player",
 		Short: "media server for lbrytv",
 		Run: func(cmd *cobra.Command, args []string) {
+			logger.ConfigureSentry(version.Version(), logger.EnvProd)
+			defer logger.Flush()
+
 			err := cacheSizeBytes.UnmarshalText([]byte(cacheSize))
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -48,18 +53,18 @@ var (
 			}
 			p := player.NewPlayer(pOpts)
 
-			s := server.NewServer(server.Opts{
+			a := app.New(app.Opts{
 				Address: bindAddress,
 			})
 
-			player.InstallPlayerRoutes(s.Router, p)
-			player.InstallMetricsRoutes(s.Router)
+			player.InstallPlayerRoutes(a.Router, p)
+			player.InstallMetricsRoutes(a.Router)
 			if enableProfile {
-				player.InstallProfilingRoutes(s.Router)
+				player.InstallProfilingRoutes(a.Router)
 			}
 
-			s.Start()
-			s.ServeUntilShutdown()
+			a.Start()
+			a.ServeUntilShutdown()
 		},
 	}
 )
