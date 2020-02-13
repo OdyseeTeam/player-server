@@ -16,7 +16,10 @@ builds:
   - amd64
   binary: lbrytv_player
   ldflags:
-  - '-s -w -X github.com/lbryio/lbrytv-player/version.version={{.Version}} -X github.com/lbryio/lbrytv-player/version.commit={{.ShortCommit}} -X github.com/lbryio/lbrytv-player/version.date={{.Date}}'
+  - "-s -w
+    -X github.com/lbryio/lbrytv-player/internal/version.version={{.Version}}
+    -X github.com/lbryio/lbrytv-player/internal/version.commit={{.ShortCommit}}
+    -X github.com/lbryio/lbrytv-player/internal/version.date={{.Date}}"
   main: ./main.go
 
 archives:
