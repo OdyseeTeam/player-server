@@ -3,7 +3,6 @@ package logger
 import (
 	"io/ioutil"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,8 +28,4 @@ func GetLogger() *logrus.Logger {
 func DisableLogger(l *logrus.Logger) {
 	l.SetLevel(logrus.PanicLevel)
 	l.SetOutput(ioutil.Discard)
-}
-
-func Error(exception error) {
-	sentry.CaptureException(exception)
 }
