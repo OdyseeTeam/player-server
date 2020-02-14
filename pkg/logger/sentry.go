@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"os"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -14,14 +15,19 @@ var SentryHandler = sentryhttp.New(sentryhttp.Options{
 })
 
 func ConfigureSentry(release, env string) {
+	dsn := os.Getenv("SENTRY_DSN")
 	opts := sentry.ClientOptions{
-		Dsn:              "",
+		Dsn:              dsn,
 		Release:          release,
 		AttachStacktrace: true,
 		BeforeSend:       filterEvent,
 	}
+
 	if env == EnvTest {
 		opts.Transport = TestSentryTransport
+	} else if dsn == "" {
+		Logger.Info("sentry disabled")
+		return
 	}
 
 	err := sentry.Init(opts)
