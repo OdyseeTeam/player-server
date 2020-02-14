@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 )
 
@@ -56,30 +57,52 @@ func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, er
 	}
 }
 
+func addBreadcrumb(r *http.Request, category, message string) {
+	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+		hub.Scope().AddBreadcrumb(&sentry.Breadcrumb{
+			Category: category,
+			Message:  message,
+		}, 99)
+	}
+}
+
+func logError(r *http.Request, err error) {
+	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+		hub.CaptureException(err)
+	}
+}
+
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	uri := h.getURI(r)
 	Logger.Infof("GET stream %v", uri) // , users.GetIPAddressForRequest(r))
 
 	s, err := h.player.ResolveStream(uri)
+	addBreadcrumb(r, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
 		Logger.Errorf("GET stream %v - resolve error: %v", uri, err)
+		logError(r, err)
 		h.processStreamError(w, uri, err)
 		return
 	}
 
 	err = h.player.RetrieveStream(s)
+	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))
 	if err != nil {
 		Logger.Errorf("GET stream %v - retrieval error: %v", uri, err)
+		logError(r, err)
 		h.processStreamError(w, uri, err)
 		return
 	}
-	Logger.Errorf("GET stream %v", uri)
+	Logger.Debugf("GET stream %v", uri)
 
 	h.writeHeaders(w, r, s)
 
+	addBreadcrumb(r, "player", fmt.Sprintf("play %v", uri))
 	err = h.player.Play(s, w, r)
 	if err != nil {
+		Logger.Errorf("GET stream %v - playback error: %v", uri, err)
+		logError(r, err)
 		h.processStreamError(w, uri, err)
 		return
 	}
