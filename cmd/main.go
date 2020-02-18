@@ -28,8 +28,9 @@ var (
 	cacheSizeBytes datasize.ByteSize
 
 	rootCmd = &cobra.Command{
-		Use:   "lbrytv_player",
-		Short: "media server for lbrytv",
+		Use:     "lbrytv_player",
+		Short:   "media server for lbrytv",
+		Version: version.FullName(),
 		Run: func(cmd *cobra.Command, args []string) {
 			Logger.Infof("initializing %v\n", version.FullName())
 			logger.ConfigureSentry(version.Version(), logger.EnvProd)
