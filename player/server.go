@@ -8,7 +8,6 @@ import (
 	"net/textproto"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // CopyN copies n bytes (or until an error) from src to dst.
@@ -31,64 +30,37 @@ func CopyN(dst io.Writer, src io.Reader, n int64) (written int64, err error) {
 	return
 }
 
-// errSeeker is returned by ServeContent's sizeFunc when the content
-// doesn't seek properly. The underlying Seeker's error text isn't
-// included in the sizeFunc reply so it's not sent over HTTP to end
-// users.
-var errSeeker = errors.New("seeker can't seek")
-
 // errNoOverlap is returned by serveContent's parseRange if first-byte-pos of
 // all of the byte-range-spec values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
 
-// ServeContent replies to the request using the content in the
-// provided ReadSeeker. The main benefit of ServeContent over io.Copy
+// ServeStream replies to the request using the content in the
+// provided ReadSeeker. The main benefit of ServeStream over io.Copy
 // is that it handles Range requests properly, sets the MIME type, and
 // handles If-Match, If-Unmodified-Since, If-None-Match, If-Modified-Since,
 // and If-Range requests.
 //
-// If the response's Content-Type header is not set, ServeContent
-// first tries to deduce the type from name's file extension and,
-// if that fails, falls back to reading the first block of the content
-// and passing it to DetectContentType.
-// The name is otherwise unused; in particular it can be empty and is
-// never sent in the response.
-//
-// If modtime is not the zero time or Unix epoch, ServeContent
-// includes it in a Last-Modified header in the response. If the
-// request includes an If-Modified-Since header, ServeContent uses
-// modtime to decide whether the content needs to be sent at all.
-//
-// The content's Seek method must work: ServeContent uses
+// The content's Seek method must work: ServeStream uses
 // a seek to the end of the content to determine its size.
 //
 // If the caller has set w's ETag header formatted per RFC 7232, section 2.3,
-// ServeContent uses it to handle requests using If-Match, If-None-Match, or If-Range.
+// ServeStream uses it to handle requests using If-Match, If-None-Match, or If-Range.
 //
-// Note that *os.File implements the io.ReadSeeker interface.
-func ServeContent(w http.ResponseWriter, req *http.Request, name string, modtime time.Time, content io.ReadSeeker) {
-	sizeFunc := func() (int64, error) {
+// content must be seeked to the beginning of the file.
+func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
+	code := http.StatusOK
+
+	size, err := func() (int64, error) {
 		size, err := content.Seek(0, io.SeekEnd)
 		if err != nil {
-			return 0, errSeeker
+			return 0, err // the error message used to be hidden from the user by returning a generic "seeker cant seek" error, but why hide it?
 		}
 		_, err = content.Seek(0, io.SeekStart)
 		if err != nil {
-			return 0, errSeeker
+			return 0, err // same comment as above
 		}
 		return size, nil
-	}
-	serveContent(w, req, name, modtime, sizeFunc, content)
-}
-
-// if name is empty, filename is unknown. (used for mime type, before sniffing)
-// if modtime.IsZero(), modtime is unknown.
-// content must be seeked to the beginning of the file.
-// The sizeFunc is called at most once. Its error, if any, is sent in the HTTP response.
-func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime time.Time, sizeFunc func() (int64, error), content io.ReadSeeker) {
-	code := http.StatusOK
-
-	size, err := sizeFunc()
+	}()
 	if err != nil {
 		Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -130,6 +102,16 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 				Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
 				return
 			}
+
+			if r.Method != http.MethodHead {
+				calc := newChunkCalculator(content.Size, ra.start, 1)
+				_, err = content.chunkGetter.Get(calc.FirstChunkIdx)
+				if err != nil {
+					Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
+					return
+				}
+			}
+
 			sendSize = ra.length
 			code = http.StatusPartialContent
 			w.Header().Set("Content-Range", ra.contentRange(size))
@@ -143,7 +125,7 @@ func serveContent(w http.ResponseWriter, r *http.Request, name string, modtime t
 
 	w.WriteHeader(code)
 
-	if r.Method != "HEAD" {
+	if r.Method != http.MethodHead {
 		io.CopyN(w, sendContent, sendSize)
 	}
 }

@@ -108,21 +108,21 @@ func TestBlobCalculator(t *testing.T) {
 	}
 	type testCase struct {
 		testInput  testInput
-		testOutput ChunkCalculator
+		testOutput chunkCalculator
 	}
 
 	// size: 128791189, has blobs: 62 + padding, last blob index: 61
 	testCases := []testCase{
-		testCase{testInput{158433824, 0, 512}, ChunkCalculator{158433824, 0, 0, 0, 0, 512, 0}},
-		testCase{testInput{158433824, 2450019, 64000}, ChunkCalculator{158433824, 2450019, 1, 1, 352867 + 1, 64000, 352868}},
-		testCase{testInput{128791189, 128791089, 99}, ChunkCalculator{128791189, 128791089, 61, 61, 864817 + 61, 99, 864878}},
-		testCase{testInput{128791189, 0, 128791189}, ChunkCalculator{0, 128791189, 0, 61, 0, 864978, 0}},
-		testCase{testInput{1e7, 2097149, 43}, ChunkCalculator{2097149, 43, 0, 1, 2097149, 41, 0}},
+		testCase{testInput{158433824, 0, 512}, chunkCalculator{158433824, 0, 0, 0, 0, 512, 0}},
+		testCase{testInput{158433824, 2450019, 64000}, chunkCalculator{158433824, 2450019, 1, 1, 352867 + 1, 64000, 352868}},
+		testCase{testInput{128791189, 128791089, 99}, chunkCalculator{128791189, 128791089, 61, 61, 864817 + 61, 99, 864878}},
+		testCase{testInput{128791189, 0, 128791189}, chunkCalculator{0, 128791189, 0, 61, 0, 864978, 0}},
+		testCase{testInput{1e7, 2097149, 43}, chunkCalculator{2097149, 43, 0, 1, 2097149, 41, 0}},
 	}
 
 	for n, row := range testCases {
 		t.Run(fmt.Sprintf("row:%v", n), func(t *testing.T) {
-			bc := NewChunkCalculator(row.testInput.size, row.testInput.offset, row.testInput.readLen)
+			bc := newChunkCalculator(row.testInput.size, row.testInput.offset, row.testInput.readLen)
 			assert.Equal(t, row.testOutput.FirstChunkIdx, bc.FirstChunkIdx)
 			assert.Equal(t, row.testOutput.LastChunkIdx, bc.LastChunkIdx)
 			assert.Equal(t, row.testOutput.FirstChunkOffset, bc.FirstChunkOffset)

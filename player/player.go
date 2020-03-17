@@ -147,8 +147,7 @@ func (p *Player) getBlobStore() store.BlobStore {
 func (p *Player) Play(s *Stream, w http.ResponseWriter, r *http.Request) error {
 	MetStreamsRunning.Inc()
 	defer MetStreamsRunning.Dec()
-	http.ServeContent(w, r, "stream", s.Timestamp(), s)
-
+	ServeStream(w, r, s)
 	return nil
 }
 
@@ -237,9 +236,7 @@ func (s *Stream) Timestamp() time.Time {
 
 // Seek implements io.ReadSeeker interface and is meant to be called by http.ServeContent.
 func (s *Stream) Seek(offset int64, whence int) (int64, error) {
-	var (
-		newOffset int64
-	)
+	var newOffset int64
 
 	if s.Size == 0 {
 		return 0, errStreamSizeZero
@@ -247,28 +244,29 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 		return 0, errOutOfBounds
 	}
 
-	if whence == io.SeekEnd {
-		newOffset = s.Size - offset
-	} else if whence == io.SeekStart {
+	switch whence {
+	case io.SeekStart:
 		newOffset = offset
-	} else if whence == io.SeekCurrent {
+	case io.SeekCurrent:
 		newOffset = s.seekOffset + offset
-	} else {
+	case io.SeekEnd:
+		newOffset = s.Size - offset
+	default:
 		return 0, errors.New("invalid seek whence argument")
 	}
 
-	if 0 > newOffset {
+	if newOffset < 0 {
 		return 0, errSeekingBeforeStart
 	}
-	s.seekOffset = newOffset
 
+	s.seekOffset = newOffset
 	return newOffset, nil
 }
 
 // Read implements io.ReadSeeker interface and is meant to be called by http.ServeContent.
 // Actual chunk retrieval and delivery happens in s.readFromChunks().
 func (s *Stream) Read(dest []byte) (n int, err error) {
-	calc := NewChunkCalculator(s.Size, s.seekOffset, len(dest))
+	calc := newChunkCalculator(s.Size, s.seekOffset, len(dest))
 
 	n, err = s.readFromChunks(calc, dest)
 	s.seekOffset += int64(n)
@@ -280,7 +278,7 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	return n, err
 }
 
-func (s *Stream) readFromChunks(calc ChunkCalculator, dest []byte) (int, error) {
+func (s *Stream) readFromChunks(calc chunkCalculator, dest []byte) (int, error) {
 	var b ReadableChunk
 	var err error
 	var read int
@@ -459,8 +457,8 @@ func (b *reflectedChunk) Size() int {
 	return len(b.body)
 }
 
-// ChunkCalculator provides handy blob calculations for a requested stream range.
-type ChunkCalculator struct {
+// chunkCalculator provides handy blob calculations for a requested stream range.
+type chunkCalculator struct {
 	Offset           int64
 	ReadLen          int
 	FirstChunkIdx    int
@@ -470,9 +468,9 @@ type ChunkCalculator struct {
 	LastChunkOffset  int
 }
 
-// NewChunkCalculator initializes ChunkCalculator with provided stream size, start offset and reader buffer length.
-func NewChunkCalculator(size, offset int64, readLen int) ChunkCalculator {
-	bc := ChunkCalculator{Offset: offset, ReadLen: readLen}
+// newChunkCalculator initializes chunkCalculator with provided stream size, start offset and reader buffer length.
+func newChunkCalculator(size, offset int64, readLen int) chunkCalculator {
+	bc := chunkCalculator{Offset: offset, ReadLen: readLen}
 
 	bc.FirstChunkIdx = int(offset / int64(ChunkSize))
 	bc.LastChunkIdx = int((offset + int64(readLen)) / int64(ChunkSize))
@@ -485,6 +483,6 @@ func NewChunkCalculator(size, offset int64, readLen int) ChunkCalculator {
 	return bc
 }
 
-func (c ChunkCalculator) String() string {
+func (c chunkCalculator) String() string {
 	return fmt.Sprintf("B%v[%v:]-B%v[%v:%v]", c.FirstChunkIdx, c.FirstChunkOffset, c.LastChunkIdx, c.LastChunkOffset, c.LastChunkReadLen)
 }
