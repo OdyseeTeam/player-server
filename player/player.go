@@ -5,20 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path"
-
 	// "io/ioutil"
 	"math"
 	"net/http"
+	"os"
+	"path"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/lbryio/reflector.go/peer/quic"
 
 	"github.com/c2h5oh/datasize"
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/reflector.go/peer"
 	"github.com/lbryio/reflector.go/store"
 )
 
@@ -63,7 +62,7 @@ type Opts struct {
 
 var defaultOpts = Opts{
 	LbrynetAddress:   "http://localhost:5279",
-	ReflectorAddress: "refractor.lbry.com:5567",
+	ReflectorAddress: "refractor.lbry.com:5568",
 	ReflectorTimeout: 30 * time.Second,
 	CachePath:        path.Join(os.TempDir(), "blob_cache"),
 }
@@ -137,7 +136,7 @@ func NewPlayer(opts *Opts) *Player {
 }
 
 func (p *Player) getBlobStore() store.BlobStore {
-	return peer.NewStore(peer.StoreOpts{
+	return quic.NewStore(quic.StoreOpts{
 		Address: p.reflectorAddress,
 		Timeout: p.reflectorTimeout,
 	})
