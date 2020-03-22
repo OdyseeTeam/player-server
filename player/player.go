@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	// "io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -13,12 +12,12 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
+
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/peer/quic"
 
 	"github.com/c2h5oh/datasize"
-	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/reflector.go/store"
 )
 
 var Logger = logger.GetLogger()
@@ -86,7 +85,7 @@ type chunkGetter struct {
 	sdBlob         *stream.SDBlob
 	seenChunks     []ReadableChunk
 	enablePrefetch bool
-	getBlobStore   func() store.BlobStore
+	getBlobStore   func() *quic.Store
 }
 
 // ReadableChunk interface describes generic chunk object that Stream can Read() from.
@@ -135,7 +134,7 @@ func NewPlayer(opts *Opts) *Player {
 	return p
 }
 
-func (p *Player) getBlobStore() store.BlobStore {
+func (p *Player) getBlobStore() *quic.Store {
 	return quic.NewStore(quic.StoreOpts{
 		Address: p.reflectorAddress,
 		Timeout: p.reflectorTimeout,
@@ -182,6 +181,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 func (p *Player) RetrieveStream(s *Stream) error {
 	sdBlob := stream.SDBlob{}
 	bStore := p.getBlobStore()
+	defer bStore.CloseStore()
 	blob, err := bStore.Get(s.Hash)
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func (p *Player) RetrieveStream(s *Stream) error {
 		localCache:     p.localCache,
 		enablePrefetch: p.enablePrefetch,
 		seenChunks:     make([]ReadableChunk, len(sdBlob.BlobInfos)-1),
-		getBlobStore:   func() store.BlobStore { return p.getBlobStore() },
+		getBlobStore:   func() *quic.Store { return p.getBlobStore() },
 	}
 
 	return nil
@@ -426,6 +426,7 @@ func (b *chunkGetter) getChunkFromCache(hash string) (ReadableChunk, bool) {
 
 func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*reflectedChunk, error) {
 	bStore := b.getBlobStore()
+	defer bStore.CloseStore()
 	blob, err := bStore.Get(hash)
 	if err != nil {
 		return nil, err
