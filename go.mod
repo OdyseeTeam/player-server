@@ -9,7 +9,7 @@ require (
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gorilla/mux v1.7.3
 	github.com/lbryio/lbry.go/v2 v2.4.6
-	github.com/lbryio/reflector.go v1.1.3-0.20200320031454-d64f0187f6ef
+	github.com/lbryio/reflector.go v1.1.3-0.20200322033701-f54adbb6e5be
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
 	github.com/prometheus/client_golang v1.1.0
