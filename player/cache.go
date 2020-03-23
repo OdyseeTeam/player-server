@@ -94,8 +94,39 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 			MetCacheSize.Set(float64(c.Size()))
 		}
 	}()
+	go func() {
+		Logger.Infoln("restoring cache in memory...")
+		err := c.reloadCache()
+		if err != nil {
+			Logger.Errorf("failed to restore cache in memory: %s", err.Error())
+		}
+		Logger.Infoln("done restoring cache in memory")
+	}()
 
 	return c, nil
+}
+
+func (c *fsCache) reloadCache() error {
+	err := filepath.Walk(c.storage.path, func(path string, info os.FileInfo, err error) error {
+		if c.storage.path == path {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return fmt.Errorf("subfolder %v found inside cache folder", path)
+		}
+		if len(info.Name()) != stream.BlobHashHexLength {
+			return fmt.Errorf("non-cache file found at path %v", path)
+		}
+		stored := c.set(info.Name(), info.Size())
+		if !stored {
+			Logger.Errorf("failed to restore blob %s in cache", info.Name())
+		}
+		return nil
+	})
+	return err
 }
 
 func initFSStorage(dir string) (*fsStorage, error) {
@@ -117,7 +148,7 @@ func initFSStorage(dir string) (*fsStorage, error) {
 		if len(info.Name()) != stream.BlobHashHexLength {
 			return fmt.Errorf("non-cache file found at path %v", path)
 		}
-		return os.Remove(path)
+		return nil
 	})
 
 	if err != nil {
@@ -205,7 +236,7 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 		Logger.Debugf("written %v bytes for chunk %v", numWritten, hash)
 	}
 
-	added := c.rCache.Set(hash, hash, int64(cacheCost))
+	added := c.set(hash, int64(cacheCost))
 	if !added {
 		err := os.Remove(chunkPath)
 		if err != nil {
@@ -218,6 +249,11 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 	Logger.Debugf("chunk %v successfully cached", hash)
 
 	return &cachedChunk{reflectedChunk{body}}, nil
+}
+
+// set adds the entry in the cache. returns true if successful, false if unsuccessful
+func (c *fsCache) set(hash string, cacheCost int64) bool {
+	return c.rCache.Set(hash, hash, cacheCost)
 }
 
 // Remove deletes both cache record and chunk file from the filesystem.
