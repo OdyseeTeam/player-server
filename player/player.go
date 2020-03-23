@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/lbryio/reflector.go/peer"
+	"github.com/lbryio/reflector.go/store"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -43,6 +45,7 @@ type Player struct {
 	chunkGetter    chunkGetter
 	localCache     ChunkCache
 	enablePrefetch bool
+	useQuic        bool
 
 	reflectorAddress string
 	reflectorTimeout time.Duration
@@ -57,11 +60,12 @@ type Opts struct {
 	ReflectorAddress string
 	ReflectorTimeout time.Duration
 	LbrynetAddress   string
+	UseQuicProtocol  bool
 }
 
 var defaultOpts = Opts{
 	LbrynetAddress:   "http://localhost:5279",
-	ReflectorAddress: "refractor.lbry.com:5568",
+	ReflectorAddress: "refractor.lbry.com:5567",
 	ReflectorTimeout: 30 * time.Second,
 	CachePath:        path.Join(os.TempDir(), "blob_cache"),
 }
@@ -85,7 +89,8 @@ type chunkGetter struct {
 	sdBlob         *stream.SDBlob
 	seenChunks     []ReadableChunk
 	enablePrefetch bool
-	getBlobStore   func() *quic.Store
+	getBlobStore   func() store.BlobStore
+	useQuic        bool
 }
 
 // ReadableChunk interface describes generic chunk object that Stream can Read() from.
@@ -120,6 +125,7 @@ func NewPlayer(opts *Opts) *Player {
 		reflectorAddress: opts.ReflectorAddress,
 		reflectorTimeout: opts.ReflectorTimeout,
 		lbrynetClient:    ljsonrpc.NewClient(opts.LbrynetAddress),
+		useQuic:          opts.UseQuicProtocol,
 	}
 	if opts.EnableL2Cache {
 		cache, err := InitFSCache(&FSCacheOpts{Path: opts.CachePath, Size: uint64(opts.CacheSize)})
@@ -134,8 +140,14 @@ func NewPlayer(opts *Opts) *Player {
 	return p
 }
 
-func (p *Player) getBlobStore() *quic.Store {
-	return quic.NewStore(quic.StoreOpts{
+func (p *Player) getBlobStore() store.BlobStore {
+	if p.useQuic {
+		return quic.NewStore(quic.StoreOpts{
+			Address: p.reflectorAddress,
+			Timeout: p.reflectorTimeout,
+		})
+	}
+	return peer.NewStore(peer.StoreOpts{
 		Address: p.reflectorAddress,
 		Timeout: p.reflectorTimeout,
 	})
@@ -181,7 +193,14 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 func (p *Player) RetrieveStream(s *Stream) error {
 	sdBlob := stream.SDBlob{}
 	bStore := p.getBlobStore()
-	defer bStore.CloseStore()
+	if p.useQuic {
+		defer func() {
+			err := (bStore.(*quic.Store)).CloseStore()
+			if err != nil {
+				Logger.Errorln(err.Error())
+			}
+		}()
+	}
 	blob, err := bStore.Get(s.Hash)
 	if err != nil {
 		return err
@@ -199,7 +218,8 @@ func (p *Player) RetrieveStream(s *Stream) error {
 		localCache:     p.localCache,
 		enablePrefetch: p.enablePrefetch,
 		seenChunks:     make([]ReadableChunk, len(sdBlob.BlobInfos)-1),
-		getBlobStore:   func() *quic.Store { return p.getBlobStore() },
+		getBlobStore:   func() store.BlobStore { return p.getBlobStore() },
+		useQuic:        p.useQuic,
 	}
 
 	return nil
@@ -360,7 +380,12 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	MetRetrieverSpeed.With(map[string]string{MetLabelSource: RetrieverSourceReflector}).Set(rate)
 
 	b.saveToHotCache(n, rChunk)
-	go b.saveToCache(hash, rChunk)
+	go func() {
+		_, err := b.saveToCache(hash, rChunk)
+		if err != nil {
+			Logger.Errorln(err.Error())
+		}
+	}()
 	go b.prefetchToCache(n + 1)
 
 	return rChunk, nil
@@ -414,7 +439,10 @@ func (b *chunkGetter) prefetchToCache(startN int) {
 			Logger.Errorf("failed to prefetch chunk %v: %v", hash, err)
 			return
 		}
-		b.saveToCache(hash, reflected)
+		_, err = b.saveToCache(hash, reflected)
+		if err != nil {
+			Logger.Errorln(err.Error())
+		}
 	}
 
 }
@@ -426,7 +454,14 @@ func (b *chunkGetter) getChunkFromCache(hash string) (ReadableChunk, bool) {
 
 func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*reflectedChunk, error) {
 	bStore := b.getBlobStore()
-	defer bStore.CloseStore()
+	if b.useQuic {
+		defer func() {
+			err := (bStore.(*quic.Store)).CloseStore()
+			if err != nil {
+				Logger.Errorln(err.Error())
+			}
+		}()
+	}
 	blob, err := bStore.Get(hash)
 	if err != nil {
 		return nil, err

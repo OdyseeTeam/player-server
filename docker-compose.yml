@@ -16,7 +16,7 @@ services:
       com.centurylinklabs.watchtower.enable: true
     ports:
     - "8080:8080"
-    entrypoint: /app/lbrytv_player --cache_size=100GB --lbrynet=http://lbrynet:5279 --reflector=refractor.lbry.com:5568 --bind=0.0.0.0:8080 --profile
+    entrypoint: /app/lbrytv_player --cache_size=100GB --lbrynet=http://lbrynet:5279 --reflector=refractor.lbry.com:5567 --bind=0.0.0.0:8080 --profile
     depends_on:
     - lbrynet
 
