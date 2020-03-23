@@ -21,6 +21,7 @@ var (
 	cacheSize        string
 	enablePrefetch   bool
 	enableProfile    bool
+	useQuic    bool
 	reflectorAddress string
 	reflectorTimeout int
 	lbrynetAddress   string
@@ -49,6 +50,7 @@ var (
 				ReflectorAddress: reflectorAddress,
 				ReflectorTimeout: time.Second * time.Duration(reflectorTimeout),
 				LbrynetAddress:   lbrynetAddress,
+				UseQuicProtocol: useQuic,
 			}
 			if pOpts.CacheSize == 0 {
 				pOpts.EnableL2Cache = false
@@ -80,6 +82,7 @@ func init() {
 	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
 	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", true, "enable prefetch for blobs")
 	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
+	rootCmd.Flags().BoolVar(&useQuic, "use-quic", false, fmt.Sprintf("use the QUIC protocol instead of TCP"))
 }
 
 func Execute() {
