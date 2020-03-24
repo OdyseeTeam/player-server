@@ -37,25 +37,30 @@ func TestFSCache(t *testing.T) {
 	os.Remove(dir)
 }
 
-func TestFSCacheClearsFolder(t *testing.T) {
+func TestFSCacheReloadFolder(t *testing.T) {
 	dir := generateCachePath()
 	os.MkdirAll(dir, 0700)
 
 	defer os.RemoveAll(dir)
 
-	fileToBeRemoved := path.Join(dir, randomString(stream.BlobHashHexLength))
-	f, err := os.Create(fileToBeRemoved)
+	blobName := randomString(stream.BlobHashHexLength)
+	filesToBeRecached := path.Join(dir, blobName)
+	f, err := os.Create(filesToBeRecached)
 	require.NoError(t, err)
 	n, err := f.Write(make([]byte, stream.MaxBlobSize))
 	require.NoError(t, err)
 	require.Equal(t, stream.MaxBlobSize, n)
 	f.Close()
 
-	_, err = InitFSCache(&FSCacheOpts{Path: dir})
+	c, err := InitFSCache(&FSCacheOpts{Path: dir})
 	require.Nil(t, err)
-
-	_, err = os.Stat(fileToBeRemoved)
-	assert.Error(t, err)
+	<-c.IsCacheRestored()
+	// the cache doesn't guarantee that when setting an item it's immediately available. so our only option is to wait
+	waitForCache()
+	isCached := c.Has(blobName)
+	assert.True(t, isCached)
+	_, err = os.Stat(filesToBeRecached)
+	assert.NoError(t, err)
 
 	fileToNotBeRemoved := path.Join(dir, "non_blob_sized_file_name")
 	f, err = os.Create(fileToNotBeRemoved)
@@ -63,6 +68,7 @@ func TestFSCacheClearsFolder(t *testing.T) {
 
 	// Cleanup
 	defer os.Remove(fileToNotBeRemoved)
+	defer os.Remove(filesToBeRecached)
 
 	n, err = f.Write(make([]byte, stream.MaxBlobSize/2))
 	require.NoError(t, err)
