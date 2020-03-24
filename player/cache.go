@@ -21,11 +21,13 @@ type ChunkCache interface {
 	Set(string, []byte) (ReadableChunk, error)
 	Remove(string)
 	Size() uint64
+	HasRestored() chan bool
 }
 
 type fsCache struct {
-	storage *fsStorage
-	rCache  *ristretto.Cache
+	storage     *fsStorage
+	rCache      *ristretto.Cache
+	hasRestored chan bool
 }
 
 // FSCacheOpts contains options for filesystem cache. Size is max size in bytes
@@ -44,7 +46,7 @@ type cachedChunk struct {
 }
 
 // InitFSCache initializes disk cache for chunks.
-// All chunk-sized files inside `dir` will be removed on initialization,
+// All chunk-sized files inside `dir` will be restored in the in-memory cache
 // if `dir` does not exist, it will be created.
 // In other words, os.TempDir() should not be passed as a `dir`.
 func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
@@ -76,7 +78,7 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 		return nil, err
 	}
 
-	c := &fsCache{storage, r}
+	c := &fsCache{storage, r, make(chan bool, 1)}
 
 	sweepTicker := time.NewTicker(opts.SweepInterval)
 	metricsTicker := time.NewTicker(500 * time.Millisecond)
@@ -100,6 +102,7 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 		if err != nil {
 			Logger.Errorf("failed to restore cache in memory: %s", err.Error())
 		}
+		c.hasRestored <- true
 		Logger.Infoln("done restoring cache in memory")
 	}()
 
@@ -180,6 +183,10 @@ func (s fsStorage) open(hash interface{}) (*os.File, error) {
 func (c *fsCache) Has(hash string) bool {
 	_, ok := c.rCache.Get(hash)
 	return ok
+}
+
+func (c *fsCache) HasRestored() chan bool {
+	return c.hasRestored
 }
 
 // Get returns ReadableChunk if it can be retrieved from the cache by the requested hash
