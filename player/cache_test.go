@@ -54,7 +54,7 @@ func TestFSCacheReloadFolder(t *testing.T) {
 
 	c, err := InitFSCache(&FSCacheOpts{Path: dir})
 	require.Nil(t, err)
-	<-c.HasRestored()
+	<-c.IsCacheRestored()
 	// the cache doesn't guarantee that when setting an item it's immediately available. so our only option is to wait
 	time.Sleep(50 * time.Millisecond)
 	isCached := c.Has(blobName)

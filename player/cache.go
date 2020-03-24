@@ -21,7 +21,7 @@ type ChunkCache interface {
 	Set(string, []byte) (ReadableChunk, error)
 	Remove(string)
 	Size() uint64
-	HasRestored() chan bool
+	IsCacheRestored() chan bool
 }
 
 type fsCache struct {
@@ -185,7 +185,9 @@ func (c *fsCache) Has(hash string) bool {
 	return ok
 }
 
-func (c *fsCache) HasRestored() chan bool {
+// IsCacheRestored returns a channel that can be used to wait for the cache to be restored in memory
+// this channel can only be used once. A second use will block forever.
+func (c *fsCache) IsCacheRestored() chan bool {
 	return c.hasRestored
 }
 
