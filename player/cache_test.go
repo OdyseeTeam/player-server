@@ -56,7 +56,7 @@ func TestFSCacheReloadFolder(t *testing.T) {
 	require.Nil(t, err)
 	<-c.IsCacheRestored()
 	// the cache doesn't guarantee that when setting an item it's immediately available. so our only option is to wait
-	time.Sleep(50 * time.Millisecond)
+	waitForCache()
 	isCached := c.Has(blobName)
 	assert.True(t, isCached)
 	_, err = os.Stat(filesToBeRecached)
@@ -68,6 +68,7 @@ func TestFSCacheReloadFolder(t *testing.T) {
 
 	// Cleanup
 	defer os.Remove(fileToNotBeRemoved)
+	defer os.Remove(filesToBeRecached)
 
 	n, err = f.Write(make([]byte, stream.MaxBlobSize/2))
 	require.NoError(t, err)
