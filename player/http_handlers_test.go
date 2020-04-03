@@ -127,7 +127,7 @@ func TestHandleHead(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	assert.Equal(t, "video/mp4", response.Header.Get("Content-Type"))
-	assert.Equal(t, "Fri, 17 Nov 2017 17:19:50 GMT", response.Header.Get("Last-Modified"))
+	assert.Equal(t, "Tue, 14 Nov 2017 20:36:33 GMT", response.Header.Get("Last-Modified"))
 	assert.Equal(t, "158433824", response.Header.Get("Content-Length"))
 }
 
