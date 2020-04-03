@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
 	"strings"
 	"testing"
 
@@ -20,7 +22,11 @@ type rangeHeader struct {
 func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http.Response {
 	if router == nil {
 		router = mux.NewRouter()
-		InstallPlayerRoutes(router, NewPlayer(&Opts{EnableL2Cache: false, EnablePrefetch: false}))
+		cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
+		if err != nil {
+			panic(err)
+		}
+		InstallPlayerRoutes(router, NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false}))
 	}
 
 	r, _ := http.NewRequest(method, uri, nil)
@@ -40,7 +46,9 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 }
 
 func TestHandleGet(t *testing.T) {
-	player := NewPlayer(&Opts{EnableL2Cache: true, EnablePrefetch: false})
+	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
+	require.NoError(t, err)
+	player := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false})
 	router := mux.NewRouter()
 	router.Path("/content/claims/{uri}/{claim}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
 

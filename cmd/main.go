@@ -21,7 +21,7 @@ var (
 	cacheSize        string
 	enablePrefetch   bool
 	enableProfile    bool
-	useQuic    bool
+	useQuic          bool
 	reflectorAddress string
 	reflectorTimeout int
 	lbrynetAddress   string
@@ -42,18 +42,21 @@ var (
 				Logger.Fatalf("error: %v\n", err)
 			}
 
+			var cache player.ChunkCache
+			// cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache"), Size: uint64(opts.CacheSize)})
+			if cacheSizeBytes > 0 {
+				cache, err = player.InitLRUCache(&player.LRUCacheOpts{Path: cachePath, Size: uint64(cacheSizeBytes)})
+				if err != nil {
+					Logger.Fatalf("cannot initialize cache: %v\n", err)
+				}
+			}
 			pOpts := &player.Opts{
-				EnableL2Cache:    true,
-				CacheSize:        cacheSizeBytes,
-				CachePath:        cachePath,
+				LocalCache:       cache,
 				EnablePrefetch:   enablePrefetch,
 				ReflectorAddress: reflectorAddress,
 				ReflectorTimeout: time.Second * time.Duration(reflectorTimeout),
 				LbrynetAddress:   lbrynetAddress,
-				UseQuicProtocol: useQuic,
-			}
-			if pOpts.CacheSize == 0 {
-				pOpts.EnableL2Cache = false
+				UseQuicProtocol:  useQuic,
 			}
 
 			p := player.NewPlayer(pOpts)

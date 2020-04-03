@@ -7,9 +7,11 @@ require (
 	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee
 	github.com/dgraph-io/ristretto v0.0.1
 	github.com/getsentry/sentry-go v0.5.1
+	github.com/goburrow/cache v0.1.0 // indirect
 	github.com/gorilla/mux v1.7.3
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/lbryio/lbry.go/v2 v2.4.6
-	github.com/lbryio/reflector.go v1.1.3-0.20200322043846-989265946d7a
+	github.com/lbryio/reflector.go v1.1.3-0.20200403124949-9c1b023de685
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
 	github.com/prometheus/client_golang v1.1.0

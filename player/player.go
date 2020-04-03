@@ -7,8 +7,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"os"
-	"path"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
@@ -18,8 +16,6 @@ import (
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/peer/quic"
-
-	"github.com/c2h5oh/datasize"
 )
 
 var Logger = logger.GetLogger()
@@ -54,9 +50,7 @@ type Player struct {
 // Opts are options to be set for Player instance.
 type Opts struct {
 	EnablePrefetch   bool
-	EnableL2Cache    bool
-	CacheSize        datasize.ByteSize
-	CachePath        string
+	LocalCache       ChunkCache
 	ReflectorAddress string
 	ReflectorTimeout time.Duration
 	LbrynetAddress   string
@@ -67,7 +61,6 @@ var defaultOpts = Opts{
 	LbrynetAddress:   "http://localhost:5279",
 	ReflectorAddress: "refractor.lbry.com:5567",
 	ReflectorTimeout: 30 * time.Second,
-	CachePath:        path.Join(os.TempDir(), "blob_cache"),
 }
 
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
@@ -117,26 +110,15 @@ func NewPlayer(opts *Opts) *Player {
 	if opts.ReflectorTimeout == 0 {
 		opts.ReflectorTimeout = defaultOpts.ReflectorTimeout
 	}
-	if opts.CachePath == "" {
-		opts.CachePath = defaultOpts.CachePath
-	}
-
 	p := &Player{
 		reflectorAddress: opts.ReflectorAddress,
 		reflectorTimeout: opts.ReflectorTimeout,
 		lbrynetClient:    ljsonrpc.NewClient(opts.LbrynetAddress),
 		useQuic:          opts.UseQuicProtocol,
+		localCache:       opts.LocalCache,
+		enablePrefetch:   opts.EnablePrefetch,
 	}
-	if opts.EnableL2Cache {
-		cache, err := InitFSCache(&FSCacheOpts{Path: opts.CachePath, Size: uint64(opts.CacheSize)})
-		if err != nil {
-			Logger.Error("unable to initialize cache: ", err)
-		} else {
-			Logger.Infof("player cache initialized at %v (%v)", opts.CachePath, opts.CacheSize)
-			p.localCache = cache
-			p.enablePrefetch = opts.EnablePrefetch
-		}
-	}
+
 	return p
 }
 

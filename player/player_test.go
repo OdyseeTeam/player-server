@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,11 +38,6 @@ func randomString(n int) string {
 		b[i] = letter[rand.Intn(len(letter))]
 	}
 	return string(b)
-}
-
-func TestNewPlayer(t *testing.T) {
-	p := NewPlayer(&Opts{EnableL2Cache: true})
-	assert.IsType(t, p.localCache, &fsCache{})
 }
 
 func TestPlayerResolveStream(t *testing.T) {
@@ -158,7 +155,9 @@ func TestStreamRead(t *testing.T) {
 }
 
 func TestStreamReadHotCache(t *testing.T) {
-	p := NewPlayer(&Opts{EnableL2Cache: true, EnablePrefetch: false})
+	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
+	require.NoError(t, err)
+	p := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false})
 
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
