@@ -7,8 +7,10 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,47 +29,46 @@ func TestLRUCache(t *testing.T) {
 	os.Remove(dir)
 }
 
-// func TestLRUCacheReloadFolder(t *testing.T) {
-// 	dir := generateCachePath()
-// 	os.MkdirAll(dir, 0700)
+func TestLRUCacheReloadFolder(t *testing.T) {
+	dir := generateCachePath()
+	os.MkdirAll(dir, 0700)
 
-// 	defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
-// 	blobName := randomString(stream.BlobHashHexLength)
-// 	filesToBeRecached := path.Join(dir, blobName)
-// 	f, err := os.Create(filesToBeRecached)
-// 	require.NoError(t, err)
-// 	n, err := f.Write(make([]byte, stream.MaxBlobSize))
-// 	require.NoError(t, err)
-// 	require.Equal(t, stream.MaxBlobSize, n)
-// 	f.Close()
+	blobName := randomString(stream.BlobHashHexLength)
+	filesToBeRecached := path.Join(dir, blobName)
+	f, err := os.Create(filesToBeRecached)
+	require.NoError(t, err)
+	n, err := f.Write(make([]byte, stream.MaxBlobSize))
+	require.NoError(t, err)
+	require.Equal(t, stream.MaxBlobSize, n)
+	f.Close()
 
-// 	c, err := InitLRUCache(&LRUCacheOpts{Path: dir})
-// 	require.Nil(t, err)
-// 	<-c.IsCacheRestored()
-// 	// the cache doesn't guarantee that when setting an item it's immediately available. so our only option is to wait
-// 	waitForCache()
-// 	isCached := c.Has(blobName)
-// 	assert.True(t, isCached)
-// 	_, err = os.Stat(filesToBeRecached)
-// 	assert.NoError(t, err)
+	c, err := InitLRUCache(&LRUCacheOpts{Path: dir})
+	require.Nil(t, err)
+	time.Sleep(1 * time.Second)
+	// the cache doesn't guarantee that when setting an item it's immediately available. so our only option is to wait
+	waitForCache()
+	assert.True(t, c.Has(blobName))
+	_, err = os.Stat(filesToBeRecached)
+	assert.NoError(t, err)
 
-// 	fileToNotBeRemoved := path.Join(dir, "non_blob_sized_file_name")
-// 	f, err = os.Create(fileToNotBeRemoved)
-// 	require.NoError(t, err)
+	fileToNotBeRemoved := path.Join(dir, "non_blob_sized_file_name")
+	f, err = os.Create(fileToNotBeRemoved)
+	require.NoError(t, err)
 
-// 	// Cleanup
-// 	defer os.Remove(fileToNotBeRemoved)
-// 	defer os.Remove(filesToBeRecached)
+	// Cleanup
+	defer os.Remove(fileToNotBeRemoved)
+	defer os.Remove(filesToBeRecached)
 
-// 	n, err = f.Write(make([]byte, stream.MaxBlobSize/2))
-// 	require.NoError(t, err)
-// 	require.Equal(t, stream.MaxBlobSize/2, n)
-// 	f.Close()
+	n, err = f.Write(make([]byte, stream.MaxBlobSize/2))
+	require.NoError(t, err)
+	require.Equal(t, stream.MaxBlobSize/2, n)
+	f.Close()
 
-// 	_, err = InitLRUCache(&LRUCacheOpts{Path: dir})
-// 	require.Error(t, err)
-// }
+	_, err = InitLRUCache(&LRUCacheOpts{Path: dir})
+	require.Error(t, err)
+}
 
 func TestLRUCacheHas(t *testing.T) {
 	c, err := InitLRUCache(&LRUCacheOpts{Path: generateCachePath()})

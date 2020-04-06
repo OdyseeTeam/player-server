@@ -1,13 +1,16 @@
 package player
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/lbryio/lbry.go/v2/stream"
 )
 
-// LRUCacheOpts contains options for a cache. Size is max size in bytes
+// LRUCacheOpts contains options for a cache. Size is max size in bytes.
 type LRUCacheOpts struct {
 	Path          string
 	Size          uint64
@@ -19,7 +22,7 @@ type lruCache struct {
 	lru     *lru.Cache
 }
 
-// InitNGCache initializes a cache for chunks.
+// InitLRUCache initializes a LRU cache for chunks.
 func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 	storage, err := initFSStorage(opts.Path)
 	if err != nil {
@@ -41,7 +44,35 @@ func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 
 	c := &lruCache{storage, lru}
 
+	go func() {
+		Logger.Infoln("restoring cache in memory...")
+		err := c.reloadCache()
+		if err != nil {
+			Logger.Errorf("failed to restore cache in memory: %s", err.Error())
+		}
+	}()
+
 	return c, nil
+}
+
+func (c *lruCache) reloadCache() error {
+	err := filepath.Walk(c.storage.path, func(path string, info os.FileInfo, err error) error {
+		if c.storage.path == path {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return fmt.Errorf("subfolder %v found inside cache folder", path)
+		}
+		if len(info.Name()) != stream.BlobHashHexLength {
+			return fmt.Errorf("non-cache file found at path %v", path)
+		}
+		c.lru.Add(info.Name(), info.Name())
+		return nil
+	})
+	return err
 }
 
 func (c *lruCache) Set(hash string, body []byte) (ReadableChunk, error) {
