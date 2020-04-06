@@ -12,15 +12,25 @@ const (
 )
 
 var (
-	jsonFormatter = logrus.JSONFormatter{DisableTimestamp: true}
-	textFormatter = logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04:05"}
-	Logger        = GetLogger()
+	JsonFormatter = &logrus.JSONFormatter{DisableTimestamp: true}
+	TextFormatter = &logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04:05"}
+	level         = logrus.InfoLevel
+	formatter     = TextFormatter
+	loggers       []*logrus.Logger
 )
+
+func ConfigureDefaults(logLevel logrus.Level) {
+	level = logLevel
+	for _, logger := range loggers {
+		logger.SetLevel(level)
+	}
+}
 
 func GetLogger() *logrus.Logger {
 	logger := logrus.New()
-	logger.SetLevel(logrus.InfoLevel)
-	logger.SetFormatter(&textFormatter)
+	logger.SetLevel(level)
+	logger.SetFormatter(JsonFormatter)
+	loggers = append(loggers, logger)
 	return logger
 }
 

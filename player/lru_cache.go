@@ -44,6 +44,8 @@ func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 
 	c := &lruCache{storage, lru}
 
+	Logger.Infof("LRU cache of %vGB initialized at %v", opts.Size/1024/1024/1024, opts.Path)
+
 	go func() {
 		Logger.Infoln("restoring cache in memory...")
 		err := c.reloadCache()
@@ -102,7 +104,7 @@ func (c *lruCache) Set(hash string, body []byte) (ReadableChunk, error) {
 	}
 
 	evicted := c.lru.Add(hash, hash)
-	Logger.Debugf("cached %v bytes for chunk %v, evicted: %v", numWritten, hash, evicted)
+	Logger.Debugf("cached chunk %v, retrieved: %vB, evicted: %v", hash, numWritten, evicted)
 
 	return &cachedChunk{reflectedChunk{body}}, nil
 }

@@ -15,6 +15,7 @@ var SentryHandler = sentryhttp.New(sentryhttp.Options{
 })
 
 func ConfigureSentry(release, env string) {
+	l := GetLogger()
 	dsn := os.Getenv("SENTRY_DSN")
 	opts := sentry.ClientOptions{
 		Dsn:              dsn,
@@ -26,15 +27,15 @@ func ConfigureSentry(release, env string) {
 	if env == EnvTest {
 		opts.Transport = TestSentryTransport
 	} else if dsn == "" {
-		Logger.Info("sentry disabled")
+		l.Info("sentry disabled")
 		return
 	}
 
 	err := sentry.Init(opts)
 	if err != nil {
-		Logger.Fatalf("sentry initialization failed: %v", err)
+		l.Fatalf("sentry initialization failed: %v", err)
 	} else {
-		Logger.Info("sentry initialized")
+		l.Info("sentry initialized")
 	}
 }
 

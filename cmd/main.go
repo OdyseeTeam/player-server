@@ -10,10 +10,9 @@ import (
 	"github.com/lbryio/lbrytv-player/player"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
-
-var Logger = logger.GetLogger()
 
 var (
 	bindAddress      string
@@ -22,6 +21,7 @@ var (
 	enablePrefetch   bool
 	enableProfile    bool
 	useQuic          bool
+	verboseOutput    bool
 	reflectorAddress string
 	reflectorTimeout int
 	lbrynetAddress   string
@@ -33,21 +33,29 @@ var (
 		Short:   "media server for lbrytv",
 		Version: version.FullName(),
 		Run: func(cmd *cobra.Command, args []string) {
-			Logger.Infof("initializing %v\n", version.FullName())
+			var logLevel logrus.Level
+			if verboseOutput {
+				logLevel = logrus.DebugLevel
+			} else {
+				logLevel = logrus.InfoLevel
+			}
+			logger.ConfigureDefaults(logLevel)
+
+			l := logger.GetLogger()
+			l.Infof("initializing %v\n", version.FullName())
 			logger.ConfigureSentry(version.Version(), logger.EnvProd)
 			defer logger.Flush()
 
 			err := cacheSizeBytes.UnmarshalText([]byte(cacheSize))
 			if err != nil {
-				Logger.Fatalf("error: %v\n", err)
+				l.Fatalf("error: %v\n", err)
 			}
 
 			var cache player.ChunkCache
-			// cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache"), Size: uint64(opts.CacheSize)})
 			if cacheSizeBytes > 0 {
 				cache, err = player.InitLRUCache(&player.LRUCacheOpts{Path: cachePath, Size: uint64(cacheSizeBytes)})
 				if err != nil {
-					Logger.Fatalf("cannot initialize cache: %v\n", err)
+					l.Fatalf("cannot initialize cache: %v\n", err)
 				}
 			}
 			pOpts := &player.Opts{
@@ -86,10 +94,11 @@ func init() {
 	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", true, "enable prefetch for blobs")
 	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
 	rootCmd.Flags().BoolVar(&useQuic, "use-quic", false, fmt.Sprintf("use the QUIC protocol instead of TCP"))
+	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, fmt.Sprintf("enable verbose logging"))
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		Logger.Fatalf("error: %v\n", err)
+		logger.GetLogger().Fatalf("error: %v\n", err)
 	}
 }
