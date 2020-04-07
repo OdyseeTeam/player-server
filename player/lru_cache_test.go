@@ -7,7 +7,6 @@ import (
 	"path"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -45,8 +44,9 @@ func TestLRUCacheReloadFolder(t *testing.T) {
 	f.Close()
 
 	c, err := InitLRUCache(&LRUCacheOpts{Path: dir})
-	require.Nil(t, err)
-	time.Sleep(1 * time.Second)
+	require.NoError(t, err)
+	err = c.WaitForRestore()
+	require.NoError(t, err)
 	// the cache doesn't guarantee that when setting an item it's immediately available. so our only option is to wait
 	waitForCache()
 	assert.True(t, c.Has(blobName))

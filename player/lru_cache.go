@@ -18,8 +18,9 @@ type LRUCacheOpts struct {
 }
 
 type lruCache struct {
-	storage *fsStorage
-	lru     *lru.Cache
+	storage  *fsStorage
+	lru      *lru.Cache
+	resError chan error
 }
 
 // InitLRUCache initializes a LRU cache for chunks.
@@ -42,7 +43,7 @@ func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 		return nil, err
 	}
 
-	c := &lruCache{storage, lru}
+	c := &lruCache{storage, lru, make(chan error, 1)}
 
 	Logger.Infof("LRU cache of %vGB initialized at %v", opts.Size/1024/1024/1024, opts.Path)
 
@@ -51,7 +52,10 @@ func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 		err := c.reloadCache()
 		if err != nil {
 			Logger.Errorf("failed to restore cache in memory: %s", err.Error())
+		} else {
+			Logger.Infoln("done restoring cache in memory")
 		}
+		c.resError <- err
 	}()
 
 	return c, nil
@@ -144,6 +148,9 @@ func (c *lruCache) Size() uint64 {
 	return uint64(c.lru.Len()) * ChunkSize
 }
 
-func (c *lruCache) IsCacheRestored() chan bool {
-	return make(chan bool)
+// WaitForRestore blocks execution until cache restore is complete and returns the resulting error (if any).
+func (c *lruCache) WaitForRestore() error {
+	err := <-c.resError
+	close(c.resError)
+	return err
 }
