@@ -33,11 +33,9 @@ var (
 		Short:   "media server for lbrytv",
 		Version: version.FullName(),
 		Run: func(cmd *cobra.Command, args []string) {
-			var logLevel logrus.Level
+			logLevel := logrus.InfoLevel
 			if verboseOutput {
 				logLevel = logrus.DebugLevel
-			} else {
-				logLevel = logrus.InfoLevel
 			}
 			logger.ConfigureDefaults(logLevel)
 
