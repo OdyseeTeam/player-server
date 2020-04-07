@@ -34,6 +34,10 @@ func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 		opts.Size = defaultMaxCacheSize
 	}
 
+	if opts.SweepInterval == 0 {
+		opts.SweepInterval = time.Second * 120
+	}
+
 	onEvicted := func(key interface{}, value interface{}) {
 		storage.remove(value)
 	}
@@ -47,9 +51,23 @@ func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 
 	Logger.Infof("LRU cache of %vGB initialized at %v", opts.Size/1024/1024/1024, opts.Path)
 
+	sweepTicker := time.NewTicker(opts.SweepInterval)
+	metricsTicker := time.NewTicker(1 * time.Second)
+	go func() {
+		for {
+			<-sweepTicker.C
+			c.sweepChunks()
+		}
+	}()
+	go func() {
+		for {
+			<-metricsTicker.C
+			MtrCacheSize.Set(float64(c.Size()))
+		}
+	}()
 	go func() {
 		Logger.Infoln("restoring cache in memory...")
-		err := c.reloadCache()
+		err := c.reloadExistingChunks()
 		if err != nil {
 			Logger.Errorf("failed to restore cache in memory: %s", err.Error())
 		} else {
@@ -61,7 +79,36 @@ func InitLRUCache(opts *LRUCacheOpts) (ChunkCache, error) {
 	return c, nil
 }
 
-func (c *lruCache) reloadCache() error {
+func (c *lruCache) sweepChunks() {
+	var removed int
+	err := filepath.Walk(c.storage.path, func(path string, info os.FileInfo, err error) error {
+		if c.storage.path == path {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if !c.Has(info.Name()) {
+			err := os.Remove(path)
+			if err == nil {
+				removed++
+			} else {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		Logger.Errorf("error sweeping cache folder: %v", err)
+	} else {
+		Logger.Infof("swept cache folder, %v chunks removed", removed)
+	}
+}
+
+func (c *lruCache) reloadExistingChunks() error {
 	err := filepath.Walk(c.storage.path, func(path string, info os.FileInfo, err error) error {
 		if c.storage.path == path {
 			return nil

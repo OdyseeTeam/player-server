@@ -85,7 +85,7 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 	go func() {
 		for {
 			<-sweepTicker.C
-			c.sweep()
+			c.sweepChunks()
 		}
 	}()
 	go func() {
@@ -98,7 +98,7 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 	}()
 	go func() {
 		Logger.Infoln("restoring cache in memory...")
-		err := c.reloadCache()
+		err := c.reloadExistingChunks()
 		if err != nil {
 			Logger.Errorf("failed to restore cache in memory: %s", err.Error())
 		} else {
@@ -110,7 +110,7 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 	return c, nil
 }
 
-func (c *fsCache) reloadCache() error {
+func (c *fsCache) reloadExistingChunks() error {
 	err := filepath.Walk(c.storage.path, func(path string, info os.FileInfo, err error) error {
 		if c.storage.path == path {
 			return nil
@@ -277,7 +277,7 @@ func (c *fsCache) Size() uint64 {
 	return c.rCache.Metrics.CostAdded() - c.rCache.Metrics.CostEvicted()
 }
 
-func (c *fsCache) sweep() {
+func (c *fsCache) sweepChunks() {
 	var removed int
 	err := filepath.Walk(c.storage.path, func(path string, info os.FileInfo, err error) error {
 		if c.storage.path == path {
