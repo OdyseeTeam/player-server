@@ -16,64 +16,64 @@ func InstallMetricsRoutes(r *mux.Router) {
 
 var (
 	nsPlayer       = "player"
-	MetLabelSource = "source"
+	MtrLabelSource = "source"
 
-	MetStreamsRunning = promauto.NewGauge(prometheus.GaugeOpts{
+	MtrStreamsRunning = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "streams",
 		Name:      "running",
 		Help:      "Number of streams currently playing",
 	})
-	MetRetrieverSpeed = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	MtrRetrieverSpeed = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "retriever",
 		Name:      "speed_mbps",
 		Help:      "Speed of blob/chunk retrieval",
-	}, []string{MetLabelSource})
+	}, []string{MtrLabelSource})
 
-	MetInBytes = promauto.NewCounter(prometheus.CounterOpts{
+	MtrInBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
 		Name:      "in_bytes",
 		Help:      "Total number of bytes downloaded",
 	})
-	MetOutBytes = promauto.NewCounter(prometheus.CounterOpts{
+	MtrOutBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
 		Name:      "out_bytes",
 		Help:      "Total number of bytes streamed out",
 	})
 
-	MetCacheHitCount = promauto.NewCounter(prometheus.CounterOpts{
+	MtrCacheHitCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "hit_count",
 		Help:      "Total number of blobs found in the local cache",
 	})
-	MetCacheMissCount = promauto.NewCounter(prometheus.CounterOpts{
+	MtrCacheMissCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "miss_count",
 		Help:      "Total number of blobs that were not in the local cache",
 	})
-	MetCacheErrorCount = promauto.NewCounter(prometheus.CounterOpts{
+	MtrCacheErrorCount = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "error_count",
 		Help:      "Total number of errors retrieving blobs from the local cache",
 	})
 
-	MetCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
+	MtrCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "size",
 		Help:      "Current size of cache",
 	})
-	MetCacheDroppedCount = promauto.NewGauge(prometheus.GaugeOpts{
+	MtrCacheDroppedCount = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "dropped_count",
 		Help:      "Total number of blobs dropped at the admission time",
 	})
-	MetCacheRejectedCount = promauto.NewGauge(prometheus.GaugeOpts{
+	MtrCacheRejectedCount = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: nsPlayer,
 		Subsystem: "cache",
 		Name:      "rejected_count",

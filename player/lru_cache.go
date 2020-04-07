@@ -84,20 +84,20 @@ func (c *lruCache) Set(hash string, body []byte) (ReadableChunk, error) {
 
 	f, err := os.OpenFile(chunkPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
-		MetCacheErrorCount.Inc()
+		MtrCacheErrorCount.Inc()
 		Logger.Debugf("chunk %v already exists on the local filesystem, not overwriting", hash)
 	} else {
 		numWritten, err = f.Write(body)
 		defer f.Close()
 		if err != nil {
-			MetCacheErrorCount.Inc()
+			MtrCacheErrorCount.Inc()
 			Logger.Errorf("error saving cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
 
 		err = f.Close()
 		if err != nil {
-			MetCacheErrorCount.Inc()
+			MtrCacheErrorCount.Inc()
 			Logger.Errorf("error closing cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
@@ -117,7 +117,7 @@ func (c *lruCache) Get(hash string) (ReadableChunk, bool) {
 	if value, ok := c.lru.Get(hash); ok {
 		f, err := c.storage.open(value)
 		if err != nil {
-			MetCacheErrorCount.Inc()
+			MtrCacheErrorCount.Inc()
 			Logger.Errorf("chunk %v found in cache but couldn't open the file: %v", hash, err)
 			c.lru.Remove(value)
 			return nil, false

@@ -91,9 +91,9 @@ func InitFSCache(opts *FSCacheOpts) (ChunkCache, error) {
 	go func() {
 		for {
 			<-metricsTicker.C
-			MetCacheDroppedCount.Set(float64(r.Metrics.SetsDropped()))
-			MetCacheRejectedCount.Set(float64(r.Metrics.SetsRejected()))
-			MetCacheSize.Set(float64(c.Size()))
+			MtrCacheDroppedCount.Set(float64(r.Metrics.SetsDropped()))
+			MtrCacheRejectedCount.Set(float64(r.Metrics.SetsRejected()))
+			MtrCacheSize.Set(float64(c.Size()))
 		}
 	}()
 	go func() {
@@ -197,7 +197,7 @@ func (c *fsCache) Get(hash string) (ReadableChunk, bool) {
 	if value, ok := c.rCache.Get(hash); ok {
 		f, err := c.storage.open(value)
 		if err != nil {
-			MetCacheErrorCount.Inc()
+			MtrCacheErrorCount.Inc()
 			Logger.Errorf("chunk %v found in cache but couldn't open the file: %v", hash, err)
 			c.rCache.Del(value)
 			return nil, false
@@ -224,20 +224,20 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 
 	f, err := os.OpenFile(chunkPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
-		MetCacheErrorCount.Inc()
+		MtrCacheErrorCount.Inc()
 		Logger.Debugf("chunk %v already exists on the local filesystem, not overwriting", hash)
 	} else {
 		numWritten, err := f.Write(body)
 		defer f.Close()
 		if err != nil {
-			MetCacheErrorCount.Inc()
+			MtrCacheErrorCount.Inc()
 			Logger.Errorf("error saving cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
 
 		err = f.Close()
 		if err != nil {
-			MetCacheErrorCount.Inc()
+			MtrCacheErrorCount.Inc()
 			Logger.Errorf("error closing cache file %v: %v", chunkPath, err)
 			return nil, err
 		}
