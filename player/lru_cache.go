@@ -186,6 +186,7 @@ func (c *lruCache) Get(hash string) (ReadableChunk, bool) {
 			Logger.Errorf("chunk %v found in cache but couldn't read the file: %v", hash, err)
 			return nil, false
 		}
+		Logger.Infof("chunck loaded from cache: %v", hash)
 		defer f.Close()
 		return cb, true
 	}

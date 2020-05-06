@@ -347,12 +347,12 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	if cacheHit {
 		rate := float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration * 8
 		MtrRetrieverSpeed.With(map[string]string{MtrLabelSource: RetrieverSourceL2Cache}).Set(rate)
-		MtrCacheHitCount.Inc()
+		go MtrCacheHitCount.Inc()
 		b.saveToHotCache(n, cChunk)
 		return cChunk, nil
 	}
 
-	MtrCacheMissCount.Inc()
+	go MtrCacheMissCount.Inc()
 	timerReflector := TimerStart()
 	rChunk, err = b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
 	if err != nil {
@@ -451,7 +451,7 @@ func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*refle
 		return nil, err
 	}
 
-	MtrInBytes.Add(float64(len(blob)))
+	go MtrInBytes.Add(float64(len(blob)))
 
 	body, err := stream.DecryptBlob(blob, key, iv)
 	if err != nil {
@@ -459,6 +459,7 @@ func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*refle
 	}
 
 	chunk := &reflectedChunk{body}
+	Logger.Infof("chunck loaded reflector: %v", hash)
 	return chunk, nil
 }
 
