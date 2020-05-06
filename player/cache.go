@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -119,7 +120,10 @@ func (c *fsCache) reloadExistingChunks() error {
 			return err
 		}
 		if info.IsDir() {
-			return fmt.Errorf("subfolder %v found inside cache folder", path)
+			if len(info.Name()) != 1 {
+				return fmt.Errorf("subfolder %v found inside cache folder", path)
+			}
+			return nil
 		}
 		if len(info.Name()) != stream.BlobHashHexLength {
 			return fmt.Errorf("non-cache file found at path %v", path)
@@ -147,7 +151,10 @@ func initFSStorage(dir string) (*fsStorage, error) {
 			return err
 		}
 		if info.IsDir() {
-			return fmt.Errorf("subfolder %v found inside cache folder", path)
+			if len(info.Name()) != 1 {
+				return fmt.Errorf("subfolder %v found inside cache folder", path)
+			}
+			return nil
 		}
 		if len(info.Name()) != stream.BlobHashHexLength {
 			return fmt.Errorf("non-cache file found at path %v", path)
@@ -168,7 +175,7 @@ func (s fsStorage) remove(hash interface{}) {
 }
 
 func (s fsStorage) getPath(hash interface{}) string {
-	return path.Join(s.path, hash.(string))
+	return path.Join(s.path, hash.(string)[0:1], hash.(string))
 }
 
 func (s fsStorage) open(hash interface{}) (*os.File, error) {
@@ -223,6 +230,10 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 
 	Logger.Debugf("attempting to cache chunk %v", hash)
 	chunkPath := c.storage.getPath(hash)
+	err := os.MkdirAll(strings.Replace(chunkPath, hash, "", -1), 0700)
+	if err != nil {
+		return nil, err
+	}
 
 	f, err := os.OpenFile(chunkPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
@@ -230,7 +241,6 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 		Logger.Debugf("chunk %v already exists on the local filesystem, not overwriting", hash)
 	} else {
 		numWritten, err := f.Write(body)
-		defer f.Close()
 		if err != nil {
 			MtrCacheErrorCount.Inc()
 			Logger.Errorf("error saving cache file %v: %v", chunkPath, err)
@@ -251,7 +261,7 @@ func (c *fsCache) Set(hash string, body []byte) (ReadableChunk, error) {
 	if !added {
 		err := os.Remove(chunkPath)
 		if err != nil {
-			Logger.Errorf("chunk was not admitted and an error occured removing chunk file: %v", err)
+			Logger.Errorf("chunk was not admitted and an error occurred removing chunk file: %v", err)
 		} else {
 			Logger.Infof("chunk %v was not admitted", hash)
 		}

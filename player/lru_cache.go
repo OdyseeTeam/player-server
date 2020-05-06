@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -117,7 +118,10 @@ func (c *lruCache) reloadExistingChunks() error {
 			return err
 		}
 		if info.IsDir() {
-			return fmt.Errorf("subfolder %v found inside cache folder", path)
+			if len(info.Name()) != 1 {
+				return fmt.Errorf("subfolder %v found inside cache folder", path)
+			}
+			return nil
 		}
 		if len(info.Name()) != stream.BlobHashHexLength {
 			return fmt.Errorf("non-cache file found at path %v", path)
@@ -132,6 +136,10 @@ func (c *lruCache) Set(hash string, body []byte) (ReadableChunk, error) {
 	var numWritten int
 	Logger.Debugf("attempting to cache chunk %v", hash)
 	chunkPath := c.storage.getPath(hash)
+	err := os.MkdirAll(strings.Replace(chunkPath, hash, "", -1), 0700)
+	if err != nil {
+		return nil, err
+	}
 
 	f, err := os.OpenFile(chunkPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
