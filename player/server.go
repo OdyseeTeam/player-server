@@ -126,7 +126,12 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 	w.WriteHeader(code)
 
 	if r.Method != http.MethodHead {
-		io.CopyN(w, sendContent, sendSize)
+		_, err = io.CopyN(w, sendContent, sendSize)
+		if err != nil {
+			Logger.Errorf("Tripped uncaught error %s", err.Error())
+			Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
+			return
+		}
 	}
 }
 
