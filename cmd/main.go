@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/version"
 	"github.com/lbryio/lbrytv-player/pkg/app"
 	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv-player/player"
 
 	"github.com/c2h5oh/datasize"
@@ -65,7 +68,21 @@ var (
 				UseQuicProtocol:  useQuic,
 			}
 
+			r, err := http.Get("https://api.ops.lbry.tv/api/v1/paid/pubkey")
+			if err != nil {
+				l.Fatal(err)
+			}
+			rawKey, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				l.Fatal(err)
+			}
+			err = paid.InitPubKey(rawKey)
+			if err != nil {
+				l.Fatal(err)
+			}
+
 			p := player.NewPlayer(pOpts)
+
 			a := app.New(app.Opts{
 				Address: bindAddress,
 			})

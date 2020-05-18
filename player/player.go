@@ -7,11 +7,14 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/reflector.go/peer"
 	"github.com/lbryio/reflector.go/store"
+	pb "github.com/lbryio/types/v2/go"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -66,14 +69,15 @@ var defaultOpts = Opts{
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
 // as well as some stream metadata.
 type Stream struct {
-	URI         string
-	Hash        string
-	sdBlob      *stream.SDBlob
-	Size        int64
-	ContentType string
-	Claim       *ljsonrpc.Claim
-	seekOffset  int64
-	chunkGetter chunkGetter
+	URI            string
+	Hash           string
+	sdBlob         *stream.SDBlob
+	Size           int64
+	ContentType    string
+	Claim          *ljsonrpc.Claim
+	seekOffset     int64
+	chunkGetter    chunkGetter
+	resolvedStream *pb.Stream
 }
 
 // chunkGetter is an object for retrieving blobs from BlobStore or optionally from local cache.
@@ -158,16 +162,28 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 	}
 
 	stream := claim.Value.GetStream()
-	if stream.Fee != nil && stream.Fee.Amount > 0 {
-		return nil, errPaidStream
-	}
 
 	s.Claim = &claim
 	s.Hash = hex.EncodeToString(stream.Source.SdHash)
 	s.ContentType = stream.Source.MediaType
 	s.Size = int64(stream.Source.Size)
+	s.resolvedStream = stream
 
 	return s, nil
+}
+
+// VerifyAccess checks if the stream is paid and the token supplied matched the stream
+func (p *Player) VerifyAccess(s *Stream, token string) error {
+	if s.resolvedStream.Fee != nil && s.resolvedStream.Fee.Amount > 0 {
+		Logger.WithField("uri", s.URI).Info("paid stream requested")
+		if token == "" {
+			return errPaidStream
+		}
+		if err := paid.VerifyStreamAccess(strings.Replace(s.URI, "#", "/", 1), token); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RetrieveStream downloads stream description from the reflector and tries to determine stream size

@@ -24,7 +24,11 @@ func NewRequestHandler(p *Player) *RequestHandler {
 
 func (h RequestHandler) getURI(r *http.Request) string {
 	vars := mux.Vars(r)
-	return fmt.Sprintf("%s#%s", vars["uri"], vars["claim"])
+	return fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
+}
+
+func (h RequestHandler) getToken(r *http.Request) string {
+	return mux.Vars(r)["token"]
 }
 
 func (h RequestHandler) writeErrorResponse(w http.ResponseWriter, statusCode int, msg string) {
@@ -51,6 +55,12 @@ func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, er
 		h.writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else if strings.Contains(err.Error(), "hash in response does not match") {
 		h.writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
+	} else if strings.Contains(err.Error(), "token contains an invalid number of segments") {
+		h.writeErrorResponse(w, http.StatusUnauthorized, err.Error())
+	} else if strings.Contains(err.Error(), "crypto/rsa: verification error") {
+		h.writeErrorResponse(w, http.StatusUnauthorized, err.Error())
+	} else if strings.Contains(err.Error(), "token is expired") {
+		h.writeErrorResponse(w, http.StatusGone, err.Error())
 	} else {
 		// logger.CaptureException(err, map[string]string{"uri": uri})
 		h.writeErrorResponse(w, http.StatusInternalServerError, err.Error())
@@ -75,12 +85,21 @@ func logError(r *http.Request, err error) {
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	uri := h.getURI(r)
+	token := h.getToken(r)
 	Logger.Infof("GET stream %v", uri) // , users.GetIPAddressForRequest(r))
 
 	s, err := h.player.ResolveStream(uri)
 	addBreadcrumb(r, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
 		Logger.Errorf("GET stream %v - resolve error: %v", uri, err)
+		logError(r, err)
+		h.processStreamError(w, uri, err)
+		return
+	}
+
+	err = h.player.VerifyAccess(s, token)
+	if err != nil {
+		Logger.Errorf("GET stream %v - access error: %v", uri, err)
 		logError(r, err)
 		h.processStreamError(w, uri, err)
 		return
@@ -111,8 +130,15 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 // HandleHead handlers OPTIONS requests for media.
 func (h *RequestHandler) HandleHead(w http.ResponseWriter, r *http.Request) {
 	uri := h.getURI(r)
+	token := h.getToken(r)
 
 	s, err := h.player.ResolveStream(uri)
+	if err != nil {
+		h.processStreamError(w, uri, err)
+		return
+	}
+
+	err = h.player.VerifyAccess(s, token)
 	if err != nil {
 		h.processStreamError(w, uri, err)
 		return

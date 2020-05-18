@@ -11,9 +11,16 @@ const ProfileRoutePath = "/superdebug/pprof"
 
 func InstallPlayerRoutes(r *mux.Router, p *Player) {
 	playerHandler := NewRequestHandler(p)
-	playerRouter := r.Path("/content/claims/{uri}/{claim}/{filename}").Subrouter()
-	playerRouter.HandleFunc("", playerHandler.Handle).Methods(http.MethodGet)
-	playerRouter.HandleFunc("", playerHandler.HandleHead).Methods(http.MethodHead)
+
+	v1Router := r.Path("/content/claims/{claim_name}/{claim_id}/{filename}").Subrouter()
+	v1Router.HandleFunc("", playerHandler.Handle).Methods(http.MethodGet)
+	v1Router.HandleFunc("", playerHandler.HandleHead).Methods(http.MethodHead)
+
+	v2Router := r.PathPrefix("/api/v2").Subrouter()
+	v2Router.Path("/streams/free/{claim_name}/{claim_id}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet)
+	v2Router.Path("/streams/free/{claim_name}/{claim_id}").HandlerFunc(playerHandler.HandleHead).Methods(http.MethodHead)
+	v2Router.Path("/streams/paid/{claim_name}/{claim_id}/{token}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet)
+	v2Router.Path("/streams/paid/{claim_name}/{claim_id}/{token}").HandlerFunc(playerHandler.HandleHead).Methods(http.MethodHead)
 }
 
 func InstallProfilingRoutes(r *mux.Router) {

@@ -3,6 +3,7 @@ package player
 import (
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,37 +63,37 @@ func TestHandleGet(t *testing.T) {
 		output string
 	}
 	testCases := []testCase{
-		testCase{
+		{
 			testInput{"MiddleBytes", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{start: 156, end: 259}},
 			"00000001D39A07E8D39A07E80000000100000000008977680000" +
 				"0000000000000000000000000000000100000000000000000000" +
 				"0000000000010000000000000000000000000000400000000780" +
 				"00000438000000000024656474730000001C656C737400000000",
 		},
-		testCase{
+		{
 			testInput{"FirstBytes", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{start: 0, end: 52}},
 			"00000018667479706D703432000000006D7034326D7034310000" +
 				"C4EA6D6F6F760000006C6D76686400000000D39A07E8D39A07F200",
 		},
-		testCase{
+		{
 			testInput{"BytesFromSecondBlob", "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", &rangeHeader{start: 4000000, end: 4000104}},
 			"6E81C93A90DD3A322190C8D608E29AA929867407596665097B5AE780412" +
 				"61638A51C10BC26770AFFEF1533715FBD1428DCADEDC7BEA5D7A9C7D170" +
 				"B71EF38E7138D24B0C7E86D791695EDAE1B88EDBE54F95C98EF3DCFD91D" +
 				"A025C284EE37D8FEEA2EA84B76B9A22D3",
 		},
-		testCase{
+		{
 			testInput{"LastBytes", "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{start: 128791089, knownLen: 100}},
 			"2505CA36CB47B0B14CA023203410E965657B6314F6005D51E992D073B8090419D49E28E99306C95CF2DDB9" +
 				"51DA5FE6373AC542CC2D83EB129548FFA0B4FFE390EB56600AD72F0D517236140425E323FDFC649FDEB80F" +
 				"A429227D149FD493FBCA2042141F",
 		},
-		testCase{
+		{
 			testInput{"BetweenBlobs", "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream",
 				&rangeHeader{start: 2097149, end: 2097191}},
 			"6BD50FA7383B3760C5CE5DFC2F73BD5EE7D3591C986758A5E43D8F3712A59861898F349BC0FA25CDED91DB",
 		},
-		testCase{
+		{
 			testInput{"SecondBLob", "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream",
 				&rangeHeader{start: 2097151, end: 2097191}},
 			"0FA7383B3760C5CE5DFC2F73BD5EE7D3591C986758A5E43D8F3712A59861898F349BC0FA25CDED91DB",
@@ -120,6 +122,11 @@ func TestHandleGet(t *testing.T) {
 			assert.Equal(t, strings.ToLower(row.output), hex.EncodeToString(responseStream))
 		})
 	}
+}
+
+func TestHandleUnpaid(t *testing.T) {
+	response := makeRequest(nil, http.MethodGet, "/content/claims/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/stream.mp4", nil)
+	assert.Equal(t, http.StatusPaymentRequired, response.StatusCode)
 }
 
 func TestHandleHead(t *testing.T) {
@@ -159,4 +166,34 @@ func TestHandleDownloadableFileHead(t *testing.T) {
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 	assert.Equal(t, "attachment; filename=720424441_Screen Shot 2019-11-13 at 10.18.47.png", r.Header.Get("Content-Disposition"))
 	assert.Equal(t, "53404", r.Header.Get("Content-Length"))
+}
+
+func TestHandleHeadPaidStream(t *testing.T) {
+	r, err := http.Get("https://api.ops.lbry.tv/api/v1/paid/pubkey")
+	require.NoError(t, err)
+	rawKey, err := ioutil.ReadAll(r.Body)
+	require.NoError(t, err)
+	err = paid.InitPubKey(rawKey)
+	require.NoError(t, err)
+
+	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
+	body, _ := ioutil.ReadAll(r.Body)
+	assert.Equal(t, http.StatusUnauthorized, r.StatusCode, string(body))
+
+	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", nil)
+	body, _ = ioutil.ReadAll(r.Body)
+	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
+
+	paid.GeneratePrivateKey()
+	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
+
+	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+expiredToken, nil)
+	body, _ = ioutil.ReadAll(r.Body)
+	assert.Equal(t, http.StatusGone, r.StatusCode, string(body))
+
+	validToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, paid.ExpTenSecPer100MB)
+
+	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+validToken, nil)
+	body, _ = ioutil.ReadAll(r.Body)
+	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
