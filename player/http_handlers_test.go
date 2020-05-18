@@ -52,7 +52,7 @@ func TestHandleGet(t *testing.T) {
 	require.NoError(t, err)
 	player := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false})
 	router := mux.NewRouter()
-	router.Path("/content/claims/{uri}/{claim}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
+	router.Path("/content/claims/{claim_name}/{claim_id}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
 
 	type testInput struct {
 		name, uri string

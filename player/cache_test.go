@@ -138,7 +138,7 @@ func TestNewPlayerWithCache(t *testing.T) {
 
 	router := mux.NewRouter()
 	playerHandler := NewRequestHandler(cachingPlayer)
-	playerRouter := router.Path("/content/claims/{uri}/{claim}/{filename}").Subrouter()
+	playerRouter := router.Path("/content/claims/{claim_name}/{claim_id}/{filename}").Subrouter()
 	playerRouter.HandleFunc("", playerHandler.Handle).Methods("GET")
 
 	uri := "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4"
