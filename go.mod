@@ -24,7 +24,8 @@ require (
 	github.com/spf13/viper v1.5.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/ybbus/jsonrpc v2.1.2+incompatible // indirect
-	golang.org/x/crypto v0.0.0-20191112222119-e1110fd1c708 // indirect
+	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.2.5 // indirect
 )
