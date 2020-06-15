@@ -28,6 +28,7 @@ var (
 	reflectorAddress string
 	reflectorTimeout int
 	lbrynetAddress   string
+	paidPubKey       string
 
 	cacheSizeBytes datasize.ByteSize
 
@@ -68,7 +69,7 @@ var (
 				UseQuicProtocol:  useQuic,
 			}
 
-			r, err := http.Get("https://api.lbry.tv/api/v1/paid/pubkey")
+			r, err := http.Get(paidPubKey)
 			if err != nil {
 				l.Fatal(err)
 			}
@@ -104,6 +105,7 @@ func init() {
 	rootCmd.Flags().StringVar(&cacheSize, "cache_size", "", "cache size: 16GB, 500MB and so on, set to 0 to disable")
 	rootCmd.Flags().StringVar(&bindAddress, "bind", "0.0.0.0:8080", "address to bind HTTP server to")
 	rootCmd.Flags().StringVar(&reflectorAddress, "reflector", "", "reflector address (with port)")
+	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.lbry.tv/api/v1/paid/pubkey", "pubkey for playing paid content")
 	rootCmd.Flags().IntVar(&reflectorTimeout, "reflector_timeout", 30, "reflector timeout in seconds")
 	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
 	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", true, "enable prefetch for blobs")

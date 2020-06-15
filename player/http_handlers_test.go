@@ -169,7 +169,7 @@ func TestHandleDownloadableFileHead(t *testing.T) {
 }
 
 func TestHandleHeadPaidStream(t *testing.T) {
-	r, err := http.Get("https://api.ops.lbry.tv/api/v1/paid/pubkey")
+	r, err := http.Get("https://api.lbry.tv/api/v1/paid/pubkey")
 	require.NoError(t, err)
 	rawKey, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)
