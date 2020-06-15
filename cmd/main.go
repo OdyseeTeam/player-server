@@ -68,7 +68,7 @@ var (
 				UseQuicProtocol:  useQuic,
 			}
 
-			r, err := http.Get("https://api.ops.lbry.tv/api/v1/paid/pubkey")
+			r, err := http.Get("https://api.lbry.tv/api/v1/paid/pubkey")
 			if err != nil {
 				l.Fatal(err)
 			}
