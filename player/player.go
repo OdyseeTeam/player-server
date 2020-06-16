@@ -191,14 +191,6 @@ func (p *Player) VerifyAccess(s *Stream, token string) error {
 func (p *Player) RetrieveStream(s *Stream) error {
 	sdBlob := stream.SDBlob{}
 	bStore := p.getBlobStore()
-	if p.useQuic {
-		defer func() {
-			err := (bStore.(*quic.Store)).CloseStore()
-			if err != nil {
-				Logger.Errorln(err.Error())
-			}
-		}()
-	}
 	blob, err := bStore.Get(s.Hash)
 	if err != nil {
 		return err
@@ -454,14 +446,6 @@ func (b *chunkGetter) getChunkFromCache(hash string) (ReadableChunk, bool) {
 
 func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*reflectedChunk, error) {
 	bStore := b.getBlobStore()
-	if b.useQuic {
-		defer func() {
-			err := (bStore.(*quic.Store)).CloseStore()
-			if err != nil {
-				Logger.Errorln(err.Error())
-			}
-		}()
-	}
 	blob, err := bStore.Get(hash)
 	if err != nil {
 		return nil, err
