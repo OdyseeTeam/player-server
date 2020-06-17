@@ -9,12 +9,25 @@ LBRYtv player only requires a working instance of [lbrynet](https://github.com/l
 
 Run `lbrytv_player -h` to see flags and options.
 
+## Running with Docker
+
+The primary way lbrytv-player is intended to run is in a docker environment managed by `docker-compose`. To launch and start serving:
+
+```
+docker-compose up -d
+```
+
+# Releasing
+
+Releases are built and packed into docker images automatically off the master branch by Circle CI. You need to tag your commit with a proper semver tag.
+
+Both release binary and docker image are built using goreleaser. Check [Makefile](./Makefile) and [goreleaser config](./.goreleaser.yml) for more details.
+
 ## Contributing
 
 Contributions to this project are welcome, encouraged, and compensated. For more details, see [lbry.io/faq/contributing](https://lbry.io/faq/contributing).
 
 Please ensure that your code builds and automated tests run successfully before pushing your branch. You must `go fmt` your code before you commit it, or the build will fail.
-
 
 ## License
 
