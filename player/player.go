@@ -18,7 +18,7 @@ import (
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/reflector.go/peer/quic"
+	"github.com/lbryio/reflector.go/peer/http3"
 )
 
 var Logger = logger.GetLogger()
@@ -128,7 +128,7 @@ func NewPlayer(opts *Opts) *Player {
 
 func (p *Player) getBlobStore() store.BlobStore {
 	if p.useQuic {
-		return quic.NewStore(quic.StoreOpts{
+		return http3.NewStore(http3.StoreOpts{
 			Address: p.reflectorAddress,
 			Timeout: p.reflectorTimeout,
 		})
