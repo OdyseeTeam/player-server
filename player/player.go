@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -40,11 +41,11 @@ const (
 
 // Player is an entry-point object to the new player package.
 type Player struct {
-	lbrynetClient  *ljsonrpc.Client
-	chunkGetter    chunkGetter
-	localCache     ChunkCache
-	enablePrefetch bool
-	useQuic        bool
+	lbrynetClient     *ljsonrpc.Client
+	chunkGetter       chunkGetter
+	localCache        ChunkCache
+	enablePrefetch    bool
+	reflectorProtocol string
 
 	reflectorAddress string
 	reflectorTimeout time.Duration
@@ -52,12 +53,12 @@ type Player struct {
 
 // Opts are options to be set for Player instance.
 type Opts struct {
-	EnablePrefetch   bool
-	LocalCache       ChunkCache
-	ReflectorAddress string
-	ReflectorTimeout time.Duration
-	LbrynetAddress   string
-	UseQuicProtocol  bool
+	EnablePrefetch    bool
+	LocalCache        ChunkCache
+	ReflectorAddress  string
+	ReflectorTimeout  time.Duration
+	LbrynetAddress    string
+	ReflectorProtocol string
 }
 
 var defaultOpts = Opts{
@@ -87,7 +88,6 @@ type chunkGetter struct {
 	seenChunks     []ReadableChunk
 	enablePrefetch bool
 	getBlobStore   func() store.BlobStore
-	useQuic        bool
 }
 
 // ReadableChunk interface describes generic chunk object that Stream can Read() from.
@@ -115,28 +115,33 @@ func NewPlayer(opts *Opts) *Player {
 		opts.ReflectorTimeout = defaultOpts.ReflectorTimeout
 	}
 	p := &Player{
-		reflectorAddress: opts.ReflectorAddress,
-		reflectorTimeout: opts.ReflectorTimeout,
-		lbrynetClient:    ljsonrpc.NewClient(opts.LbrynetAddress),
-		useQuic:          opts.UseQuicProtocol,
-		localCache:       opts.LocalCache,
-		enablePrefetch:   opts.EnablePrefetch,
+		reflectorAddress:  opts.ReflectorAddress,
+		reflectorTimeout:  opts.ReflectorTimeout,
+		lbrynetClient:     ljsonrpc.NewClient(opts.LbrynetAddress),
+		reflectorProtocol: opts.ReflectorProtocol,
+		localCache:        opts.LocalCache,
+		enablePrefetch:    opts.EnablePrefetch,
 	}
 
 	return p
 }
 
 func (p *Player) getBlobStore() store.BlobStore {
-	if p.useQuic {
+	switch p.reflectorProtocol {
+	case "tcp":
+		return peer.NewStore(peer.StoreOpts{
+			Address: p.reflectorAddress,
+			Timeout: p.reflectorTimeout,
+		})
+	case "http3":
 		return http3.NewStore(http3.StoreOpts{
 			Address: p.reflectorAddress,
 			Timeout: p.reflectorTimeout,
 		})
+	default:
+		log.Fatalf("specified protocol is not supported: %s", p.reflectorProtocol)
 	}
-	return peer.NewStore(peer.StoreOpts{
-		Address: p.reflectorAddress,
-		Timeout: p.reflectorTimeout,
-	})
+	return nil
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
@@ -209,7 +214,6 @@ func (p *Player) RetrieveStream(s *Stream) error {
 		enablePrefetch: p.enablePrefetch,
 		seenChunks:     make([]ReadableChunk, len(sdBlob.BlobInfos)-1),
 		getBlobStore:   func() store.BlobStore { return p.getBlobStore() },
-		useQuic:        p.useQuic,
 	}
 
 	return nil
