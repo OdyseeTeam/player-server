@@ -157,7 +157,7 @@ func TestStreamRead(t *testing.T) {
 func TestStreamReadHotCache(t *testing.T) {
 	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
 	require.NoError(t, err)
-	p := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false})
+	p := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false, ReflectorProtocol: "http3"})
 
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -18,7 +19,7 @@ import (
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/reflector.go/peer/quic"
+	"github.com/lbryio/reflector.go/peer/http3"
 )
 
 var Logger = logger.GetLogger()
@@ -40,11 +41,11 @@ const (
 
 // Player is an entry-point object to the new player package.
 type Player struct {
-	lbrynetClient  *ljsonrpc.Client
-	chunkGetter    chunkGetter
-	localCache     ChunkCache
-	enablePrefetch bool
-	useQuic        bool
+	lbrynetClient     *ljsonrpc.Client
+	chunkGetter       chunkGetter
+	localCache        ChunkCache
+	enablePrefetch    bool
+	reflectorProtocol string
 
 	reflectorAddress string
 	reflectorTimeout time.Duration
@@ -52,18 +53,19 @@ type Player struct {
 
 // Opts are options to be set for Player instance.
 type Opts struct {
-	EnablePrefetch   bool
-	LocalCache       ChunkCache
-	ReflectorAddress string
-	ReflectorTimeout time.Duration
-	LbrynetAddress   string
-	UseQuicProtocol  bool
+	EnablePrefetch    bool
+	LocalCache        ChunkCache
+	ReflectorAddress  string
+	ReflectorTimeout  time.Duration
+	LbrynetAddress    string
+	ReflectorProtocol string
 }
 
 var defaultOpts = Opts{
-	LbrynetAddress:   "http://localhost:5279",
-	ReflectorAddress: "refractor.lbry.com:5567",
-	ReflectorTimeout: 30 * time.Second,
+	LbrynetAddress:    "http://localhost:5279",
+	ReflectorAddress:  "reflector.lbry.com:5568",
+	ReflectorTimeout:  30 * time.Second,
+	ReflectorProtocol: "http3",
 }
 
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
@@ -87,7 +89,6 @@ type chunkGetter struct {
 	seenChunks     []ReadableChunk
 	enablePrefetch bool
 	getBlobStore   func() store.BlobStore
-	useQuic        bool
 }
 
 // ReadableChunk interface describes generic chunk object that Stream can Read() from.
@@ -103,7 +104,7 @@ type reflectedChunk struct {
 // NewPlayer initializes an instance with optional BlobStore.
 func NewPlayer(opts *Opts) *Player {
 	if opts == nil {
-		opts = &Opts{}
+		opts = &defaultOpts
 	}
 	if opts.LbrynetAddress == "" {
 		opts.LbrynetAddress = defaultOpts.LbrynetAddress
@@ -115,28 +116,33 @@ func NewPlayer(opts *Opts) *Player {
 		opts.ReflectorTimeout = defaultOpts.ReflectorTimeout
 	}
 	p := &Player{
-		reflectorAddress: opts.ReflectorAddress,
-		reflectorTimeout: opts.ReflectorTimeout,
-		lbrynetClient:    ljsonrpc.NewClient(opts.LbrynetAddress),
-		useQuic:          opts.UseQuicProtocol,
-		localCache:       opts.LocalCache,
-		enablePrefetch:   opts.EnablePrefetch,
+		reflectorAddress:  opts.ReflectorAddress,
+		reflectorTimeout:  opts.ReflectorTimeout,
+		lbrynetClient:     ljsonrpc.NewClient(opts.LbrynetAddress),
+		reflectorProtocol: opts.ReflectorProtocol,
+		localCache:        opts.LocalCache,
+		enablePrefetch:    opts.EnablePrefetch,
 	}
 
 	return p
 }
 
 func (p *Player) getBlobStore() store.BlobStore {
-	if p.useQuic {
-		return quic.NewStore(quic.StoreOpts{
+	switch p.reflectorProtocol {
+	case "tcp":
+		return peer.NewStore(peer.StoreOpts{
 			Address: p.reflectorAddress,
 			Timeout: p.reflectorTimeout,
 		})
+	case "http3":
+		return http3.NewStore(http3.StoreOpts{
+			Address: p.reflectorAddress,
+			Timeout: p.reflectorTimeout,
+		})
+	default:
+		log.Fatalf("specified protocol is not supported: %s", p.reflectorProtocol)
 	}
-	return peer.NewStore(peer.StoreOpts{
-		Address: p.reflectorAddress,
-		Timeout: p.reflectorTimeout,
-	})
+	return nil
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
@@ -191,14 +197,6 @@ func (p *Player) VerifyAccess(s *Stream, token string) error {
 func (p *Player) RetrieveStream(s *Stream) error {
 	sdBlob := stream.SDBlob{}
 	bStore := p.getBlobStore()
-	if p.useQuic {
-		defer func() {
-			err := (bStore.(*quic.Store)).CloseStore()
-			if err != nil {
-				Logger.Errorln(err.Error())
-			}
-		}()
-	}
 	blob, err := bStore.Get(s.Hash)
 	if err != nil {
 		return err
@@ -217,7 +215,6 @@ func (p *Player) RetrieveStream(s *Stream) error {
 		enablePrefetch: p.enablePrefetch,
 		seenChunks:     make([]ReadableChunk, len(sdBlob.BlobInfos)-1),
 		getBlobStore:   func() store.BlobStore { return p.getBlobStore() },
-		useQuic:        p.useQuic,
 	}
 
 	return nil
@@ -454,14 +451,6 @@ func (b *chunkGetter) getChunkFromCache(hash string) (ReadableChunk, bool) {
 
 func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*reflectedChunk, error) {
 	bStore := b.getBlobStore()
-	if b.useQuic {
-		defer func() {
-			err := (bStore.(*quic.Store)).CloseStore()
-			if err != nil {
-				Logger.Errorln(err.Error())
-			}
-		}()
-	}
 	blob, err := bStore.Get(hash)
 	if err != nil {
 		return nil, err

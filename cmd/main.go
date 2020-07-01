@@ -18,17 +18,17 @@ import (
 )
 
 var (
-	bindAddress      string
-	cachePath        string
-	cacheSize        string
-	enablePrefetch   bool
-	enableProfile    bool
-	useQuic          bool
-	verboseOutput    bool
-	reflectorAddress string
-	reflectorTimeout int
-	lbrynetAddress   string
-	paidPubKey       string
+	bindAddress       string
+	cachePath         string
+	cacheSize         string
+	enablePrefetch    bool
+	enableProfile     bool
+	reflectorProtocol string
+	verboseOutput     bool
+	reflectorAddress  string
+	reflectorTimeout  int
+	lbrynetAddress    string
+	paidPubKey        string
 
 	cacheSizeBytes datasize.ByteSize
 
@@ -61,12 +61,12 @@ var (
 				}
 			}
 			pOpts := &player.Opts{
-				LocalCache:       cache,
-				EnablePrefetch:   enablePrefetch,
-				ReflectorAddress: reflectorAddress,
-				ReflectorTimeout: time.Second * time.Duration(reflectorTimeout),
-				LbrynetAddress:   lbrynetAddress,
-				UseQuicProtocol:  useQuic,
+				LocalCache:        cache,
+				EnablePrefetch:    enablePrefetch,
+				ReflectorAddress:  reflectorAddress,
+				ReflectorTimeout:  time.Second * time.Duration(reflectorTimeout),
+				LbrynetAddress:    lbrynetAddress,
+				ReflectorProtocol: reflectorProtocol,
 			}
 
 			r, err := http.Get(paidPubKey)
@@ -110,7 +110,7 @@ func init() {
 	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
 	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", true, "enable prefetch for blobs")
 	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
-	rootCmd.Flags().BoolVar(&useQuic, "use-quic", false, fmt.Sprintf("use the QUIC protocol instead of TCP"))
+	rootCmd.Flags().StringVar(&reflectorProtocol, "reflector_protocol", "http3", fmt.Sprintf("which protocol to use to fetch the data from reflector (tcp/http3)"))
 	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, fmt.Sprintf("enable verbose logging"))
 }
 
