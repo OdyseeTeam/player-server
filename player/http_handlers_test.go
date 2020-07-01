@@ -28,7 +28,7 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 		if err != nil {
 			panic(err)
 		}
-		InstallPlayerRoutes(router, NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false}))
+		InstallPlayerRoutes(router, NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false, ReflectorProtocol: "http3"}))
 	}
 
 	r, _ := http.NewRequest(method, uri, nil)
@@ -50,7 +50,7 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 func TestHandleGet(t *testing.T) {
 	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
 	require.NoError(t, err)
-	player := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false})
+	player := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false, ReflectorProtocol: "http3"})
 	router := mux.NewRouter()
 	router.Path("/content/claims/{claim_name}/{claim_id}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
 

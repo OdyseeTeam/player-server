@@ -134,7 +134,7 @@ func TestFSCacheRemove(t *testing.T) {
 func TestNewPlayerWithCache(t *testing.T) {
 	cache, err := InitFSCache(&FSCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
 	require.NoError(t, err)
-	cachingPlayer := NewPlayer(&Opts{LocalCache: cache})
+	cachingPlayer := NewPlayer(&Opts{LocalCache: cache, ReflectorProtocol: "http3"})
 
 	router := mux.NewRouter()
 	playerHandler := NewRequestHandler(cachingPlayer)

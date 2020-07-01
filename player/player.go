@@ -62,9 +62,10 @@ type Opts struct {
 }
 
 var defaultOpts = Opts{
-	LbrynetAddress:   "http://localhost:5279",
-	ReflectorAddress: "refractor.lbry.com:5567",
-	ReflectorTimeout: 30 * time.Second,
+	LbrynetAddress:    "http://localhost:5279",
+	ReflectorAddress:  "reflector.lbry.com:5568",
+	ReflectorTimeout:  30 * time.Second,
+	ReflectorProtocol: "http3",
 }
 
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
@@ -103,7 +104,7 @@ type reflectedChunk struct {
 // NewPlayer initializes an instance with optional BlobStore.
 func NewPlayer(opts *Opts) *Player {
 	if opts == nil {
-		opts = &Opts{}
+		opts = &defaultOpts
 	}
 	if opts.LbrynetAddress == "" {
 		opts.LbrynetAddress = defaultOpts.LbrynetAddress

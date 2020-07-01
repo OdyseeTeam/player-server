@@ -124,7 +124,7 @@ func TestLRUCacheRemove(t *testing.T) {
 func TestNewPlayerWithLRUCache(t *testing.T) {
 	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
 	require.NoError(t, err)
-	cachingPlayer := NewPlayer(&Opts{LocalCache: cache})
+	cachingPlayer := NewPlayer(&Opts{LocalCache: cache, ReflectorProtocol: "http3"})
 
 	router := mux.NewRouter()
 	playerHandler := NewRequestHandler(cachingPlayer)
