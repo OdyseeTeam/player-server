@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200514165635-1fa1df36d407
-	github.com/lbryio/reflector.go v1.1.3-0.20200630221451-b291100cb75f
+	github.com/lbryio/reflector.go v1.1.3-0.20200710132448-150b1f6f1f56
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
