@@ -40,6 +40,7 @@ func (h RequestHandler) writeHeaders(w http.ResponseWriter, r *http.Request, s *
 	header := w.Header()
 	header.Set("Content-Length", fmt.Sprintf("%v", s.Size))
 	header.Set("Content-Type", s.ContentType)
+	header.Set("Cache-Control", "public, max-age=31536000")
 	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
 	if r.URL.Query().Get(ParamDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
