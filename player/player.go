@@ -171,7 +171,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 
 	s.Claim = &claim
 	s.Hash = hex.EncodeToString(stream.Source.SdHash)
-	s.ContentType = stream.Source.MediaType
+	s.ContentType = patchMediaType(stream.Source.MediaType)
 	s.Size = int64(stream.Source.Size)
 	s.resolvedStream = stream
 
