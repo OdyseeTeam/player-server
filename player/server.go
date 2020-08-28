@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/textproto"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -65,10 +66,14 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 		Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	hostName, err := os.Hostname()
+	if err != nil {
+		hostName = "unknown-player"
+	}
 	// handle Content-Range header.
 	sendSize := size
 	var sendContent io.Reader = content
+	w.Header().Set("X-Powered-By", hostName)
 	if size >= 0 {
 		ranges, err := parseRange(r.Header.Get("Range"), size)
 		if err != nil {
