@@ -66,14 +66,17 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 		Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	hostName, err := os.Hostname()
-	if err != nil {
-		hostName = "unknown-player"
+	playerName := os.Getenv("PLAYER_NAME")
+	if playerName == "" {
+		playerName, err = os.Hostname()
+		if err != nil {
+			playerName = "unknown-player"
+		}
 	}
 	// handle Content-Range header.
 	sendSize := size
 	var sendContent io.Reader = content
-	w.Header().Set("X-Powered-By", hostName)
+	w.Header().Set("X-Powered-By", playerName)
 	if size >= 0 {
 		ranges, err := parseRange(r.Header.Get("Range"), size)
 		if err != nil {
