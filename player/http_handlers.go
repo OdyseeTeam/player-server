@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
@@ -37,11 +38,21 @@ func (h RequestHandler) writeErrorResponse(w http.ResponseWriter, statusCode int
 }
 
 func (h RequestHandler) writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
+	playerName := os.Getenv("PLAYER_NAME")
+	var err error
+	if playerName == "" {
+		playerName, err = os.Hostname()
+		if err != nil {
+			playerName = "unknown-player"
+		}
+	}
 	header := w.Header()
 	header.Set("Content-Length", fmt.Sprintf("%v", s.Size))
 	header.Set("Content-Type", s.ContentType)
 	header.Set("Cache-Control", "public, max-age=31536000")
 	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
+	w.Header().Set("X-Powered-By", playerName)
+	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
 	if r.URL.Query().Get(ParamDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
 	}
