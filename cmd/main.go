@@ -29,6 +29,7 @@ var (
 	reflectorTimeout  int
 	lbrynetAddress    string
 	paidPubKey        string
+	hotCacheSize      int
 
 	cacheSizeBytes datasize.ByteSize
 
@@ -67,6 +68,7 @@ var (
 				ReflectorTimeout:  time.Second * time.Duration(reflectorTimeout),
 				LbrynetAddress:    lbrynetAddress,
 				ReflectorProtocol: reflectorProtocol,
+				HotCacheSize:      hotCacheSize,
 			}
 
 			r, err := http.Get(paidPubKey)
@@ -107,6 +109,7 @@ func init() {
 	rootCmd.Flags().StringVar(&reflectorAddress, "reflector", "", "reflector address (with port)")
 	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.lbry.tv/api/v1/paid/pubkey", "pubkey for playing paid content")
 	rootCmd.Flags().IntVar(&reflectorTimeout, "reflector_timeout", 30, "reflector timeout in seconds")
+	rootCmd.Flags().IntVar(&hotCacheSize, "ram_cache_size", 4096, "ram cache size in MB")
 	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
 	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", true, "enable prefetch for blobs")
 	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
