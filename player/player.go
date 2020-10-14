@@ -50,6 +50,7 @@ type Player struct {
 
 	reflectorAddress string
 	reflectorTimeout time.Duration
+	hotCacheSize     int
 }
 
 // Opts are options to be set for Player instance.
@@ -60,6 +61,7 @@ type Opts struct {
 	ReflectorTimeout  time.Duration
 	LbrynetAddress    string
 	ReflectorProtocol string
+	HotCacheSize      int
 }
 
 var defaultOpts = Opts{
@@ -90,6 +92,7 @@ type chunkGetter struct {
 	seenChunks     []ReadableChunk
 	enablePrefetch bool
 	getBlobStore   func() store.BlobStore
+	hotCache       *HotCache
 }
 
 // ReadableChunk interface describes generic chunk object that Stream can Read() from.
@@ -123,6 +126,7 @@ func NewPlayer(opts *Opts) *Player {
 		reflectorProtocol: opts.ReflectorProtocol,
 		localCache:        opts.LocalCache,
 		enablePrefetch:    opts.EnablePrefetch,
+		hotCacheSize:      opts.HotCacheSize,
 	}
 
 	return p
@@ -214,6 +218,7 @@ func (p *Player) RetrieveStream(s *Stream) error {
 		sdBlob:         &sdBlob,
 		localCache:     p.localCache,
 		enablePrefetch: p.enablePrefetch,
+		hotCache:       Init(int64(p.hotCacheSize/2.0), 5*time.Minute),
 		seenChunks:     make([]ReadableChunk, len(sdBlob.BlobInfos)-1),
 		getBlobStore:   func() store.BlobStore { return p.getBlobStore() },
 	}
@@ -350,8 +355,7 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	hash := hex.EncodeToString(bi.BlobHash)
 
 	MtrCacheMissCount.Inc()
-	hotCache := Init(1000, 5*time.Minute)
-	rChunk, err = hotCache.Fetch(hash, func() (interface{}, error) {
+	rChunk, err = b.hotCache.Fetch(hash, func() (interface{}, error) {
 		logrus.Infof("fetching from source: %s", hash)
 		timerReflector := TimerStart()
 		item, err := b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
@@ -370,7 +374,7 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 		return nil, err
 	}
 	b.saveToHotCache(n, rChunk)
-	go b.prefetchToCache(n+1, hotCache)
+	go b.prefetchToCache(n + 1)
 
 	return rChunk, nil
 }
@@ -384,7 +388,7 @@ func (b *chunkGetter) saveToHotCache(n int, chunk ReadableChunk) {
 	}
 }
 
-func (b *chunkGetter) prefetchToCache(startN int, hotCache *HotCache) {
+func (b *chunkGetter) prefetchToCache(startN int) {
 	if !b.enablePrefetch {
 		return
 	}
@@ -401,7 +405,7 @@ func (b *chunkGetter) prefetchToCache(startN int, hotCache *HotCache) {
 	for _, bi := range b.sdBlob.BlobInfos[startN : startN+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 
-		if hotCache.Get(hash) != nil {
+		if b.hotCache.Get(hash) != nil {
 			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
@@ -415,7 +419,7 @@ func (b *chunkGetter) prefetchToCache(startN int, hotCache *HotCache) {
 		timerReflector.Done()
 		rate := float64(reflected.Size()) / (1024 * 1024) / timerReflector.Duration * 8
 		MtrRetrieverSpeed.With(map[string]string{MtrLabelSource: RetrieverSourceReflector}).Set(rate)
-		hotCache.Set(hash, reflected)
+		b.hotCache.Set(hash, reflected)
 	}
 }
 
