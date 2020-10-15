@@ -11,10 +11,9 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/karlseguin/ccache/v2 v2.0.6
-	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901175808-73382bb02128
-	github.com/lbryio/reflector.go v1.1.3-0.20200908221807-fc5f5ff7d32e
+	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
+	github.com/lbryio/reflector.go v1.1.3-0.20201015011634-66024716ac9b
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
-	github.com/lucas-clemente/quic-go v0.18.0 // indirect
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
