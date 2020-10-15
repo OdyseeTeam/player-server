@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: lbry/lbrytv-ci:latest
+      - image: circleci/golang:1.15
       - image: lbry/lbrynet-tv:latest
     steps:
       - checkout
@@ -19,7 +19,7 @@ jobs:
             - /go/bin
   build_snapshot:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.15
     steps:
       - checkout
       - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser
