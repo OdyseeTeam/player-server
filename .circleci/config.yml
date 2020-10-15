@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: lbry/lbrytv-ci:latest
+      - image: circleci/golang:1.15
       - image: lbry/lbrynet-tv:latest
     steps:
       - checkout
