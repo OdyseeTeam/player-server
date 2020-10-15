@@ -29,7 +29,7 @@ jobs:
           command: make snapshot
   publish:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.15
     steps:
       - checkout
       - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser

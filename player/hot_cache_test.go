@@ -15,7 +15,7 @@ func TestHotCache_Get(t *testing.T) {
 	assert.Nil(t, r)
 
 	chunk := reflectedChunk{body: []byte{1, 2, 3, 4}}
-	hc.Set("test", chunk)
+	hc.Set("test", &chunk)
 	r = hc.Get("test")
 	assert.NotNil(t, r)
 	assert.EqualValues(t, chunk, *r)
@@ -26,7 +26,7 @@ func TestHotCache_Set(t *testing.T) {
 	assert.NotNil(t, hc)
 
 	chunk := reflectedChunk{body: []byte{1, 2, 3, 4}}
-	hc.Set("test", chunk)
+	hc.Set("test", &chunk)
 	r := hc.Get("test")
 	assert.NotNil(t, r)
 	assert.EqualValues(t, chunk, *r)

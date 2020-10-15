@@ -200,7 +200,7 @@ func TestStreamReadHotCache(t *testing.T) {
 		assert.Equal(t, expectedData, readData)
 	}
 
-	assert.IsType(t, &cachedChunk{}, s.chunkGetter.seenChunks[1])
+	assert.IsType(t, &reflectedChunk{}, s.chunkGetter.seenChunks[1])
 
 	n, err = s.Seek(2000000, io.SeekCurrent)
 	require.NoError(t, err)
