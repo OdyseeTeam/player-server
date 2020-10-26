@@ -2,6 +2,8 @@ module github.com/lbryio/lbrytv-player
 
 go 1.15
 
+replace github.com/btcsuite/btcd => github.com/lbryio/lbrycrd.go v0.0.0-20200203050410-e1076f12bf19
+
 require (
 	github.com/aws/aws-sdk-go v1.23.19 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee
@@ -12,7 +14,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/karlseguin/ccache/v2 v2.0.6
 	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
-	github.com/lbryio/reflector.go v1.1.3-0.20201015014303-e430c2fd40bd
+	github.com/lbryio/reflector.go v1.1.3-0.20201026171331-ab76aeb5e754
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
@@ -21,7 +23,6 @@ require (
 	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
 	github.com/prometheus/procfs v0.0.4 // indirect
 	github.com/sirupsen/logrus v1.4.2
-	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

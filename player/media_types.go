@@ -2,9 +2,7 @@ package player
 
 func patchMediaType(t string) string {
 	switch t {
-	case "video/m4v":
-		return "video/mp4"
-	case "video/webm":
+	case "video/m4v", "video/webm":
 		return "video/mp4"
 	default:
 		return t

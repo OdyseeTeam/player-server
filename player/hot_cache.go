@@ -6,41 +6,34 @@ import (
 	"github.com/karlseguin/ccache/v2"
 )
 
+const longTTL = 365 * 24 * time.Hour
+
 type HotCache struct {
 	cache *ccache.Cache
-	ttl   time.Duration
 }
 
-var hc *HotCache
+func NewHotCache(size int64) *HotCache {
+	return &HotCache{cache: ccache.New(ccache.Configure().MaxSize(size))}
+}
 
-func Init(size int64, ttl time.Duration) *HotCache {
-	if hc == nil {
-		hc = &HotCache{cache: ccache.New(ccache.Configure().MaxSize(size)), ttl: ttl}
+func (h *HotCache) Get(hash string) ReadableChunk {
+	cachedItem := h.cache.Get(hash)
+	if cachedItem == nil {
+		return nil
 	}
-	return hc
+	return cachedItem.Value().(ReadableChunk)
 }
 
-func (h *HotCache) Get(key string) *reflectedChunk {
-	cachedItem := h.cache.Get(key)
-	if cachedItem != nil && !cachedItem.Expired() {
-		item := cachedItem.Value().(reflectedChunk)
-		return &item
-	}
-	return nil
+func (h *HotCache) Set(hash string, chunk ReadableChunk) {
+	h.cache.Set(hash, chunk, longTTL)
 }
 
-func (h *HotCache) Set(key string, chunk *reflectedChunk) {
-	h.cache.Set(key, *chunk, h.ttl)
-}
-
-func (h *HotCache) Fetch(key string, fetchFunc func() (interface{}, error)) (*reflectedChunk, error) {
-	fetchedItem, err := h.cache.Fetch(key, h.ttl, fetchFunc)
-	if err != nil {
+func (h *HotCache) Fetch(hash string, fetchFunc func() (ReadableChunk, error)) (ReadableChunk, error) {
+	value, err := fetchFunc()
+	if err != nil || value == nil {
 		return nil, err
 	}
-	if fetchedItem != nil {
-		item := fetchedItem.Value().(reflectedChunk)
-		return &item, nil
-	}
-	return nil, nil
+
+	h.Set(hash, value)
+	return value, nil
 }

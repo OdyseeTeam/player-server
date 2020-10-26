@@ -2,13 +2,11 @@ package player
 
 import (
 	"encoding/hex"
-	"fmt"
 	"io"
 	"math/rand"
-	"os"
-	"path"
 	"testing"
 
+	"github.com/lbryio/reflector.go/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,8 +24,8 @@ type knownStream struct {
 }
 
 var knownStreams = []knownStream{
-	knownStream{uri: streamURL, size: 158433824, blobsNum: 77},
-	knownStream{uri: knownSizeStreamURL, size: 128791189, blobsNum: 63},
+	{uri: streamURL, size: 158433824, blobsNum: 77},
+	{uri: knownSizeStreamURL, size: 128791189, blobsNum: 63},
 }
 
 func randomString(n int) string {
@@ -98,37 +96,6 @@ func TestStreamSeek(t *testing.T) {
 	}
 }
 
-func TestBlobCalculator(t *testing.T) {
-	type testInput struct {
-		size, offset int64
-		readLen      int
-	}
-	type testCase struct {
-		testInput  testInput
-		testOutput chunkCalculator
-	}
-
-	// size: 128791189, has blobs: 62 + padding, last blob index: 61
-	testCases := []testCase{
-		testCase{testInput{158433824, 0, 512}, chunkCalculator{158433824, 0, 0, 0, 0, 512, 0}},
-		testCase{testInput{158433824, 2450019, 64000}, chunkCalculator{158433824, 2450019, 1, 1, 352867 + 1, 64000, 352868}},
-		testCase{testInput{128791189, 128791089, 99}, chunkCalculator{128791189, 128791089, 61, 61, 864817 + 61, 99, 864878}},
-		testCase{testInput{128791189, 0, 128791189}, chunkCalculator{0, 128791189, 0, 61, 0, 864978, 0}},
-		testCase{testInput{1e7, 2097149, 43}, chunkCalculator{2097149, 43, 0, 1, 2097149, 41, 0}},
-	}
-
-	for n, row := range testCases {
-		t.Run(fmt.Sprintf("row:%v", n), func(t *testing.T) {
-			bc := newChunkCalculator(row.testInput.size, row.testInput.offset, row.testInput.readLen)
-			assert.Equal(t, row.testOutput.FirstChunkIdx, bc.FirstChunkIdx)
-			assert.Equal(t, row.testOutput.LastChunkIdx, bc.LastChunkIdx)
-			assert.Equal(t, row.testOutput.FirstChunkOffset, bc.FirstChunkOffset)
-			assert.Equal(t, row.testOutput.LastChunkReadLen, bc.LastChunkReadLen)
-			assert.Equal(t, row.testOutput.LastChunkOffset, bc.LastChunkOffset)
-		})
-	}
-}
-
 func TestStreamRead(t *testing.T) {
 	p := NewPlayer(nil)
 	s, err := p.ResolveStream(streamURL)
@@ -155,9 +122,8 @@ func TestStreamRead(t *testing.T) {
 }
 
 func TestStreamReadHotCache(t *testing.T) {
-	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
-	require.NoError(t, err)
-	p := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false, ReflectorProtocol: "http3"})
+	cache := store.NewLRUStore(store.NewMemStore(), 99999)
+	p := NewPlayer(&Opts{BlobSource: cache, EnablePrefetch: false})
 
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
@@ -200,7 +166,7 @@ func TestStreamReadHotCache(t *testing.T) {
 		assert.Equal(t, expectedData, readData)
 	}
 
-	assert.IsType(t, &reflectedChunk{}, s.chunkGetter.seenChunks[1])
+	assert.IsType(t, ReadableChunk{}, s.chunkGetter.seenChunks[1])
 
 	n, err = s.Seek(2000000, io.SeekCurrent)
 	require.NoError(t, err)
@@ -213,7 +179,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Nil(t, s.chunkGetter.seenChunks[1])
-	assert.IsType(t, &reflectedChunk{}, s.chunkGetter.seenChunks[2])
+	assert.IsType(t, ReadableChunk{}, s.chunkGetter.seenChunks[2])
 }
 
 func TestStreamReadOutOfBounds(t *testing.T) {
