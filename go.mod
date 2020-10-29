@@ -10,8 +10,9 @@ require (
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200514165635-1fa1df36d407
-	github.com/lbryio/reflector.go v1.1.3-0.20200713222058-f458529c7494
+	github.com/karlseguin/ccache/v2 v2.0.6
+	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
+	github.com/lbryio/reflector.go v1.1.3-0.20201015014303-e430c2fd40bd
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect
@@ -27,7 +28,6 @@ require (
 	github.com/spf13/viper v1.5.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/ybbus/jsonrpc v2.1.2+incompatible // indirect
-	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79 // indirect
+	golang.org/x/tools v0.0.0-20201014231627-1610a49f37af // indirect
 	google.golang.org/appengine v1.6.5 // indirect
-	gopkg.in/yaml.v2 v2.2.5 // indirect
 )

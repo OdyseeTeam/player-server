@@ -16,6 +16,7 @@ import (
 	"github.com/lbryio/reflector.go/peer"
 	"github.com/lbryio/reflector.go/store"
 	pb "github.com/lbryio/types/v2/go"
+	"github.com/sirupsen/logrus"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -49,6 +50,7 @@ type Player struct {
 
 	reflectorAddress string
 	reflectorTimeout time.Duration
+	hotCacheSize     int
 }
 
 // Opts are options to be set for Player instance.
@@ -59,6 +61,7 @@ type Opts struct {
 	ReflectorTimeout  time.Duration
 	LbrynetAddress    string
 	ReflectorProtocol string
+	HotCacheSize      int
 }
 
 var defaultOpts = Opts{
@@ -89,6 +92,7 @@ type chunkGetter struct {
 	seenChunks     []ReadableChunk
 	enablePrefetch bool
 	getBlobStore   func() store.BlobStore
+	hotCache       *HotCache
 }
 
 // ReadableChunk interface describes generic chunk object that Stream can Read() from.
@@ -122,6 +126,7 @@ func NewPlayer(opts *Opts) *Player {
 		reflectorProtocol: opts.ReflectorProtocol,
 		localCache:        opts.LocalCache,
 		enablePrefetch:    opts.EnablePrefetch,
+		hotCacheSize:      opts.HotCacheSize,
 	}
 
 	return p
@@ -213,6 +218,7 @@ func (p *Player) RetrieveStream(s *Stream) error {
 		sdBlob:         &sdBlob,
 		localCache:     p.localCache,
 		enablePrefetch: p.enablePrefetch,
+		hotCache:       Init(int64(p.hotCacheSize/2.0), 5*time.Minute),
 		seenChunks:     make([]ReadableChunk, len(sdBlob.BlobInfos)-1),
 		getBlobStore:   func() store.BlobStore { return p.getBlobStore() },
 	}
@@ -332,12 +338,11 @@ func (s *Stream) readFromChunks(calc chunkCalculator, dest []byte) (int, error) 
 // It first tries to get it from the local cache, and if it is not found, fetches it from the reflector.
 func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	var (
-		cChunk   ReadableChunk
-		rChunk   *reflectedChunk
-		cacheHit bool
-		err      error
+		//cChunk   ReadableChunk
+		rChunk *reflectedChunk
+		//cacheHit bool
+		err error
 	)
-
 	if n > len(b.sdBlob.BlobInfos) {
 		return nil, errors.New("blob index out of bounds")
 	}
@@ -349,40 +354,26 @@ func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
 	bi := b.sdBlob.BlobInfos[n]
 	hash := hex.EncodeToString(bi.BlobHash)
 
-	timerCache := TimerStart()
-	if b.localCache != nil {
-		cChunk, cacheHit = b.getChunkFromCache(hash)
-	} else {
-		cacheHit = false
-	}
-	timerCache.Done()
-
-	if cacheHit {
-		rate := float64(cChunk.Size()) / (1024 * 1024) / timerCache.Duration * 8
-		MtrRetrieverSpeed.With(map[string]string{MtrLabelSource: RetrieverSourceL2Cache}).Set(rate)
-		MtrCacheHitCount.Inc()
-		b.saveToHotCache(n, cChunk)
-		return cChunk, nil
-	}
-
 	MtrCacheMissCount.Inc()
-	timerReflector := TimerStart()
-	rChunk, err = b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
+	rChunk, err = b.hotCache.Fetch(hash, func() (interface{}, error) {
+		logrus.Infof("fetching from source: %s", hash)
+		timerReflector := TimerStart()
+		item, err := b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
+		if err != nil {
+			return nil, err
+		}
+		if item == nil {
+			return nil, nil
+		}
+		timerReflector.Done()
+		rate := float64(item.Size()) / (1024 * 1024) / timerReflector.Duration * 8
+		MtrRetrieverSpeed.With(map[string]string{MtrLabelSource: RetrieverSourceReflector}).Set(rate)
+		return *item, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	timerReflector.Done()
-
-	rate := float64(rChunk.Size()) / (1024 * 1024) / timerReflector.Duration * 8
-	MtrRetrieverSpeed.With(map[string]string{MtrLabelSource: RetrieverSourceReflector}).Set(rate)
-
 	b.saveToHotCache(n, rChunk)
-	go func() {
-		_, err := b.saveToCache(hash, rChunk)
-		if err != nil {
-			Logger.Errorln(err.Error())
-		}
-	}()
 	go b.prefetchToCache(n + 1)
 
 	return rChunk, nil
@@ -397,21 +388,8 @@ func (b *chunkGetter) saveToHotCache(n int, chunk ReadableChunk) {
 	}
 }
 
-func (b *chunkGetter) saveToCache(hash string, chunk *reflectedChunk) (ReadableChunk, error) {
-	if b.localCache == nil {
-		return nil, nil
-	}
-
-	body := make([]byte, len(chunk.body))
-	if _, err := chunk.Read(0, ChunkSize, body); err != nil {
-		Logger.Errorf("couldn't read from chunk %v: %v", hash, err)
-		return nil, err
-	}
-	return b.localCache.Set(hash, body)
-}
-
 func (b *chunkGetter) prefetchToCache(startN int) {
-	if b.localCache == nil || !b.enablePrefetch {
+	if !b.enablePrefetch {
 		return
 	}
 
@@ -426,27 +404,23 @@ func (b *chunkGetter) prefetchToCache(startN int) {
 	Logger.Debugf("prefetching %v chunks to local cache", prefetchLen)
 	for _, bi := range b.sdBlob.BlobInfos[startN : startN+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
-		if b.localCache.Has(hash) {
+
+		if b.hotCache.Get(hash) != nil {
 			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
 		Logger.Debugf("prefetching chunk %v", hash)
+		timerReflector := TimerStart()
 		reflected, err := b.getChunkFromReflector(hash, b.sdBlob.Key, bi.IV)
 		if err != nil {
 			Logger.Errorf("failed to prefetch chunk %v: %v", hash, err)
 			return
 		}
-		_, err = b.saveToCache(hash, reflected)
-		if err != nil {
-			Logger.Errorln(err.Error())
-		}
+		timerReflector.Done()
+		rate := float64(reflected.Size()) / (1024 * 1024) / timerReflector.Duration * 8
+		MtrRetrieverSpeed.With(map[string]string{MtrLabelSource: RetrieverSourceReflector}).Set(rate)
+		b.hotCache.Set(hash, reflected)
 	}
-
-}
-
-func (b *chunkGetter) getChunkFromCache(hash string) (ReadableChunk, bool) {
-	c, ok := b.localCache.Get(hash)
-	return c, ok
 }
 
 func (b *chunkGetter) getChunkFromReflector(hash string, key, iv []byte) (*reflectedChunk, error) {
