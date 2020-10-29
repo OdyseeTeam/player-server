@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/karlseguin/ccache/v2 v2.0.6
 	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
-	github.com/lbryio/reflector.go v1.1.3-0.20201026171331-ab76aeb5e754
+	github.com/lbryio/reflector.go v1.1.3-0.20201029182258-a70b13893e57
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 // indirect

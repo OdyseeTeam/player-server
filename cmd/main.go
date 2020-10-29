@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
@@ -14,7 +16,6 @@ import (
 	"github.com/lbryio/lbrytv-player/player"
 
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/reflector.go/peer"
 	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
 
@@ -23,134 +24,175 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Logger = logger.GetLogger()
+
 var (
-	bindAddress       string
-	diskCachePath     string
-	diskCacheSize     string
-	hotCacheSize      string
-	enablePrefetch    bool
-	enableProfile     bool
-	reflectorProtocol string
-	verboseOutput     bool
-	reflectorAddress  string
-	reflectorTimeout  int
-	lbrynetAddress    string
-	paidPubKey        string
+	bindAddress    string
+	enablePrefetch bool
+	enableProfile  bool
+	verboseOutput  bool
+	lbrynetAddress string
+	paidPubKey     string
+
+	upstreamReflector  string
+	cloudFrontEndpoint string
+	diskCacheConfig    string
+	hotCacheSize       string
 
 	rootCmd = &cobra.Command{
 		Use:     "lbrytv_player",
 		Short:   "media server for lbrytv",
 		Version: version.FullName(),
-		Run: func(cmd *cobra.Command, args []string) {
-			logLevel := logrus.InfoLevel
-			if verboseOutput {
-				logLevel = logrus.DebugLevel
-			}
-			logger.ConfigureDefaults(logLevel)
-
-			l := logger.GetLogger()
-			l.Infof("initializing %v\n", version.FullName())
-			logger.ConfigureSentry(version.Version(), logger.EnvProd)
-			defer logger.Flush()
-
-			r, err := http.Get(paidPubKey)
-			if err != nil {
-				l.Fatal(err)
-			}
-			rawKey, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				l.Fatal(err)
-			}
-			err = paid.InitPubKey(rawKey)
-			if err != nil {
-				l.Fatal(err)
-			}
-
-			p := player.NewPlayer(&player.Opts{
-				BlobSource:     getBlobSource(),
-				HotCache:       getHotCache(),
-				EnablePrefetch: enablePrefetch,
-				LbrynetAddress: lbrynetAddress,
-			})
-
-			a := app.New(app.Opts{
-				Address: bindAddress,
-			})
-
-			player.InstallPlayerRoutes(a.Router, p)
-			metrics.InstallRoute(a.Router)
-			if enableProfile {
-				player.InstallProfilingRoutes(a.Router)
-			}
-
-			a.Start()
-			a.ServeUntilShutdown()
-		},
+		Run:     run,
 	}
 )
 
-func getBlobSource() store.BlobStore {
-	l := logger.GetLogger()
+func init() {
+	rootCmd.Flags().StringVar(&bindAddress, "bind", "0.0.0.0:8080", "address to bind HTTP server to")
+	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
+	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.lbry.tv/api/v1/paid/pubkey", "pubkey for playing paid content")
 
-	var diskCacheBytes datasize.ByteSize
-	err := diskCacheBytes.UnmarshalText([]byte(diskCacheSize))
+	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", false, "enable prefetch for blobs")
+	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
+	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, fmt.Sprintf("enable verbose logging"))
+
+	rootCmd.Flags().StringVar(&upstreamReflector, "upstream-reflector", "", "host:port of a reflector server where blobs are fetched from")
+	rootCmd.Flags().StringVar(&cloudFrontEndpoint, "cloudfront-endpoint", "", "CloudFront edge endpoint for standard HTTP retrieval")
+	rootCmd.Flags().StringVar(&diskCacheConfig, "disk-cache", "",
+		"enable disk cache, setting max size and path where to store blobs. format is 'MAX_BLOBS:CACHE_PATH'. MAX_BLOBS can be 16GB, 500MB, etc.")
+	rootCmd.Flags().StringVar(&hotCacheSize, "hot-cache-size", "", "enable hot cache for decrypted blobs and set max size: 16GB, 500MB, etc")
+}
+
+func run(cmd *cobra.Command, args []string) {
+	initLogger()
+	defer logger.Flush()
+
+	initPubkey()
+
+	blobSource := getBlobSource()
+
+	p := player.NewPlayer(getHotCache(blobSource), lbrynetAddress)
+	p.SetPrefech(enablePrefetch)
+
+	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource})
+
+	player.InstallPlayerRoutes(a.Router, p)
+	metrics.InstallRoute(a.Router)
+	if enableProfile {
+		player.InstallProfilingRoutes(a.Router)
+	}
+
+	a.Start()
+	a.ServeUntilShutdown()
+}
+
+func getHotCache(blobSource store.BlobStore) *player.HotCache {
+	var hotCacheBytes datasize.ByteSize
+	err := hotCacheBytes.UnmarshalText([]byte(hotCacheSize))
 	if err != nil {
-		l.Fatal(err)
+		Logger.Fatal(err)
+	}
+	if hotCacheBytes <= 0 {
+		Logger.Fatal("hot cache size must be greater than 0. if you want to disable hot cache, you'll have to do a bit of coding")
 	}
 
+	avgSDBlobSize := 1000      // JUST A GUESS
+	fractionForSDBlobs := 0.10 // 10% of cache space for sd blobs
+
+	spaceForSDBlobs := int(float64(hotCacheBytes.Bytes()) * fractionForSDBlobs)
+	spaceForChunks := int(hotCacheBytes.Bytes()) - spaceForSDBlobs
+
+	return player.NewHotCache(blobSource, spaceForChunks/player.MaxChunkSize, spaceForSDBlobs/avgSDBlobSize)
+}
+
+func getBlobSource() store.BlobStore {
 	var blobSource store.BlobStore
-	if reflectorProtocol == "http3" {
-		blobSource = http3.NewStore(http3.StoreOpts{Address: reflectorAddress, Timeout: time.Second * time.Duration(reflectorTimeout)})
+
+	if upstreamReflector != "" {
+		blobSource = http3.NewStore(http3.StoreOpts{
+			Address: upstreamReflector,
+			Timeout: 30 * time.Second,
+		})
+	} else if cloudFrontEndpoint != "" {
+		blobSource = store.NewCloudFrontROStore(cloudFrontEndpoint)
 	} else {
-		blobSource = peer.NewStore(peer.StoreOpts{Address: reflectorAddress, Timeout: time.Second * time.Duration(reflectorTimeout)})
+		Logger.Fatal("one of [--proxy-address|--cloudfront-endpoint] is required")
 	}
 
-	if diskCacheBytes > 0 {
+	diskCacheMaxSize, diskCachePath := diskCacheParams()
+	if diskCacheMaxSize > 0 {
+		err := os.MkdirAll(diskCachePath, os.ModePerm)
+		if err != nil {
+			Logger.Fatal(err)
+		}
 		blobSource = store.NewCachingStore(
+			"player",
 			blobSource,
-			store.NewLRUStore(store.NewDiskStore(diskCachePath, 2), int(diskCacheBytes.Bytes()/stream.MaxBlobSize)),
+			store.NewLRUStore("player", store.NewDiskStore(diskCachePath, 2), diskCacheMaxSize/stream.MaxBlobSize),
 		)
 	}
 
 	return blobSource
 }
 
-func getHotCache() *player.HotCache {
-	l := logger.GetLogger()
+func diskCacheParams() (int, string) {
+	l := Logger
 
-	var hotCacheBytes datasize.ByteSize
-	err := hotCacheBytes.UnmarshalText([]byte(hotCacheSize))
+	if diskCacheConfig == "" {
+		return 0, ""
+	}
+
+	parts := strings.Split(diskCacheConfig, ":")
+	if len(parts) != 2 {
+		l.Fatalf("--disk-cache must be a number, followed by ':', followed by a string")
+	}
+
+	var maxSize datasize.ByteSize
+	err := maxSize.UnmarshalText([]byte(parts[0]))
 	if err != nil {
 		l.Fatal(err)
 	}
-	if hotCacheBytes <= 0 {
-		return nil
+	if maxSize <= 0 {
+		l.Fatal("--disk-cache max size must be more than 0")
 	}
 
-	return player.NewHotCache(int64(hotCacheBytes.Bytes()) / stream.MaxBlobSize)
+	path := parts[1]
+	if len(path) == 0 || path[0] != '/' {
+		l.Fatal("--disk-cache path must start with '/'")
+	}
+
+	return int(maxSize), path
 }
 
-func init() {
-	rootCmd.Flags().StringVar(&bindAddress, "bind", "0.0.0.0:8080", "address to bind HTTP server to")
+func initLogger() {
+	logLevel := logrus.InfoLevel
+	if verboseOutput {
+		logLevel = logrus.DebugLevel
+	}
+	logger.ConfigureDefaults(logLevel)
+	Logger.Infof("initializing %v\n", version.FullName())
+	logger.ConfigureSentry(version.Version(), logger.EnvProd)
+}
 
-	rootCmd.Flags().StringVar(&diskCachePath, "disk_cache_path", "/tmp/player_cache", "cache directory path (will be created if does not exist)")
-	rootCmd.Flags().StringVar(&diskCacheSize, "disk_cache_size", "", "disk cache size: 16GB, 500MB and so on, set to 0 to disable")
-	rootCmd.Flags().StringVar(&hotCacheSize, "hot_cache_size", "", "hot cache size for decrypted blobs: 16GB, 500MB and so on, set to 0 to disable")
+func initPubkey() {
+	l := Logger
 
-	rootCmd.Flags().StringVar(&reflectorAddress, "reflector", "reflector.lbry.com:5568", "reflector address (with port)")
-	rootCmd.Flags().IntVar(&reflectorTimeout, "reflector_timeout", 30, "reflector timeout in seconds")
-	rootCmd.Flags().StringVar(&reflectorProtocol, "reflector_protocol", "http3", fmt.Sprintf("which protocol to use to fetch the data from reflector (tcp/http3)"))
-
-	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
-	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.lbry.tv/api/v1/paid/pubkey", "pubkey for playing paid content")
-
-	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", true, "enable prefetch for blobs")
-	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
-	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, fmt.Sprintf("enable verbose logging"))
+	r, err := http.Get(paidPubKey)
+	if err != nil {
+		l.Fatal(err)
+	}
+	rawKey, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		l.Fatal(err)
+	}
+	err = paid.InitPubKey(rawKey)
+	if err != nil {
+		l.Fatal(err)
+	}
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		logger.GetLogger().Fatalf("error: %v\n", err)
+		Logger.Fatalf("error: %v\n", err)
 	}
 }

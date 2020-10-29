@@ -5,8 +5,9 @@ import (
 	"io"
 	"math/rand"
 	"testing"
+	"time"
 
-	"github.com/lbryio/reflector.go/store"
+	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,28 +39,36 @@ func randomString(n int) string {
 	return string(b)
 }
 
+func getTestPlayer() *Player {
+	origin := http3.NewStore(http3.StoreOpts{
+		Address: "reflector.lbry.com:5568",
+		Timeout: 30 * time.Second,
+	})
+	return NewPlayer(NewHotCache(origin, 1000, 1000), "")
+}
+
 func TestPlayerResolveStream(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream("bolivians-flood-streets-protest-military-coup#389ba57c9f76b859c2763c4b9a419bd78b1a8dd0")
 	require.NoError(t, err)
-	err = p.RetrieveStream(s)
+	err = s.PrepareForReading()
 	require.NoError(t, err)
 }
 
 func TestPlayerResolveStreamNotFound(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream(randomString(20))
 	assert.Equal(t, errStreamNotFound, err)
 	assert.Nil(t, s)
 }
 
 func TestStreamSeek(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 
 	for _, stream := range knownStreams {
 		s, err := p.ResolveStream(stream.uri)
 		require.NoError(t, err)
-		err = p.RetrieveStream(s)
+		err = s.PrepareForReading()
 		require.NoError(t, err)
 
 		// Seeking to the end
@@ -97,11 +106,11 @@ func TestStreamSeek(t *testing.T) {
 }
 
 func TestStreamRead(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	err = s.PrepareForReading()
 	require.NoError(t, err)
 
 	n, err := s.Seek(4000000, io.SeekStart)
@@ -122,39 +131,45 @@ func TestStreamRead(t *testing.T) {
 }
 
 func TestStreamReadHotCache(t *testing.T) {
-	cache := store.NewLRUStore(store.NewMemStore(), 99999)
-	p := NewPlayer(&Opts{BlobSource: cache, EnablePrefetch: false})
+	p := getTestPlayer()
 
-	s, err := p.ResolveStream(streamURL)
+	s1, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	assert.EqualValues(t, 0, p.hotCache.sdCache.ItemCount())
+
+	err = s1.PrepareForReading()
 	require.NoError(t, err)
+
+	assert.EqualValues(t, 1, p.hotCache.sdCache.ItemCount())
+	assert.EqualValues(t, 0, p.hotCache.chunkCache.ItemCount())
 
 	// Warm up the cache
-	n, err := s.Seek(4000000, io.SeekStart)
+	n, err := s1.Seek(4000000, io.SeekStart)
 	require.NoError(t, err)
 	require.EqualValues(t, 4000000, n)
 
 	readData := make([]byte, 105)
-	readNum, err := s.Read(readData)
+	readNum, err := s1.Read(readData)
 	require.NoError(t, err)
 	assert.Equal(t, 105, readNum)
 
 	///
-	s, err = p.ResolveStream(streamURL)
+	s2, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	err = s2.PrepareForReading()
 	require.NoError(t, err)
+
+	assert.EqualValues(t, 1, p.hotCache.sdCache.ItemCount())
 
 	for i := 0; i < 2; i++ {
-		n, err := s.Seek(4000000, io.SeekStart)
+		n, err := s2.Seek(4000000, io.SeekStart)
 		require.NoError(t, err)
 		require.EqualValues(t, 4000000, n)
 
 		readData := make([]byte, 105)
-		readNum, err := s.Read(readData)
+		readNum, err := s2.Read(readData)
 		require.NoError(t, err)
 		assert.Equal(t, 105, readNum)
 		expectedData, err := hex.DecodeString(
@@ -166,28 +181,31 @@ func TestStreamReadHotCache(t *testing.T) {
 		assert.Equal(t, expectedData, readData)
 	}
 
-	assert.IsType(t, ReadableChunk{}, s.chunkGetter.seenChunks[1])
+	assert.EqualValues(t, 1, p.hotCache.chunkCache.ItemCount())
 
-	n, err = s.Seek(2000000, io.SeekCurrent)
+	n, err = s2.Seek(2000000, io.SeekCurrent)
 	require.NoError(t, err)
 	require.EqualValues(t, 6000105, n)
 
 	readData = make([]byte, 105)
-	readNum, err = s.Read(readData)
+	readNum, err = s2.Read(readData)
 	require.NoError(t, err)
 	assert.Equal(t, 105, readNum)
 	require.NoError(t, err)
 
-	assert.Nil(t, s.chunkGetter.seenChunks[1])
-	assert.IsType(t, ReadableChunk{}, s.chunkGetter.seenChunks[2])
+	assert.EqualValues(t, 2, p.hotCache.chunkCache.ItemCount())
+
+	// TODO: @andrey what did this test do? I don't understand it
+	//assert.Nil(t, s.chunkGetter.seenChunks[1])
+	//assert.IsType(t, ReadableChunk{}, s.chunkGetter.seenChunks[2])
 }
 
 func TestStreamReadOutOfBounds(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	err = s.PrepareForReading()
 	require.NoError(t, err)
 
 	n, err := s.Seek(4000000, io.SeekStart)

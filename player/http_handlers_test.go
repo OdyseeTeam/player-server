@@ -6,13 +6,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path"
 	"strings"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv-player/pkg/paid"
+
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,11 +23,7 @@ type rangeHeader struct {
 func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http.Response {
 	if router == nil {
 		router = mux.NewRouter()
-		cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
-		if err != nil {
-			panic(err)
-		}
-		InstallPlayerRoutes(router, NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false, ReflectorProtocol: "http3"}))
+		InstallPlayerRoutes(router, getTestPlayer())
 	}
 
 	r, _ := http.NewRequest(method, uri, nil)
@@ -48,9 +43,7 @@ func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http
 }
 
 func TestHandleGet(t *testing.T) {
-	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
-	require.NoError(t, err)
-	player := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false, ReflectorProtocol: "http3"})
+	player := getTestPlayer()
 	router := mux.NewRouter()
 	router.Path("/content/claims/{claim_name}/{claim_id}/{filename}").HandlerFunc(NewRequestHandler(player).Handle)
 
