@@ -105,7 +105,7 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 
 			if r.Method != http.MethodHead {
 				calc := getRange(ra.start, 1)
-				_, err = content.chunkGetter.Get(int(calc.FirstChunkIdx))
+				_, err = content.GetChunk(int(calc.FirstChunkIdx))
 				if err != nil {
 					Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
 					return

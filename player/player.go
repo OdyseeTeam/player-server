@@ -15,10 +15,9 @@ var Logger = logger.GetLogger()
 
 // Player is an entry-point object to the new player package.
 type Player struct {
-	lbrynetClient  *ljsonrpc.Client
-	hotCache       *HotCache
-	chunkGetter    chunkGetter
-	enablePrefetch bool
+	lbrynetClient *ljsonrpc.Client
+	blobSource    *HotCache
+	prefetch      bool
 }
 
 // NewPlayer initializes an instance with optional BlobStore.
@@ -29,12 +28,12 @@ func NewPlayer(hotCache *HotCache, lbrynetAddress string) *Player {
 
 	return &Player{
 		lbrynetClient: ljsonrpc.NewClient(lbrynetAddress),
-		hotCache:      hotCache,
+		blobSource:    hotCache,
 	}
 }
 
-func (p *Player) SetPrefech(enabled bool) {
-	p.enablePrefetch = enabled
+func (p *Player) SetPrefetch(enabled bool) {
+	p.prefetch = enabled
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.

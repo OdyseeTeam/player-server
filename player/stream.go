@@ -21,8 +21,6 @@ type Stream struct {
 	Size        uint64
 	ContentType string
 
-	chunkGetter chunkGetter
-
 	player         *Player
 	claim          *ljsonrpc.Claim
 	resolvedStream *pb.Stream
@@ -56,7 +54,7 @@ func (s *Stream) Filename() string {
 // PrepareForReading downloads stream description from the reflector and tries to determine stream size
 // using several methods, including legacy ones for streams that do not have metadata.
 func (s *Stream) PrepareForReading() error {
-	sdBlob, err := s.player.hotCache.GetSDBlob(s.hash)
+	sdBlob, err := s.player.blobSource.GetSDBlob(s.hash)
 	if err != nil {
 		return err
 	}
@@ -65,14 +63,7 @@ func (s *Stream) PrepareForReading() error {
 
 	s.setSize(sdBlob.BlobInfos)
 
-	s.chunkGetter = chunkGetter{
-		hotCache: s.player.hotCache,
-		sdBlob:   &sdBlob,
-		prefetch: s.player.enablePrefetch,
-	}
-
 	return nil
-
 }
 
 func (s *Stream) setSize(blobs []stream.BlobInfo) {
@@ -157,7 +148,7 @@ func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 	for i := sr.FirstChunkIdx; i < sr.LastChunkIdx+1; i++ {
 		offset, readLen := sr.ByteRangeForChunk(i)
 
-		b, err := s.chunkGetter.Get(int(i))
+		b, err := s.GetChunk(int(i))
 		if err != nil {
 			return read, err
 		}
@@ -170,4 +161,52 @@ func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 	}
 
 	return read, nil
+}
+
+// GetChunk returns the nth ReadableChunk of the stream.
+func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
+	if chunkIdx > len(s.sdBlob.BlobInfos) {
+		return nil, errors.New("blob index out of bounds")
+	}
+
+	bi := s.sdBlob.BlobInfos[chunkIdx]
+	hash := hex.EncodeToString(bi.BlobHash)
+
+	chunk, err := s.player.blobSource.GetChunk(hash, s.sdBlob.Key, bi.IV)
+	if err != nil || chunk == nil {
+		return nil, err
+	}
+
+	if s.player.prefetch {
+		go s.prefetchChunk(chunkIdx + 1)
+	}
+	return chunk, nil
+}
+
+func (s *Stream) prefetchChunk(chunkIdx int) {
+	prefetchLen := DefaultPrefetchLen
+	chunksLeft := len(s.sdBlob.BlobInfos) - chunkIdx - 1 // Last blob is empty
+	if chunksLeft < DefaultPrefetchLen {
+		prefetchLen = chunksLeft
+	}
+	if prefetchLen <= 0 {
+		return
+	}
+
+	Logger.Debugf("prefetching %v chunks to local cache", prefetchLen)
+	for _, bi := range s.sdBlob.BlobInfos[chunkIdx : chunkIdx+prefetchLen] {
+		hash := hex.EncodeToString(bi.BlobHash)
+
+		if !s.player.blobSource.IsChunkCached(hash) {
+			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
+			continue
+		}
+
+		Logger.Debugf("prefetching chunk %v", hash)
+		_, err := s.player.blobSource.GetChunk(hash, s.sdBlob.Key, bi.IV)
+		if err != nil {
+			Logger.Errorf("failed to prefetch chunk %v: %v", hash, err)
+			return
+		}
+	}
 }

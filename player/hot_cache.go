@@ -3,8 +3,9 @@ package player
 import (
 	"time"
 
-	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
+
+	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/store"
 
 	"github.com/karlseguin/ccache/v2"
@@ -25,7 +26,7 @@ type HotCache struct {
 
 func NewHotCache(origin store.BlobStore, maxChunks, maxSDBlobs int) *HotCache {
 	return &HotCache{
-		origin:     store.WithSingleFlight("hot_cache", origin),
+		origin:     store.WithSingleFlight("hotcache", origin),
 		chunkCache: ccache.New(ccache.Configure().MaxSize(int64(maxChunks))),
 		sdCache:    ccache.New(ccache.Configure().MaxSize(int64(maxSDBlobs))),
 	}

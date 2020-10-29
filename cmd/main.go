@@ -71,8 +71,8 @@ func run(cmd *cobra.Command, args []string) {
 
 	blobSource := getBlobSource()
 
-	p := player.NewPlayer(getHotCache(blobSource), lbrynetAddress)
-	p.SetPrefech(enablePrefetch)
+	p := player.NewPlayer(initHotCache(blobSource), lbrynetAddress)
+	p.SetPrefetch(enablePrefetch)
 
 	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource})
 
@@ -86,7 +86,7 @@ func run(cmd *cobra.Command, args []string) {
 	a.ServeUntilShutdown()
 }
 
-func getHotCache(blobSource store.BlobStore) *player.HotCache {
+func initHotCache(origin store.BlobStore) *player.HotCache {
 	var hotCacheBytes datasize.ByteSize
 	err := hotCacheBytes.UnmarshalText([]byte(hotCacheSize))
 	if err != nil {
@@ -96,13 +96,13 @@ func getHotCache(blobSource store.BlobStore) *player.HotCache {
 		Logger.Fatal("hot cache size must be greater than 0. if you want to disable hot cache, you'll have to do a bit of coding")
 	}
 
-	avgSDBlobSize := 1000      // JUST A GUESS
+	avgSDBlobSize := 1000      // JUST A GUESS (in bytes)
 	fractionForSDBlobs := 0.10 // 10% of cache space for sd blobs
 
 	spaceForSDBlobs := int(float64(hotCacheBytes.Bytes()) * fractionForSDBlobs)
 	spaceForChunks := int(hotCacheBytes.Bytes()) - spaceForSDBlobs
 
-	return player.NewHotCache(blobSource, spaceForChunks/player.MaxChunkSize, spaceForSDBlobs/avgSDBlobSize)
+	return player.NewHotCache(origin, spaceForChunks/player.MaxChunkSize, spaceForSDBlobs/avgSDBlobSize)
 }
 
 func getBlobSource() store.BlobStore {

@@ -1,8 +1,6 @@
 package player
 
 import (
-	"encoding/hex"
-	"errors"
 	"fmt"
 
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -29,6 +27,12 @@ func (b ReadableChunk) Read(offset, n int64, dest []byte) (int, error) {
 	read := copy(dest, b[offset:offset+n])
 	return read, nil
 }
+
+// Size returns the chunk size. Used by ccache to track size of cache
+// DISABLED FOR NOW. we're making some guesses in cmd/main.go instead
+//func (b ReadableChunk) Size() int64 {
+//	return int64(len(b))
+//}
 
 // streamRange provides handy blob calculations for a requested stream range.
 type streamRange struct {
@@ -73,60 +77,5 @@ func (r streamRange) ByteRangeForChunk(i int64) (int64, int64) {
 		// Andrey says this never happens because apparently http.ServeContent never reads deeper
 		// than 32KB from Stream.Read so the case when i is in the middle just doesn't happen
 		return 0, 0
-	}
-}
-
-// chunkGetter is an object for retrieving blobs from BlobStore or optionally from local cache.
-type chunkGetter struct {
-	hotCache *HotCache
-	sdBlob   *stream.SDBlob
-	prefetch bool
-}
-
-// Get returns a Blob object that can be Read() from.
-func (b *chunkGetter) Get(n int) (ReadableChunk, error) {
-	if n > len(b.sdBlob.BlobInfos) {
-		return nil, errors.New("blob index out of bounds")
-	}
-
-	bi := b.sdBlob.BlobInfos[n]
-	hash := hex.EncodeToString(bi.BlobHash)
-
-	chunk, err := b.hotCache.GetChunk(hash, b.sdBlob.Key, bi.IV)
-	if err != nil || chunk == nil {
-		return nil, err
-	}
-
-	if b.prefetch {
-		go b.prefetchToCache(n + 1)
-	}
-	return chunk, nil
-}
-
-func (b *chunkGetter) prefetchToCache(chunkIdx int) {
-	prefetchLen := DefaultPrefetchLen
-	chunksLeft := len(b.sdBlob.BlobInfos) - chunkIdx - 1 // Last blob is empty
-	if chunksLeft < DefaultPrefetchLen {
-		prefetchLen = chunksLeft
-	}
-	if prefetchLen <= 0 {
-		return
-	}
-
-	Logger.Debugf("prefetching %v chunks to local cache", prefetchLen)
-	for _, bi := range b.sdBlob.BlobInfos[chunkIdx : chunkIdx+prefetchLen] {
-		hash := hex.EncodeToString(bi.BlobHash)
-
-		if !b.hotCache.IsChunkCached(hash) {
-			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
-			continue
-		}
-
-		Logger.Debugf("prefetching chunk %v", hash)
-		_, err := b.hotCache.GetChunk(hash, b.sdBlob.Key, bi.IV)
-		if err != nil {
-			Logger.Errorf("failed to prefetch chunk %v: %v", hash, err)
-			return
-		}
 	}
 }

@@ -136,13 +136,13 @@ func TestStreamReadHotCache(t *testing.T) {
 	s1, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 0, p.hotCache.sdCache.ItemCount())
+	assert.EqualValues(t, 0, p.blobSource.sdCache.ItemCount())
 
 	err = s1.PrepareForReading()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 1, p.hotCache.sdCache.ItemCount())
-	assert.EqualValues(t, 0, p.hotCache.chunkCache.ItemCount())
+	assert.EqualValues(t, 1, p.blobSource.sdCache.ItemCount())
+	assert.EqualValues(t, 0, p.blobSource.chunkCache.ItemCount())
 
 	// Warm up the cache
 	n, err := s1.Seek(4000000, io.SeekStart)
@@ -161,7 +161,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	err = s2.PrepareForReading()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 1, p.hotCache.sdCache.ItemCount())
+	assert.EqualValues(t, 1, p.blobSource.sdCache.ItemCount())
 
 	for i := 0; i < 2; i++ {
 		n, err := s2.Seek(4000000, io.SeekStart)
@@ -181,7 +181,7 @@ func TestStreamReadHotCache(t *testing.T) {
 		assert.Equal(t, expectedData, readData)
 	}
 
-	assert.EqualValues(t, 1, p.hotCache.chunkCache.ItemCount())
+	assert.EqualValues(t, 1, p.blobSource.chunkCache.ItemCount())
 
 	n, err = s2.Seek(2000000, io.SeekCurrent)
 	require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	assert.Equal(t, 105, readNum)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 2, p.hotCache.chunkCache.ItemCount())
+	assert.EqualValues(t, 2, p.blobSource.chunkCache.ItemCount())
 
 	// TODO: @andrey what did this test do? I don't understand it
 	//assert.Nil(t, s.chunkGetter.seenChunks[1])
