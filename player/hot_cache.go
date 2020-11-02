@@ -25,11 +25,23 @@ type HotCache struct {
 }
 
 func NewHotCache(origin store.BlobStore, maxChunks, maxSDBlobs int) *HotCache {
-	return &HotCache{
+	h := &HotCache{
 		origin:     store.WithSingleFlight("hotcache", origin),
 		chunkCache: ccache.New(ccache.Configure().MaxSize(int64(maxChunks))),
 		sdCache:    ccache.New(ccache.Configure().MaxSize(int64(maxSDBlobs))),
 	}
+
+	go func() {
+		for {
+			<-time.After(15 * time.Second)
+			metrics.CacheSize.WithLabelValues("chunk").Set(float64(h.chunkCache.ItemCount()))
+			metrics.CacheSize.WithLabelValues("sd").Set(float64(h.sdCache.ItemCount()))
+			metrics.CacheEvictions.WithLabelValues("chunk").Add(float64(h.chunkCache.GetDropped()))
+			metrics.CacheEvictions.WithLabelValues("sd").Add(float64(h.sdCache.GetDropped()))
+		}
+	}()
+
+	return h
 }
 
 // GetSDBlob gets an sd blob. If it's not in the cache, it is fetched from the origin and cached.

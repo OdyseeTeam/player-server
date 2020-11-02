@@ -34,17 +34,16 @@ var (
 		Help:      "Total number of bytes streamed out",
 	})
 
-	// TODO: make these metrics work
-	CacheSize = promauto.NewGauge(prometheus.GaugeOpts{
+	CacheSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: ns,
 		Subsystem: "cache",
 		Name:      "size",
-		Help:      "Current size of cache",
-	})
+		Help:      "Number of items in cache",
+	}, []string{"blob_type"})
 	CacheEvictions = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: ns,
 		Subsystem: "cache",
 		Name:      "evictions_total",
-		Help:      "Current size of cache",
+		Help:      "Total number of blobs evicted from the cache",
 	}, []string{"blob_type"})
 )

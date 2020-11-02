@@ -96,8 +96,10 @@ func initHotCache(origin store.BlobStore) *player.HotCache {
 		Logger.Fatal("hot cache size must be greater than 0. if you want to disable hot cache, you'll have to do a bit of coding")
 	}
 
-	avgSDBlobSize := 1000      // JUST A GUESS (in bytes)
-	fractionForSDBlobs := 0.10 // 10% of cache space for sd blobs
+	//NOTE: ccache adds 350 bytes of RAM overhead per cache item
+
+	avgSDBlobSize := 1000       // JUST A GUESS (in bytes)
+	fractionForSDBlobs := 0.001 // 0.1% of cache space for sd blobs
 
 	spaceForSDBlobs := int(float64(hotCacheBytes.Bytes()) * fractionForSDBlobs)
 	spaceForChunks := int(hotCacheBytes.Bytes()) - spaceForSDBlobs
@@ -116,7 +118,7 @@ func getBlobSource() store.BlobStore {
 	} else if cloudFrontEndpoint != "" {
 		blobSource = store.NewCloudFrontROStore(cloudFrontEndpoint)
 	} else {
-		Logger.Fatal("one of [--proxy-address|--cloudfront-endpoint] is required")
+		Logger.Fatal("one of [--upstream-reflector|--cloudfront-endpoint] is required")
 	}
 
 	diskCacheMaxSize, diskCachePath := diskCacheParams()
