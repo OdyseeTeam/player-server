@@ -30,8 +30,9 @@ services:
       ./lbrytv_player
       --lbrynet=http://lbrynet:5279
       --bind=0.0.0.0:8080
-      --disk-cache="1.9TB:/tmp/reflector_player_blobs"
-      --hot-cache-size=10GB
+      --disk-cache-dir="/tmp/reflector_player_blobs"
+      --disk-cache-size="1.9TB"
+      --hot-cache-size="10GB"
       --prefetch=true
       --upstream-reflector="reflector.lbry.com:5568"
     environment:

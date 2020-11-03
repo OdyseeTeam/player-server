@@ -45,14 +45,14 @@ func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
 func (h *HotCache) GetSDBlob(hash string) (stream.SDBlob, error) {
 	cached := h.cache.Get(hash)
 	if cached != nil {
-		metrics.HotCacheHitCount.WithLabelValues("sd").Inc()
+		metrics.HotCacheRequestCount.WithLabelValues("sd", "hit").Inc()
 
 		var sd stream.SDBlob
 		err := gob.NewDecoder(bytes.NewBuffer(cached.Value().(sized))).Decode(&sd)
 		return sd, err
 	}
 
-	metrics.HotCacheMissCount.WithLabelValues("sd").Inc()
+	metrics.HotCacheRequestCount.WithLabelValues("sd", "miss").Inc()
 	blob, err := h.origin.Get(hash)
 	if err != nil {
 		return stream.SDBlob{}, err
@@ -80,11 +80,11 @@ func (h *HotCache) GetSDBlob(hash string) (stream.SDBlob, error) {
 func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) {
 	item := h.cache.Get(hash)
 	if item != nil {
-		metrics.HotCacheHitCount.WithLabelValues("chunk").Inc()
+		metrics.HotCacheRequestCount.WithLabelValues("chunk", "hit").Inc()
 		return ReadableChunk(item.Value().(sized)), nil
 	}
 
-	metrics.HotCacheMissCount.WithLabelValues("chunk").Inc()
+	metrics.HotCacheRequestCount.WithLabelValues("chunk", "miss").Inc()
 	blob, err := h.origin.Get(hash)
 	if err != nil {
 		return nil, err

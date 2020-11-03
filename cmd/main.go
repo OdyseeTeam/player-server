@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
@@ -36,7 +35,8 @@ var (
 
 	upstreamReflector  string
 	cloudFrontEndpoint string
-	diskCacheConfig    string
+	diskCacheDir       string
+	diskCacheSize      string
 	hotCacheSize       string
 
 	rootCmd = &cobra.Command{
@@ -58,8 +58,8 @@ func init() {
 
 	rootCmd.Flags().StringVar(&upstreamReflector, "upstream-reflector", "", "host:port of a reflector server where blobs are fetched from")
 	rootCmd.Flags().StringVar(&cloudFrontEndpoint, "cloudfront-endpoint", "", "CloudFront edge endpoint for standard HTTP retrieval")
-	rootCmd.Flags().StringVar(&diskCacheConfig, "disk-cache", "",
-		"enable disk cache, setting max size and path where to store blobs. format is 'MAX_BLOBS:CACHE_PATH'. MAX_BLOBS can be 16GB, 500MB, etc.")
+	rootCmd.Flags().StringVar(&diskCacheDir, "disk-cache-dir", "", "enable disk cache, storing blobs in dir")
+	rootCmd.Flags().StringVar(&diskCacheSize, "disk-cache-size", "100MB", "max size of disk cache: 16GB, 500MB, etc.")
 	rootCmd.Flags().StringVar(&hotCacheSize, "hot-cache-size", "", "enable hot cache for decrypted blobs and set max size: 16GB, 500MB, etc")
 }
 
@@ -134,27 +134,22 @@ func getBlobSource() store.BlobStore {
 func diskCacheParams() (int, string) {
 	l := Logger
 
-	if diskCacheConfig == "" {
+	if diskCacheDir == "" {
 		return 0, ""
 	}
 
-	parts := strings.Split(diskCacheConfig, ":")
-	if len(parts) != 2 {
-		l.Fatalf("--disk-cache must be a number, followed by ':', followed by a string")
+	path := diskCacheDir
+	if len(path) == 0 || path[0] != '/' {
+		l.Fatal("--disk-cache-dir must start with '/'")
 	}
 
 	var maxSize datasize.ByteSize
-	err := maxSize.UnmarshalText([]byte(parts[0]))
+	err := maxSize.UnmarshalText([]byte(diskCacheSize))
 	if err != nil {
 		l.Fatal(err)
 	}
 	if maxSize <= 0 {
-		l.Fatal("--disk-cache max size must be more than 0")
-	}
-
-	path := parts[1]
-	if len(path) == 0 || path[0] != '/' {
-		l.Fatal("--disk-cache path must start with '/'")
+		l.Fatal("--disk-cache-size must be more than 0")
 	}
 
 	return int(maxSize), path
