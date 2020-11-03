@@ -96,15 +96,9 @@ func initHotCache(origin store.BlobStore) *player.HotCache {
 		Logger.Fatal("hot cache size must be greater than 0. if you want to disable hot cache, you'll have to do a bit of coding")
 	}
 
-	//NOTE: ccache adds 350 bytes of RAM overhead per cache item
+	metrics.PlayerCacheInfo(hotCacheBytes.Bytes())
 
-	avgSDBlobSize := 1000       // JUST A GUESS (in bytes)
-	fractionForSDBlobs := 0.001 // 0.1% of cache space for sd blobs
-
-	spaceForSDBlobs := int(float64(hotCacheBytes.Bytes()) * fractionForSDBlobs)
-	spaceForChunks := int(hotCacheBytes.Bytes()) - spaceForSDBlobs
-
-	return player.NewHotCache(origin, spaceForChunks/player.MaxChunkSize, spaceForSDBlobs/avgSDBlobSize)
+	return player.NewHotCache(origin, int64(hotCacheBytes.Bytes()))
 }
 
 func getBlobSource() store.BlobStore {

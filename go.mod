@@ -10,7 +10,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gorilla/mux v1.7.4
-	github.com/karlseguin/ccache/v2 v2.0.6
+	github.com/lbryio/ccache/v2 v2.0.7-0.20201103203756-4f264cc4f101
 	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
 	github.com/lbryio/reflector.go v1.1.3-0.20201102194856-d50b409765e7
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec

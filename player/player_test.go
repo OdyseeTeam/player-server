@@ -44,7 +44,7 @@ func getTestPlayer() *Player {
 		Address: "reflector.lbry.com:5568",
 		Timeout: 30 * time.Second,
 	})
-	return NewPlayer(NewHotCache(origin, 1000, 1000), "")
+	return NewPlayer(NewHotCache(origin, 100000000), "")
 }
 
 func TestPlayerResolveStream(t *testing.T) {
@@ -136,13 +136,12 @@ func TestStreamReadHotCache(t *testing.T) {
 	s1, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 0, p.blobSource.sdCache.ItemCount())
+	assert.EqualValues(t, 0, p.blobSource.cache.ItemCount())
 
 	err = s1.PrepareForReading()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 1, p.blobSource.sdCache.ItemCount())
-	assert.EqualValues(t, 0, p.blobSource.chunkCache.ItemCount())
+	assert.EqualValues(t, 1, p.blobSource.cache.ItemCount())
 
 	// Warm up the cache
 	n, err := s1.Seek(4000000, io.SeekStart)
@@ -154,14 +153,17 @@ func TestStreamReadHotCache(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 105, readNum)
 
-	///
+	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
+
+	// Re-get the stream
+
 	s2, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
 	err = s2.PrepareForReading()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 1, p.blobSource.sdCache.ItemCount())
+	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
 
 	for i := 0; i < 2; i++ {
 		n, err := s2.Seek(4000000, io.SeekStart)
@@ -181,7 +183,8 @@ func TestStreamReadHotCache(t *testing.T) {
 		assert.Equal(t, expectedData, readData)
 	}
 
-	assert.EqualValues(t, 1, p.blobSource.chunkCache.ItemCount())
+	// no new blobs should have been fetched because they are all cached
+	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
 
 	n, err = s2.Seek(2000000, io.SeekCurrent)
 	require.NoError(t, err)
@@ -193,11 +196,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	assert.Equal(t, 105, readNum)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 2, p.blobSource.chunkCache.ItemCount())
-
-	// TODO: @andrey what did this test do? I don't understand it
-	//assert.Nil(t, s.chunkGetter.seenChunks[1])
-	//assert.IsType(t, ReadableChunk{}, s.chunkGetter.seenChunks[2])
+	assert.EqualValues(t, 3, p.blobSource.cache.ItemCount())
 }
 
 func TestStreamReadOutOfBounds(t *testing.T) {

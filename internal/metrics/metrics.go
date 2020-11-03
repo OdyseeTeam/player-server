@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"fmt"
+
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -34,16 +36,47 @@ var (
 		Help:      "Total number of bytes streamed out",
 	})
 
-	CacheSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	HotCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: ns,
-		Subsystem: "cache",
-		Name:      "size",
+		Subsystem: "hotcache",
+		Name:      "items_size",
+		Help:      "Size of items in cache",
+	})
+	HotCacheItems = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: ns,
+		Subsystem: "hotcache",
+		Name:      "items_count",
 		Help:      "Number of items in cache",
-	}, []string{"blob_type"})
-	CacheEvictions = promauto.NewCounterVec(prometheus.CounterOpts{
+	})
+	HotCacheHitCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: ns,
-		Subsystem: "cache",
-		Name:      "evictions_total",
-		Help:      "Total number of blobs evicted from the cache",
+		Subsystem: "hotcache",
+		Name:      "hit_total",
+		Help:      "Total number of blobs retrieved from the cache storage",
 	}, []string{"blob_type"})
+	HotCacheMissCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "hotcache",
+		Name:      "miss_total",
+		Help:      "Total number of blobs retrieved from origin rather than cache storage",
+	}, []string{"blob_type"})
+	HotCacheEvictions = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "hotcache",
+		Name:      "evictions_total",
+		Help:      "Total number of items evicted from the cache",
+	})
+
+	playerInfo = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: ns,
+		Subsystem: "hotcache",
+		Name:      "info",
+		Help:      "Info about cache",
+	}, []string{"max_size"})
 )
+
+func PlayerCacheInfo(cacheSize uint64) {
+	playerInfo.With(prometheus.Labels{
+		"max_size": fmt.Sprintf("%d", cacheSize),
+	}).Set(1.0)
+}

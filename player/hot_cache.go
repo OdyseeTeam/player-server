@@ -1,6 +1,8 @@
 package player
 
 import (
+	"bytes"
+	"encoding/gob"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
@@ -8,7 +10,7 @@ import (
 	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/store"
 
-	"github.com/karlseguin/ccache/v2"
+	"github.com/lbryio/ccache/v2"
 )
 
 const longTTL = 365 * 24 * time.Hour
@@ -16,28 +18,22 @@ const longTTL = 365 * 24 * time.Hour
 // HotCache is basically an in-memory BlobStore but it stores the blobs decrypted
 // You have to know which blobs you expect to be sd blobs when using HotCache
 type HotCache struct {
-	// Origin for both sd blobs and content blobs
 	origin store.BlobStore
-	// Content blobs are stored here in decrypted form
-	chunkCache *ccache.Cache
-	// SD blobs are stored here as they are
-	sdCache *ccache.Cache
+	cache  *ccache.Cache
 }
 
-func NewHotCache(origin store.BlobStore, maxChunks, maxSDBlobs int) *HotCache {
+func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
 	h := &HotCache{
-		origin:     store.WithSingleFlight("hotcache", origin),
-		chunkCache: ccache.New(ccache.Configure().MaxSize(int64(maxChunks))),
-		sdCache:    ccache.New(ccache.Configure().MaxSize(int64(maxSDBlobs))),
+		origin: store.WithSingleFlight("hotcache", origin),
+		cache:  ccache.New(ccache.Configure().MaxSize(maxSizeInBytes)),
 	}
 
 	go func() {
 		for {
 			<-time.After(15 * time.Second)
-			metrics.CacheSize.WithLabelValues("chunk").Set(float64(h.chunkCache.ItemCount()))
-			metrics.CacheSize.WithLabelValues("sd").Set(float64(h.sdCache.ItemCount()))
-			metrics.CacheEvictions.WithLabelValues("chunk").Add(float64(h.chunkCache.GetDropped()))
-			metrics.CacheEvictions.WithLabelValues("sd").Add(float64(h.sdCache.GetDropped()))
+			metrics.HotCacheSize.Set(float64(h.cache.Size()))
+			metrics.HotCacheItems.Set(float64(h.cache.ItemCount()))
+			metrics.HotCacheEvictions.Add(float64(h.cache.GetDropped()))
 		}
 	}()
 
@@ -47,11 +43,16 @@ func NewHotCache(origin store.BlobStore, maxChunks, maxSDBlobs int) *HotCache {
 // GetSDBlob gets an sd blob. If it's not in the cache, it is fetched from the origin and cached.
 // store.ErrBlobNotFound is returned if blob is not found.
 func (h *HotCache) GetSDBlob(hash string) (stream.SDBlob, error) {
-	cached := h.sdCache.Get(hash)
+	cached := h.cache.Get(hash)
 	if cached != nil {
-		return cached.Value().(stream.SDBlob), nil
+		metrics.HotCacheHitCount.WithLabelValues("sd").Inc()
+
+		var sd stream.SDBlob
+		err := gob.NewDecoder(bytes.NewBuffer(cached.Value().(sized))).Decode(&sd)
+		return sd, err
 	}
 
+	metrics.HotCacheMissCount.WithLabelValues("sd").Inc()
 	blob, err := h.origin.Get(hash)
 	if err != nil {
 		return stream.SDBlob{}, err
@@ -63,7 +64,13 @@ func (h *HotCache) GetSDBlob(hash string) (stream.SDBlob, error) {
 		return sdBlob, err
 	}
 
-	h.sdCache.Set(hash, sdBlob, longTTL)
+	encoded := new(bytes.Buffer)
+	err = gob.NewEncoder(encoded).Encode(sdBlob)
+	if err != nil {
+		return stream.SDBlob{}, err
+	}
+
+	h.cache.Set(hash, sized(encoded.Bytes()), longTTL)
 
 	return sdBlob, nil
 }
@@ -71,11 +78,13 @@ func (h *HotCache) GetSDBlob(hash string) (stream.SDBlob, error) {
 // GetChunk gets a decrypted stream chunk. If chunk is not cached, it is fetched from origin
 // and decrypted.
 func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) {
-	item := h.chunkCache.Get(hash)
+	item := h.cache.Get(hash)
 	if item != nil {
-		return item.Value().(ReadableChunk), nil
+		metrics.HotCacheHitCount.WithLabelValues("chunk").Inc()
+		return ReadableChunk(item.Value().(sized)), nil
 	}
 
+	metrics.HotCacheMissCount.WithLabelValues("chunk").Inc()
 	blob, err := h.origin.Get(hash)
 	if err != nil {
 		return nil, err
@@ -88,11 +97,15 @@ func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) 
 		return nil, err
 	}
 
-	h.chunkCache.Set(hash, ReadableChunk(chunk), longTTL)
+	h.cache.Set(hash, sized(chunk), longTTL)
 
 	return chunk, nil
 }
 
-func (h *HotCache) IsChunkCached(hash string) bool {
-	return h.chunkCache.Get(hash) != nil
+func (h *HotCache) IsCached(hash string) bool {
+	return h.cache.Get(hash) != nil
 }
+
+type sized []byte
+
+func (s sized) Size() int64 { return int64(len(s)) }

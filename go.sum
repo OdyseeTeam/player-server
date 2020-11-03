@@ -240,8 +240,6 @@ github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7V
 github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88/go.mod h1:3w7q1U84EfirKl04SVQ/s7nPm1ZPhiXd34z40TNz36k=
 github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1 h1:PJPDf8OUfOK1bb/NeTKd4f1QXZItOX389VN3B6qC8ro=
 github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
-github.com/karlseguin/ccache/v2 v2.0.6 h1:jFCLz4bF4EPfuCcvESAgYNClkEb31LV3WzyOwLlFz7w=
-github.com/karlseguin/ccache/v2 v2.0.6/go.mod h1:2BDThcfQMf/c0jnZowt16eW405XIqZPavt+HoYEtcxQ=
 github.com/karlseguin/expect v1.0.2-0.20190806010014-778a5f0c6003 h1:vJ0Snvo+SLMY72r5J4sEfkuE7AFbixEP2qRbEcum/wA=
 github.com/karlseguin/expect v1.0.2-0.20190806010014-778a5f0c6003/go.mod h1:zNBxMY8P21owkeogJELCLeHIt+voOSduHYTFUbwRAV8=
 github.com/karrick/godirwalk v1.16.1 h1:DynhcF+bztK8gooS0+NDJFrdNZjJ3gzVzC545UNA9iw=
@@ -269,6 +267,8 @@ github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/labstack/echo/v4 v4.1.11/go.mod h1:i541M3Fj6f76NZtHSj7TXnyM8n2gaodfvfxNnFqi74g=
 github.com/labstack/gommon v0.3.0/go.mod h1:MULnywXg0yavhxWKc+lOruYdAhDwPK9wf0OL7NoOu+k=
+github.com/lbryio/ccache/v2 v2.0.7-0.20201103203756-4f264cc4f101 h1:agDEgN41Dv271ylLm/FffxmMwQfJ8Xf6I7qlYB3loxw=
+github.com/lbryio/ccache/v2 v2.0.7-0.20201103203756-4f264cc4f101/go.mod h1:mzqKtdEWbiV9k3sXveOPcfx1Xb29ylRqm6yPjn4qqGw=
 github.com/lbryio/chainquery v1.9.0 h1:NfBZ3eKYwD3PqXU/vt+2tF3ox3WUWoW4J5YdEQ0rxw0=
 github.com/lbryio/chainquery v1.9.0/go.mod h1:7G8l7jNtANS1I7fQOvtzbiHsv6qKVmN4codXHc3C4kk=
 github.com/lbryio/errors.go v0.0.0-20180223142025-ad03d3cc6a5c/go.mod h1:muH7wpUqE8hRA3OrYYosw9+Sl681BF9cwcjzE+OCNK8=

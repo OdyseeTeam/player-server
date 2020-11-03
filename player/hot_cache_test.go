@@ -2,6 +2,7 @@ package player
 
 import (
 	"testing"
+	"time"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -13,7 +14,7 @@ import (
 
 func TestHotCache_BlobNotFound(t *testing.T) {
 	origin := store.NewMemStore()
-	hc := NewHotCache(origin, 1000, 1000)
+	hc := NewHotCache(origin, 100000000)
 	assert.NotNil(t, hc)
 
 	_, err := hc.GetSDBlob("test")
@@ -32,7 +33,7 @@ func TestHotCache_Stream(t *testing.T) {
 		origin.Put(b.HashHex(), b)
 	}
 
-	hc := NewHotCache(origin, 1000, 1000)
+	hc := NewHotCache(origin, 100000000)
 
 	var streamSDBlob stream.SDBlob
 	err = streamSDBlob.FromBlob(s[0])
@@ -47,4 +48,19 @@ func TestHotCache_Stream(t *testing.T) {
 	chunk, err := hc.GetChunk(s[chunkIdx+1].HashHex(), streamSDBlob.Key, streamSDBlob.BlobInfos[chunkIdx].IV)
 	require.NoError(t, err)
 	assert.EqualValues(t, data[:20], chunk[:20])
+}
+
+func TestHotCache_Size(t *testing.T) {
+	origin := store.NewMemStore()
+	dataLen := 444
+	data, err := stream.NewBlob([]byte(randomString(dataLen)), stream.NullIV(), stream.NullIV())
+	require.NoError(t, err)
+	origin.Put("hash", data)
+
+	hc := NewHotCache(origin, 100000000)
+	hc.GetChunk("hash", stream.NullIV(), stream.NullIV())
+
+	time.Sleep(10 * time.Millisecond) // give cache worker time to update cache size
+
+	assert.EqualValues(t, dataLen, hc.cache.Size())
 }
