@@ -46,15 +46,16 @@ func (h RequestHandler) writeHeaders(w http.ResponseWriter, r *http.Request, s *
 			playerName = "unknown-player"
 		}
 	}
+
 	header := w.Header()
 	header.Set("Content-Length", fmt.Sprintf("%v", s.Size))
 	header.Set("Content-Type", s.ContentType)
 	header.Set("Cache-Control", "public, max-age=31536000")
 	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
-	w.Header().Set("X-Powered-By", playerName)
-	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
+	header.Set("X-Powered-By", playerName)
+	header.Set("Access-Control-Expose-Headers", "X-Powered-By")
 	if r.URL.Query().Get(ParamDownload) != "" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Claim.Value.GetStream().Source.Name))
+		header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
 	}
 }
 
@@ -117,7 +118,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.player.RetrieveStream(s)
+	err = s.PrepareForReading()
 	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))
 	if err != nil {
 		Logger.Errorf("GET stream %v - retrieval error: %v", uri, err)
@@ -156,7 +157,7 @@ func (h *RequestHandler) HandleHead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.player.RetrieveStream(s)
+	err = s.PrepareForReading()
 	if err != nil {
 		h.processStreamError(w, uri, err)
 		return

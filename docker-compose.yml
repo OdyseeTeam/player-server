@@ -28,13 +28,13 @@ services:
       - "/tmp/player_cache:/tmp/player_cache"
     entrypoint: >
       ./lbrytv_player
-      --cache_size=100GB
       --lbrynet=http://lbrynet:5279
-#      --reflector=docker-host:5567
-      --reflector=reflector.lbry.com:5568
       --bind=0.0.0.0:8080
-      --profile=True
-      --reflector_protocol=http3
+      --disk-cache-dir="/tmp/reflector_player_blobs"
+      --disk-cache-size="1.9TB"
+      --hot-cache-size="10GB"
+      --prefetch=true
+      --upstream-reflector="reflector.lbry.com:5568"
     environment:
       - PLAYER_NAME=my-own-player
     depends_on:

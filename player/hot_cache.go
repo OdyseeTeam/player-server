@@ -1,46 +1,111 @@
 package player
 
 import (
+	"bytes"
+	"encoding/gob"
 	"time"
 
-	"github.com/karlseguin/ccache/v2"
+	"github.com/lbryio/lbrytv-player/internal/metrics"
+
+	"github.com/lbryio/lbry.go/v2/stream"
+	"github.com/lbryio/reflector.go/store"
+
+	"github.com/lbryio/ccache/v2"
 )
 
+const longTTL = 365 * 24 * time.Hour
+
+// HotCache is basically an in-memory BlobStore but it stores the blobs decrypted
+// You have to know which blobs you expect to be sd blobs when using HotCache
 type HotCache struct {
-	cache *ccache.Cache
-	ttl   time.Duration
+	origin store.BlobStore
+	cache  *ccache.Cache
 }
 
-var hc *HotCache
-
-func Init(size int64, ttl time.Duration) *HotCache {
-	if hc == nil {
-		hc = &HotCache{cache: ccache.New(ccache.Configure().MaxSize(size)), ttl: ttl}
+func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
+	h := &HotCache{
+		origin: store.WithSingleFlight("hotcache", origin),
+		cache:  ccache.New(ccache.Configure().MaxSize(maxSizeInBytes)),
 	}
-	return hc
+
+	go func() {
+		for {
+			<-time.After(15 * time.Second)
+			metrics.HotCacheSize.Set(float64(h.cache.Size()))
+			metrics.HotCacheItems.Set(float64(h.cache.ItemCount()))
+			metrics.HotCacheEvictions.Add(float64(h.cache.GetDropped()))
+		}
+	}()
+
+	return h
 }
 
-func (h *HotCache) Get(key string) *reflectedChunk {
-	cachedItem := h.cache.Get(key)
-	if cachedItem != nil && !cachedItem.Expired() {
-		item := cachedItem.Value().(reflectedChunk)
-		return &item
+// GetSDBlob gets an sd blob. If it's not in the cache, it is fetched from the origin and cached.
+// store.ErrBlobNotFound is returned if blob is not found.
+func (h *HotCache) GetSDBlob(hash string) (stream.SDBlob, error) {
+	cached := h.cache.Get(hash)
+	if cached != nil {
+		metrics.HotCacheRequestCount.WithLabelValues("sd", "hit").Inc()
+
+		var sd stream.SDBlob
+		err := gob.NewDecoder(bytes.NewBuffer(cached.Value().(sized))).Decode(&sd)
+		return sd, err
 	}
-	return nil
+
+	metrics.HotCacheRequestCount.WithLabelValues("sd", "miss").Inc()
+	blob, err := h.origin.Get(hash)
+	if err != nil {
+		return stream.SDBlob{}, err
+	}
+
+	var sdBlob stream.SDBlob
+	err = sdBlob.FromBlob(blob)
+	if err != nil {
+		return sdBlob, err
+	}
+
+	encoded := new(bytes.Buffer)
+	err = gob.NewEncoder(encoded).Encode(sdBlob)
+	if err != nil {
+		return stream.SDBlob{}, err
+	}
+
+	h.cache.Set(hash, sized(encoded.Bytes()), longTTL)
+
+	return sdBlob, nil
 }
 
-func (h *HotCache) Set(key string, chunk *reflectedChunk) {
-	h.cache.Set(key, *chunk, h.ttl)
-}
+// GetChunk gets a decrypted stream chunk. If chunk is not cached, it is fetched from origin
+// and decrypted.
+func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) {
+	item := h.cache.Get(hash)
+	if item != nil {
+		metrics.HotCacheRequestCount.WithLabelValues("chunk", "hit").Inc()
+		return ReadableChunk(item.Value().(sized)), nil
+	}
 
-func (h *HotCache) Fetch(key string, fetchFunc func() (interface{}, error)) (*reflectedChunk, error) {
-	fetchedItem, err := h.cache.Fetch(key, h.ttl, fetchFunc)
+	metrics.HotCacheRequestCount.WithLabelValues("chunk", "miss").Inc()
+	blob, err := h.origin.Get(hash)
 	if err != nil {
 		return nil, err
 	}
-	if fetchedItem != nil {
-		item := fetchedItem.Value().(reflectedChunk)
-		return &item, nil
+
+	metrics.InBytes.Add(float64(len(blob)))
+
+	chunk, err := stream.DecryptBlob(blob, key, iv)
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+
+	h.cache.Set(hash, sized(chunk), longTTL)
+
+	return chunk, nil
 }
+
+func (h *HotCache) IsCached(hash string) bool {
+	return h.cache.Get(hash) != nil
+}
+
+type sized []byte
+
+func (s sized) Size() int64 { return int64(len(s)) }

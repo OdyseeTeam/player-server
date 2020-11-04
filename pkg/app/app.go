@@ -10,6 +10,11 @@ import (
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 
+	"github.com/lbryio/lbry.go/v2/extras/errors"
+	"github.com/lbryio/reflector.go/peer"
+	"github.com/lbryio/reflector.go/peer/http3"
+	"github.com/lbryio/reflector.go/store"
+
 	"github.com/gorilla/mux"
 )
 
@@ -20,10 +25,13 @@ type App struct {
 	DefaultHeaders map[string]string
 	Router         *mux.Router
 	Address        string
+	BlobStore      store.BlobStore
 
-	stopChan chan os.Signal
-	stopWait time.Duration
-	server   *http.Server
+	stopChan    chan os.Signal
+	stopWait    time.Duration
+	server      *http.Server
+	peerServer  *peer.Server
+	peer3Server *http3.Server
 }
 
 // Opts holds basic web server settings.
@@ -31,27 +39,33 @@ type Opts struct {
 	Address         string
 	StopWaitSeconds int
 	Listener        *http.Server
+	BlobStore       store.BlobStore
 }
 
 // New returns a new App HTTP server initialized with settings from supplied Opts.
 func New(opts Opts) *App {
 	a := &App{
-		stopChan:       make(chan os.Signal),
-		DefaultHeaders: make(map[string]string),
-		Address:        opts.Address,
+		stopChan: make(chan os.Signal),
+		DefaultHeaders: map[string]string{
+			"Access-Control-Allow-Origin": "*",
+			"Server":                      "lbrytv media player",
+		},
+		Address:   opts.Address,
+		BlobStore: opts.BlobStore,
+		stopWait:  15 * time.Second,
 	}
+
 	if opts.StopWaitSeconds != 0 {
 		a.stopWait = time.Second * time.Duration(opts.StopWaitSeconds)
-	} else {
-		a.stopWait = time.Second * 15
 	}
 
-	a.DefaultHeaders["Server"] = "lbrytv media player"
-	a.DefaultHeaders["Access-Control-Allow-Origin"] = "*"
-
 	a.Router = a.newRouter()
-
 	a.server = a.newServer()
+
+	if a.BlobStore != nil {
+		a.peerServer = peer.NewServer(a.BlobStore)
+		a.peer3Server = http3.NewServer(a.BlobStore)
+	}
 
 	return a
 }
@@ -93,6 +107,20 @@ func (a *App) Start() {
 			}
 		}
 	}()
+
+	if a.peerServer != nil {
+		err := a.peerServer.Start(":5567")
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			Logger.Fatal(err)
+		}
+	}
+
+	if a.peer3Server != nil {
+		err := a.peer3Server.Start(":5568")
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			Logger.Fatal(err)
+		}
+	}
 }
 
 // ServeUntilShutdown blocks until a shutdown signal is received, then shuts down the HTTP server.
@@ -107,6 +135,14 @@ func (a *App) ServeUntilShutdown() {
 		Logger.Error("error shutting down http server: ", err)
 	} else {
 		Logger.Info("http server shut down")
+	}
+
+	if a.peerServer != nil {
+		a.peerServer.Shutdown()
+	}
+
+	if a.peer3Server != nil {
+		a.peer3Server.Shutdown()
 	}
 }
 

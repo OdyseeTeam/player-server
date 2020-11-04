@@ -2,13 +2,12 @@ package player
 
 import (
 	"encoding/hex"
-	"fmt"
 	"io"
 	"math/rand"
-	"os"
-	"path"
 	"testing"
+	"time"
 
+	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,8 +25,8 @@ type knownStream struct {
 }
 
 var knownStreams = []knownStream{
-	knownStream{uri: streamURL, size: 158433824, blobsNum: 77},
-	knownStream{uri: knownSizeStreamURL, size: 128791189, blobsNum: 63},
+	{uri: streamURL, size: 158433824, blobsNum: 77},
+	{uri: knownSizeStreamURL, size: 128791189, blobsNum: 63},
 }
 
 func randomString(n int) string {
@@ -40,28 +39,36 @@ func randomString(n int) string {
 	return string(b)
 }
 
+func getTestPlayer() *Player {
+	origin := http3.NewStore(http3.StoreOpts{
+		Address: "reflector.lbry.com:5568",
+		Timeout: 30 * time.Second,
+	})
+	return NewPlayer(NewHotCache(origin, 100000000), "")
+}
+
 func TestPlayerResolveStream(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream("bolivians-flood-streets-protest-military-coup#389ba57c9f76b859c2763c4b9a419bd78b1a8dd0")
 	require.NoError(t, err)
-	err = p.RetrieveStream(s)
+	err = s.PrepareForReading()
 	require.NoError(t, err)
 }
 
 func TestPlayerResolveStreamNotFound(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream(randomString(20))
 	assert.Equal(t, errStreamNotFound, err)
 	assert.Nil(t, s)
 }
 
 func TestStreamSeek(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 
 	for _, stream := range knownStreams {
 		s, err := p.ResolveStream(stream.uri)
 		require.NoError(t, err)
-		err = p.RetrieveStream(s)
+		err = s.PrepareForReading()
 		require.NoError(t, err)
 
 		// Seeking to the end
@@ -98,43 +105,12 @@ func TestStreamSeek(t *testing.T) {
 	}
 }
 
-func TestBlobCalculator(t *testing.T) {
-	type testInput struct {
-		size, offset int64
-		readLen      int
-	}
-	type testCase struct {
-		testInput  testInput
-		testOutput chunkCalculator
-	}
-
-	// size: 128791189, has blobs: 62 + padding, last blob index: 61
-	testCases := []testCase{
-		testCase{testInput{158433824, 0, 512}, chunkCalculator{158433824, 0, 0, 0, 0, 512, 0}},
-		testCase{testInput{158433824, 2450019, 64000}, chunkCalculator{158433824, 2450019, 1, 1, 352867 + 1, 64000, 352868}},
-		testCase{testInput{128791189, 128791089, 99}, chunkCalculator{128791189, 128791089, 61, 61, 864817 + 61, 99, 864878}},
-		testCase{testInput{128791189, 0, 128791189}, chunkCalculator{0, 128791189, 0, 61, 0, 864978, 0}},
-		testCase{testInput{1e7, 2097149, 43}, chunkCalculator{2097149, 43, 0, 1, 2097149, 41, 0}},
-	}
-
-	for n, row := range testCases {
-		t.Run(fmt.Sprintf("row:%v", n), func(t *testing.T) {
-			bc := newChunkCalculator(row.testInput.size, row.testInput.offset, row.testInput.readLen)
-			assert.Equal(t, row.testOutput.FirstChunkIdx, bc.FirstChunkIdx)
-			assert.Equal(t, row.testOutput.LastChunkIdx, bc.LastChunkIdx)
-			assert.Equal(t, row.testOutput.FirstChunkOffset, bc.FirstChunkOffset)
-			assert.Equal(t, row.testOutput.LastChunkReadLen, bc.LastChunkReadLen)
-			assert.Equal(t, row.testOutput.LastChunkOffset, bc.LastChunkOffset)
-		})
-	}
-}
-
 func TestStreamRead(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	err = s.PrepareForReading()
 	require.NoError(t, err)
 
 	n, err := s.Seek(4000000, io.SeekStart)
@@ -155,40 +131,47 @@ func TestStreamRead(t *testing.T) {
 }
 
 func TestStreamReadHotCache(t *testing.T) {
-	cache, err := InitLRUCache(&LRUCacheOpts{Path: path.Join(os.TempDir(), "blob_cache")})
-	require.NoError(t, err)
-	p := NewPlayer(&Opts{LocalCache: cache, EnablePrefetch: false, ReflectorProtocol: "http3"})
+	p := getTestPlayer()
 
-	s, err := p.ResolveStream(streamURL)
+	s1, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	assert.EqualValues(t, 0, p.blobSource.cache.ItemCount())
+
+	err = s1.PrepareForReading()
 	require.NoError(t, err)
+
+	assert.EqualValues(t, 1, p.blobSource.cache.ItemCount())
 
 	// Warm up the cache
-	n, err := s.Seek(4000000, io.SeekStart)
+	n, err := s1.Seek(4000000, io.SeekStart)
 	require.NoError(t, err)
 	require.EqualValues(t, 4000000, n)
 
 	readData := make([]byte, 105)
-	readNum, err := s.Read(readData)
+	readNum, err := s1.Read(readData)
 	require.NoError(t, err)
 	assert.Equal(t, 105, readNum)
 
-	///
-	s, err = p.ResolveStream(streamURL)
+	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
+
+	// Re-get the stream
+
+	s2, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	err = s2.PrepareForReading()
 	require.NoError(t, err)
+
+	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
 
 	for i := 0; i < 2; i++ {
-		n, err := s.Seek(4000000, io.SeekStart)
+		n, err := s2.Seek(4000000, io.SeekStart)
 		require.NoError(t, err)
 		require.EqualValues(t, 4000000, n)
 
 		readData := make([]byte, 105)
-		readNum, err := s.Read(readData)
+		readNum, err := s2.Read(readData)
 		require.NoError(t, err)
 		assert.Equal(t, 105, readNum)
 		expectedData, err := hex.DecodeString(
@@ -200,28 +183,28 @@ func TestStreamReadHotCache(t *testing.T) {
 		assert.Equal(t, expectedData, readData)
 	}
 
-	assert.IsType(t, &reflectedChunk{}, s.chunkGetter.seenChunks[1])
+	// no new blobs should have been fetched because they are all cached
+	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
 
-	n, err = s.Seek(2000000, io.SeekCurrent)
+	n, err = s2.Seek(2000000, io.SeekCurrent)
 	require.NoError(t, err)
 	require.EqualValues(t, 6000105, n)
 
 	readData = make([]byte, 105)
-	readNum, err = s.Read(readData)
+	readNum, err = s2.Read(readData)
 	require.NoError(t, err)
 	assert.Equal(t, 105, readNum)
 	require.NoError(t, err)
 
-	assert.Nil(t, s.chunkGetter.seenChunks[1])
-	assert.IsType(t, &reflectedChunk{}, s.chunkGetter.seenChunks[2])
+	assert.EqualValues(t, 3, p.blobSource.cache.ItemCount())
 }
 
 func TestStreamReadOutOfBounds(t *testing.T) {
-	p := NewPlayer(nil)
+	p := getTestPlayer()
 	s, err := p.ResolveStream(streamURL)
 	require.NoError(t, err)
 
-	err = p.RetrieveStream(s)
+	err = s.PrepareForReading()
 	require.NoError(t, err)
 
 	n, err := s.Seek(4000000, io.SeekStart)
