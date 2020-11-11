@@ -2,14 +2,20 @@ package player
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"math/rand"
+	"path/filepath"
 	"testing"
 	"time"
 
+	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/reflector.go/peer/http3"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ybbus/jsonrpc"
 )
 
 // An MP4 file, size: 158433824 bytes, blobs: 77
@@ -45,6 +51,17 @@ func getTestPlayer() *Player {
 		Timeout: 30 * time.Second,
 	})
 	return NewPlayer(NewHotCache(origin, 100000000), "")
+}
+
+func loadResponseFixture(t *testing.T, f string) jsonrpc.RPCResponse {
+	var r jsonrpc.RPCResponse
+
+	absPath, _ := filepath.Abs(filepath.Join("./testdata", f))
+	rawJSON, err := ioutil.ReadFile(absPath)
+	require.NoError(t, err)
+	err = json.Unmarshal(rawJSON, &r)
+	require.NoError(t, err)
+	return r
 }
 
 func TestPlayerResolveStream(t *testing.T) {
@@ -128,6 +145,26 @@ func TestStreamRead(t *testing.T) {
 			"A025C284EE37D8FEEA2EA84B76B9A22D3")
 	require.NoError(t, err)
 	assert.Equal(t, expectedData, readData)
+}
+
+func TestStreamFilenameOldMime(t *testing.T) {
+	r := loadResponseFixture(t, "old_mime.json")
+	res := &ljsonrpc.ResolveResponse{}
+	ljsonrpc.Decode(r.Result, res)
+	uri := "lbry://@Deterrence-Dispensed#2/Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed#1"
+	claim := (*res)[uri]
+	s := NewStream(&Player{}, uri, &claim)
+	assert.Equal(t, "ivans100diy30rdar-15magazinev10-deterrencedispensed.zip", s.Filename())
+}
+
+func TestStreamFilenameNew(t *testing.T) {
+	r := loadResponseFixture(t, "new_stream.json")
+	res := &ljsonrpc.ResolveResponse{}
+	ljsonrpc.Decode(r.Result, res)
+	uri := "what"
+	claim := (*res)[uri]
+	s := NewStream(&Player{}, uri, &claim)
+	assert.Equal(t, "1 dog and chicken.mp4", s.Filename())
 }
 
 func TestStreamReadHotCache(t *testing.T) {

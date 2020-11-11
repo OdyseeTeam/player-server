@@ -1,0 +1,109 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "lbry://@Deterrence-Dispensed#2/Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed#1": {
+      "address": "bL5VaySGGboEDSydxTcfNtdiV25LKi4Tph",
+      "amount": "0.0001",
+      "canonical_url": "lbry://@Deterrence-Dispensed#2/Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed#1",
+      "claim_id": "1587a0f5aad617b8a2a86677d446a275c087db75",
+      "claim_op": "update",
+      "confirmations": 246875,
+      "height": 615004,
+      "is_channel_signature_valid": true,
+      "is_my_output": false,
+      "meta": {
+        "activation_height": 538565,
+        "creation_height": 538565,
+        "creation_timestamp": 1553229472,
+        "effective_amount": "292.90047345",
+        "expiration_height": 2640965,
+        "is_controlling": true,
+        "reposted": 1,
+        "support_amount": "292.90037345",
+        "take_over_height": 538565,
+        "trending_global": 0.0,
+        "trending_group": 0,
+        "trending_local": 0.0,
+        "trending_mixed": 0.042904097586870193
+      },
+      "name": "Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed",
+      "normalized_name": "ivans100diy30rdar-15magazinev10-deterrencedispensed",
+      "nout": 0,
+      "permanent_url": "lbry://Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed#1587a0f5aad617b8a2a86677d446a275c087db75",
+      "protobuf": "01979d90ed629bbf932703b2be3226179270262022d96dd436e9de80f8c8dd68d5d86cf05273016ec74e6acdad298e35f4a7dbe320404b6e749a85db27ee6c2c39da322ba102acf7d574bd62bb9cd0be9cc3e935da0a5a0a43220f6170706c69636174696f6e2f7a6970323039a6077029e9b349b572ed8d187a08c4bbf85f4bdcf63d4b61ef9833ea07703cab72bdb9322a8f9fcb58f6bd5e8b238a1a0d5075626c696320446f6d61696e28feada6e505423231303025204449592041522d313520333020726f756e64204d6167617a696e65202d206279204976616e54686554726f6c6c4ab502446574657272656e63652044697370656e7365642070726573656e74733a0a0a4976616e7320313030252044495920333072642041522d3135206d6167617a696e65202d2052656c656173652056657273696f6e20312e300a0a57697468207468652068656c70206f662074686520636f6e74656e747320696e20746869732072656c6561736520796f75206172652061626c6520746f206d616b65206120333072642041522d3135206d6167617a696e6520636f6d706c6574656c792066726f6d20736372617463682e0a0a506f7374206578616d706c6573206f6620796f757220776f726b2c207175657374696f6e7320616e642069737375657320746f3a0a0a68747470733a2f2f6b6579626173652e696f2f7465616d2f6465745f646973700a0a4c6976652046726565206f722044696552302a2e68747470733a2f2f737065652e63682f662f6f4845766233417a474d6f65337144476d667033506a72332e6a706762020801",
+      "short_url": "lbry://Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed#1",
+      "signing_channel": {
+        "address": "bQbEbsV3nNPfg1YBQi9BYZ1jTbo4HXekaZ",
+        "amount": "1.0001",
+        "canonical_url": "lbry://@Deterrence-Dispensed#2",
+        "claim_id": "2220267092172632beb2032793bf9b62ed909d97",
+        "claim_op": "update",
+        "confirmations": 232695,
+        "has_signing_key": false,
+        "height": 629184,
+        "meta": {
+          "activation_height": 537744,
+          "claims_in_channel": 113,
+          "creation_height": 537744,
+          "creation_timestamp": 1553098369,
+          "effective_amount": "5395.0901",
+          "expiration_height": 2640144,
+          "is_controlling": true,
+          "reposted": 0,
+          "support_amount": "5394.09",
+          "take_over_height": 537744,
+          "trending_global": 0.0,
+          "trending_group": 0,
+          "trending_local": 0.0,
+          "trending_mixed": 0.0
+        },
+        "name": "@Deterrence-Dispensed",
+        "normalized_name": "@deterrence-dispensed",
+        "nout": 0,
+        "permanent_url": "lbry://@Deterrence-Dispensed#2220267092172632beb2032793bf9b62ed909d97",
+        "protobuf": "0012e2010a583056301006072a8648ce3d020106052b8104000a0342000430223ea16b725b1c64bea292b5dd80375a7e4e0175aa20fd5d59de0c70dc2afbd4f71112de773b93623411bf46ead2d5316729064f2de3d180da6d07fb025fe5121b6976616e74686574726f6c6c4070726f746f6e6d61696c2e636f6d1a2b68747470733a2f2f6976616e74686574726f6c6c2e6b6579626173652e7075622f696e6465782e68746d6c223c2a3a68747470733a2f2f737065652e63682f392f64663364613166372d313865332d343733372d613939322d3339653631656136613362392e706e674214446574657272656e63652044697370656e7365644a5f5765206174204465745f4469737020776f726b20746f2073707265616420746563686e6963616c20696e666f726d6174696f6e2061626f75742074686520646566656e73652061727469636c657320776520636172652061626f75742e2020523c2a3a68747470733a2f2f737065652e63682f632f61656534653337352d623735362d343561312d623762662d6565323065346438396262642e706e67",
+        "short_url": "lbry://@Deterrence-Dispensed#2",
+        "timestamp": 1567779048,
+        "txid": "c604c149c7625fa96b955ae53da7b90101fe7247433af4a8d3d729fb8c055ebb",
+        "type": "claim",
+        "value": {
+          "cover": {
+            "url": "https://spee.ch/9/df3da1f7-18e3-4737-a992-39e61ea6a3b9.png"
+          },
+          "description": "We at Det_Disp work to spread technical information about the defense articles we care about.  ",
+          "email": "ivanthetroll@protonmail.com",
+          "public_key": "3056301006072a8648ce3d020106052b8104000a0342000430223ea16b725b1c64bea292b5dd80375a7e4e0175aa20fd5d59de0c70dc2afbd4f71112de773b93623411bf46ead2d5316729064f2de3d180da6d07fb025fe5",
+          "public_key_id": "bWAngrEkxeigFt521ERQ2xaKYbSpyikm9o",
+          "thumbnail": {
+            "url": "https://spee.ch/c/aee4e375-b756-45a1-b7bf-ee20e4d89bbd.png"
+          },
+          "title": "Deterrence Dispensed",
+          "website_url": "https://ivanthetroll.keybase.pub/index.html"
+        },
+        "value_type": "channel"
+      },
+      "timestamp": 1565498373,
+      "txid": "8a879bfa785b589458ca5361f35272a97fa9a9a78b05812485fd3a138af0d46f",
+      "type": "claim",
+      "value": {
+        "description": "Deterrence Dispensed presents:\n\nIvans 100% DIY 30rd AR-15 magazine - Release Version 1.0\n\nWith the help of the contents in this release you are able to make a 30rd AR-15 magazine completely from scratch.\n\nPost examples of your work, questions and issues to:\n\nhttps://keybase.io/team/det_disp\n\nLive Free or Die",
+        "languages": [
+          "en"
+        ],
+        "license": "Public Domain",
+        "release_time": "1554618110",
+        "source": {
+          "media_type": "application/zip",
+          "sd_hash": "39a6077029e9b349b572ed8d187a08c4bbf85f4bdcf63d4b61ef9833ea07703cab72bdb9322a8f9fcb58f6bd5e8b238a"
+        },
+        "stream_type": "binary",
+        "thumbnail": {
+          "url": "https://spee.ch/f/oHEvb3AzGMoe3qDGmfp3Pjr3.jpg"
+        },
+        "title": "100% DIY AR-15 30 round Magazine - by IvanTheTroll"
+      },
+      "value_type": "stream"
+    }
+  },
+  "id": 0
+}

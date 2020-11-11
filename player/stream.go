@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"math"
+	"mime"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
@@ -20,35 +21,45 @@ type Stream struct {
 	URI         string
 	Size        uint64
 	ContentType string
+	hash        string
 
 	player         *Player
 	claim          *ljsonrpc.Claim
+	source         *pb.Source
 	resolvedStream *pb.Stream
-	hash           string
 	sdBlob         *stream.SDBlob
 	seekOffset     int64
 }
 
 func NewStream(p *Player, uri string, claim *ljsonrpc.Claim) *Stream {
 	stream := claim.Value.GetStream()
+	source := stream.GetSource()
 	return &Stream{
 		URI:         uri,
-		ContentType: patchMediaType(stream.Source.MediaType),
-		Size:        stream.GetSource().GetSize(),
+		ContentType: patchMediaType(source.MediaType),
+		Size:        source.GetSize(),
 
 		player:         p,
 		claim:          claim,
+		source:         source,
 		resolvedStream: stream,
-		hash:           hex.EncodeToString(stream.Source.SdHash),
+		hash:           hex.EncodeToString(source.SdHash),
 	}
 }
 
+// Filename detects name of the original file, suitable for saving under on the filesystem.
 func (s *Stream) Filename() string {
-	filename := s.claim.Value.GetStream().GetSource().GetName()
-	if filename == "" {
-		return "video.mp4"
+	name := s.source.GetName()
+	if name != "" {
+		return name
 	}
-	return filename
+	name = s.claim.NormalizedName
+	exts, err := mime.ExtensionsByType(s.ContentType)
+	if err != nil {
+		return name
+	}
+	ext := exts[0]
+	return name + ext
 }
 
 // PrepareForReading downloads stream description from the reflector and tries to determine stream size
@@ -71,8 +82,8 @@ func (s *Stream) setSize(blobs []stream.BlobInfo) {
 		return
 	}
 
-	if s.claim.Value.GetStream().GetSource().GetSize() > 0 {
-		s.Size = s.claim.Value.GetStream().GetSource().GetSize()
+	if s.source.GetSize() > 0 {
+		s.Size = s.source.GetSize()
 	}
 
 	size, err := s.claim.GetStreamSizeByMagic()

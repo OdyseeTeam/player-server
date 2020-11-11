@@ -1,0 +1,65 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "what": {
+      "address": "bYB1RNSVXr7X3sHGVa7D6s8jWH4hFip3vG",
+      "amount": "0.009",
+      "canonical_url": "lbry://what#74",
+      "claim_id": "74f7d9a8748fec1754476c23840ce326d108f748",
+      "claim_op": "create",
+      "confirmations": 2924,
+      "height": 858955,
+      "is_my_output": false,
+      "meta": {
+        "activation_height": 861233,
+        "creation_height": 858955,
+        "creation_timestamp": 1604641226,
+        "effective_amount": "28.51278745",
+        "expiration_height": 2961355,
+        "is_controlling": true,
+        "reposted": 0,
+        "support_amount": "28.50378745",
+        "take_over_height": 861233,
+        "trending_global": 0.0,
+        "trending_group": 0,
+        "trending_local": 0.0,
+        "trending_mixed": 0.004628309514373541
+      },
+      "name": "what",
+      "normalized_name": "what",
+      "nout": 0,
+      "permanent_url": "lbry://what#74f7d9a8748fec1754476c23840ce326d108f748",
+      "protobuf": "000aa3010a8a010a3026fe6587abef1ad3130d1f3c4f476dcbe1be2814d7f5058260f4542fe230a225dc4abdffb2da94e0e4d08b702389d01912153120646f6720616e6420636869636b656e2e6d703418a5ab1c2209766964656f2f6d70343230c8bb048ebdee70c542987cd5769b6043bbf3164fba98ab9bd792b4d952a3fd824a766fbb0b59edfaf81324c06e45ca4a1a044e6f6e65288cc393fd055a0808bc0310d005180842045768617452282a2668747470733a2f2f737065652e63682f392f626663363833316164633239343135352e6a706762020801",
+      "short_url": "lbry://what#74",
+      "timestamp": 1604641226,
+      "txid": "001f9d09fb20849d38641421a6686ac4c7778e4c3042397bb319a592ad38f154",
+      "type": "claim",
+      "value": {
+        "languages": [
+          "en"
+        ],
+        "license": "None",
+        "release_time": "1604641164",
+        "source": {
+          "hash": "26fe6587abef1ad3130d1f3c4f476dcbe1be2814d7f5058260f4542fe230a225dc4abdffb2da94e0e4d08b702389d019",
+          "media_type": "video/mp4",
+          "name": "1 dog and chicken.mp4",
+          "sd_hash": "c8bb048ebdee70c542987cd5769b6043bbf3164fba98ab9bd792b4d952a3fd824a766fbb0b59edfaf81324c06e45ca4a",
+          "size": "464293"
+        },
+        "stream_type": "video",
+        "thumbnail": {
+          "url": "https://spee.ch/9/bfc6831adc294155.jpg"
+        },
+        "title": "What",
+        "video": {
+          "duration": 8,
+          "height": 720,
+          "width": 444
+        }
+      },
+      "value_type": "stream"
+    }
+  },
+  "id": 0
+}
