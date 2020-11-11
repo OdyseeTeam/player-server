@@ -58,8 +58,7 @@ func (s *Stream) Filename() string {
 	if err != nil {
 		return name
 	}
-	ext := exts[0]
-	return name + ext
+	return name + exts[0]
 }
 
 // PrepareForReading downloads stream description from the reflector and tries to determine stream size
