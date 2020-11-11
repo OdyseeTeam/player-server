@@ -8,20 +8,21 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - go-mod-cache-{{ checksum "go.sum" }}
+            - go-mod-cache-v2-{{ checksum "go.sum" }}
       - run: make test_circleci
       - run: git reset --hard HEAD
       - save_cache:
-          key: go-mod-cache-{{ checksum "go.sum" }}
+          key: go-mod-cache-v2-{{ checksum "go.sum" }}
           paths:
-            - /go/pkg
-            - /go/src
-            - /go/bin
+            - "/go/pkg/mod"
   build_snapshot:
     docker:
       - image: circleci/golang:1.15
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - go-mod-cache-v2-{{ checksum "go.sum" }}
       - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser
       - setup_remote_docker
       - run:
@@ -32,6 +33,9 @@ jobs:
       - image: circleci/golang:1.15
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - go-mod-cache-v2-{{ checksum "go.sum" }}
       - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser
       - setup_remote_docker
       - run:
