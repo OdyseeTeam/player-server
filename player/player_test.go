@@ -178,7 +178,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	err = s1.PrepareForReading()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 1, p.blobSource.cache.ItemCount())
+	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount()) // 2 because it gets the sd blob and the last blob when setting stream size
 
 	// Warm up the cache
 	n, err := s1.Seek(4000000, io.SeekStart)
@@ -190,7 +190,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 105, readNum)
 
-	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
+	assert.EqualValues(t, 3, p.blobSource.cache.ItemCount())
 
 	// Re-get the stream
 
@@ -200,7 +200,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	err = s2.PrepareForReading()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
+	assert.EqualValues(t, 3, p.blobSource.cache.ItemCount())
 
 	for i := 0; i < 2; i++ {
 		n, err := s2.Seek(4000000, io.SeekStart)
@@ -221,7 +221,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	}
 
 	// no new blobs should have been fetched because they are all cached
-	assert.EqualValues(t, 2, p.blobSource.cache.ItemCount())
+	assert.EqualValues(t, 3, p.blobSource.cache.ItemCount())
 
 	n, err = s2.Seek(2000000, io.SeekCurrent)
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestStreamReadHotCache(t *testing.T) {
 	assert.Equal(t, 105, readNum)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, 3, p.blobSource.cache.ItemCount())
+	assert.EqualValues(t, 4, p.blobSource.cache.ItemCount())
 }
 
 func TestStreamReadOutOfBounds(t *testing.T) {

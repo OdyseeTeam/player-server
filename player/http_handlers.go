@@ -126,7 +126,6 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		h.processStreamError(w, uri, err)
 		return
 	}
-	Logger.Debugf("GET stream %v", uri)
 
 	h.writeHeaders(w, r, s)
 

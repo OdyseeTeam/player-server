@@ -71,34 +71,37 @@ func (s *Stream) PrepareForReading() error {
 
 	s.sdBlob = &sdBlob
 
-	s.setSize(sdBlob.BlobInfos)
+	s.setSize()
 
 	return nil
 }
 
-func (s *Stream) setSize(blobs []stream.BlobInfo) {
+func (s *Stream) setSize() {
 	if s.Size > 0 {
 		return
 	}
 
 	if s.source.GetSize() > 0 {
 		s.Size = s.source.GetSize()
+		return
 	}
 
-	size, err := s.claim.GetStreamSizeByMagic()
+	size, err := s.getStreamSizeFromLastBlobSize()
+	if err == nil {
+		s.Size = size
+		return
+	}
 
-	if err != nil {
-		Logger.Infof("couldn't figure out stream %v size by magic: %v", s.URI, err)
-		for _, blob := range blobs {
-			if blob.Length == stream.MaxBlobSize {
-				size += MaxChunkSize
-			} else {
-				size += uint64(blob.Length - 1)
-			}
+	Logger.Infof("couldn't figure out stream %v size from last chunk: %v", s.URI, err)
+	for _, blob := range s.sdBlob.BlobInfos {
+		if blob.Length == stream.MaxBlobSize {
+			size += MaxChunkSize
+		} else {
+			size += uint64(blob.Length - 1)
 		}
-		// last padding is unguessable
-		size -= 16
 	}
+	// last padding is unguessable
+	size -= 16
 
 	s.Size = size
 }
@@ -219,4 +222,25 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 			return
 		}
 	}
+}
+
+// getStreamSizeFromLastChunkSize gets the exact size of a stream from the sd blob and the last chunk
+func (s *Stream) getStreamSizeFromLastBlobSize() (uint64, error) {
+	if s.claim.Value.GetStream() == nil {
+		return 0, errors.New("claim is not a stream")
+	}
+
+	numChunks := len(s.sdBlob.BlobInfos) - 2
+	if numChunks <= 0 {
+		return 0, nil
+	}
+
+	lastBlobInfo := s.sdBlob.BlobInfos[numChunks]
+
+	lastChunk, err := s.player.blobSource.GetChunk(hex.EncodeToString(lastBlobInfo.BlobHash), s.sdBlob.Key, lastBlobInfo.IV)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(MaxChunkSize)*uint64(numChunks) + uint64(len(lastChunk)), nil
 }
