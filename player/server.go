@@ -13,7 +13,7 @@ import (
 	"github.com/aybabtme/iocontrol"
 )
 
-var ThrottleScale float64
+var ThrottleScale float64 = 1.5
 
 // CopyN copies n bytes (or until an error) from src to dst.
 // It returns the number of bytes copied and the earliest
