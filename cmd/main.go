@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/lbryio/lbrytv-player/internal/config"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 	"github.com/lbryio/lbrytv-player/internal/version"
 	"github.com/lbryio/lbrytv-player/pkg/app"
@@ -61,6 +62,11 @@ func init() {
 	rootCmd.Flags().StringVar(&diskCacheDir, "disk-cache-dir", "", "enable disk cache, storing blobs in dir")
 	rootCmd.Flags().StringVar(&diskCacheSize, "disk-cache-size", "100MB", "max size of disk cache: 16GB, 500MB, etc.")
 	rootCmd.Flags().StringVar(&hotCacheSize, "hot-cache-size", "", "enable hot cache for decrypted blobs and set max size: 16GB, 500MB, etc")
+
+	//Live Config
+	rootCmd.Flags().StringVar(&config.UserName, "config-username", "lbry", "Username to access the config endpoint with")
+	rootCmd.Flags().StringVar(&config.Password, "config-password", "lbry", "Password to access the config endpoint with")
+	rootCmd.Flags().Float64Var(&player.ThrottleScale, "throttle-scale", 1.5, "Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s")
 }
 
 func run(cmd *cobra.Command, args []string) {
@@ -78,6 +84,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	player.InstallPlayerRoutes(a.Router, p)
 	metrics.InstallRoute(a.Router)
+	config.InstallConfigRoute(a.Router)
 	if enableProfile {
 		player.InstallProfilingRoutes(a.Router)
 	}

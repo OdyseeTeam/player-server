@@ -8,7 +8,12 @@ import (
 	"net/textproto"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/aybabtme/iocontrol"
 )
+
+var ThrottleScale float64
 
 // CopyN copies n bytes (or until an error) from src to dst.
 // It returns the number of bytes copied and the earliest
@@ -126,7 +131,8 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 	w.WriteHeader(code)
 
 	if r.Method != http.MethodHead {
-		io.CopyN(w, sendContent, sendSize)
+		throttledW := iocontrol.ThrottledWriter(w, int(ThrottleScale*iocontrol.MiB), 1*time.Second)
+		io.CopyN(throttledW, sendContent, sendSize)
 	}
 }
 

@@ -6,6 +6,8 @@ replace github.com/btcsuite/btcd => github.com/lbryio/lbrycrd.go v0.0.0-20200203
 
 require (
 	github.com/aws/aws-sdk-go v1.23.19 // indirect
+	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
+	github.com/benbjohnson/clock v1.0.3 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.5.1
