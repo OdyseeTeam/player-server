@@ -14,6 +14,7 @@ import (
 )
 
 var ThrottleScale float64 = 1.5
+var ThrottleSwitch = true
 
 // CopyN copies n bytes (or until an error) from src to dst.
 // It returns the number of bytes copied and the earliest
@@ -131,8 +132,13 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 	w.WriteHeader(code)
 
 	if r.Method != http.MethodHead {
-		throttledW := iocontrol.ThrottledWriter(w, int(ThrottleScale*iocontrol.MiB), 1*time.Second)
-		io.CopyN(throttledW, sendContent, sendSize)
+		if ThrottleSwitch {
+			throttledW := iocontrol.ThrottledWriter(w, int(ThrottleScale*iocontrol.MiB), 1*time.Second)
+			io.CopyN(throttledW, sendContent, sendSize)
+		} else {
+			io.CopyN(w, sendContent, sendSize)
+		}
+
 	}
 }
 

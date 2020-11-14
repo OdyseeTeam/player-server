@@ -21,13 +21,25 @@ func InstallConfigRoute(r *mux.Router) {
 //http://localhost:8080/config/throttle?scale=1.2    //postman to add basic auth or temporarily remove basic auth
 func throttle() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		enabledStr := r.FormValue("enabled")
+		if enabledStr != "" {
+			enabled, err := strconv.ParseBool(enabledStr)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "failed to parse enabled %s", enabledStr)
+			} else {
+				player.ThrottleSwitch = enabled
+			}
+		}
 		scaleStr := r.FormValue("scale")
-		scale, err := strconv.ParseFloat(scaleStr, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "failed to parse scale %s", scaleStr)
-		} else {
-			player.ThrottleScale = scale
+		if scaleStr != "" {
+			scale, err := strconv.ParseFloat(scaleStr, 64)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "failed to parse scale %s", scaleStr)
+			} else {
+				player.ThrottleScale = scale
+			}
 		}
 	})
 }
