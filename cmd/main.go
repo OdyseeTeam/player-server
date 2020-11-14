@@ -67,6 +67,7 @@ func init() {
 	rootCmd.Flags().StringVar(&config.UserName, "config-username", "lbry", "Username to access the config endpoint with")
 	rootCmd.Flags().StringVar(&config.Password, "config-password", "lbry", "Password to access the config endpoint with")
 	rootCmd.Flags().Float64Var(&player.ThrottleScale, "throttle-scale", 1.5, "Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s")
+	rootCmd.Flags().BoolVar(&player.ThrottleSwitch, "throttle-enabled", true, "Enables throttling")
 }
 
 func run(cmd *cobra.Command, args []string) {
