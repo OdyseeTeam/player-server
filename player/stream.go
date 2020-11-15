@@ -3,12 +3,13 @@ package player
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"math"
-	"mime"
 	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
+	"github.com/lbryio/lbrytv-player/pkg/mime"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -54,11 +55,12 @@ func (s *Stream) Filename() string {
 		return name
 	}
 	name = s.claim.NormalizedName
-	exts, err := mime.ExtensionsByType(s.ContentType)
-	if err != nil {
+	// exts, err := mime.ExtensionsByType(s.ContentType)
+	ext := mime.GetExtensionByType(s.ContentType)
+	if ext == "" {
 		return name
 	}
-	return name + exts[0]
+	return fmt.Sprintf("%v.%v", name, ext)
 }
 
 // PrepareForReading downloads stream description from the reflector and tries to determine stream size
