@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/lbryio/ccache/v2"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 	"github.com/lbryio/lbrytv-player/pkg/paid"
@@ -18,6 +19,7 @@ type Player struct {
 	lbrynetClient *ljsonrpc.Client
 	blobSource    *HotCache
 	prefetch      bool
+	resolveCache  *ccache.Cache
 }
 
 // NewPlayer initializes an instance with optional BlobStore.
@@ -29,6 +31,7 @@ func NewPlayer(hotCache *HotCache, lbrynetAddress string) *Player {
 	return &Player{
 		lbrynetClient: ljsonrpc.NewClient(lbrynetAddress),
 		blobSource:    hotCache,
+		resolveCache:  ccache.New(ccache.Configure().MaxSize(10000)),
 	}
 }
 
@@ -46,6 +49,25 @@ func (p *Player) Play(s *Stream, w http.ResponseWriter, r *http.Request) error {
 
 // ResolveStream resolves provided URI by calling the SDK.
 func (p *Player) ResolveStream(uri string) (*Stream, error) {
+	var claim *ljsonrpc.Claim
+
+	cachedClaim := p.resolveCache.Get(uri)
+	if cachedClaim != nil && !cachedClaim.Expired() {
+		claim = cachedClaim.Value().(*ljsonrpc.Claim)
+	} else {
+		var err error
+		claim, err = p.resolve(uri)
+		if err != nil {
+			return nil, err
+		}
+		p.resolveCache.Set(uri, claim, longTTL)
+	}
+
+	return NewStream(p, uri, claim), nil
+}
+
+// resolve the uri
+func (p *Player) resolve(uri string) (*ljsonrpc.Claim, error) {
 	resolved, err := p.lbrynetClient.Resolve(uri)
 	if err != nil {
 		return nil, err
@@ -56,7 +78,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 		return nil, errStreamNotFound
 	}
 
-	return NewStream(p, uri, &claim), nil
+	return &claim, nil
 }
 
 // VerifyAccess checks if the stream is paid and the token supplied matched the stream
