@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const ParamDownload = "download"
+const paramDownload = "download"
 
 // RequestHandler is a HTTP request handler for player package.
 type RequestHandler struct {
@@ -23,23 +23,53 @@ func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
 
-func (h RequestHandler) getURI(r *http.Request) string {
+// Handle is responsible for all HTTP media delivery via player module.
+func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	return fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
+	uri := fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
+	token := vars["token"]
+
+	Logger.Infof("%s stream %v", r.Method, uri)
+
+	s, err := h.player.ResolveStream(uri)
+	addBreadcrumb(r, "sdk", fmt.Sprintf("resolve %v", uri))
+	if err != nil {
+		processStreamError("resolve", uri, w, r, err)
+		return
+	}
+
+	err = h.player.VerifyAccess(s, token)
+	if err != nil {
+		processStreamError("access", uri, w, r, err)
+		return
+	}
+
+	err = s.PrepareForReading()
+	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))
+	if err != nil {
+		processStreamError("retrieval", uri, w, r, err)
+		return
+	}
+
+	writeHeaders(w, r, s)
+
+	switch r.Method {
+	case http.MethodHead:
+		w.WriteHeader(http.StatusOK)
+	case http.MethodGet:
+		addBreadcrumb(r, "player", fmt.Sprintf("play %v", uri))
+		err = h.player.Play(s, w, r)
+		if err != nil {
+			processStreamError("playback", uri, w, r, err)
+			return
+		}
+	}
 }
 
-func (h RequestHandler) getToken(r *http.Request) string {
-	return mux.Vars(r)["token"]
-}
-
-func (h RequestHandler) writeErrorResponse(w http.ResponseWriter, statusCode int, msg string) {
-	w.WriteHeader(statusCode)
-	w.Write([]byte(msg))
-}
-
-func (h RequestHandler) writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
-	playerName := os.Getenv("PLAYER_NAME")
+func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
 	var err error
+
+	playerName := os.Getenv("PLAYER_NAME")
 	if playerName == "" {
 		playerName, err = os.Hostname()
 		if err != nil {
@@ -54,30 +84,41 @@ func (h RequestHandler) writeHeaders(w http.ResponseWriter, r *http.Request, s *
 	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
 	header.Set("X-Powered-By", playerName)
 	header.Set("Access-Control-Expose-Headers", "X-Powered-By")
-	if r.URL.Query().Get(ParamDownload) != "" {
+	if r.URL.Query().Get(paramDownload) != "" {
 		header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
 	}
 }
 
-func (h RequestHandler) processStreamError(w http.ResponseWriter, uri string, err error) {
+func processStreamError(errorType string, uri string, w http.ResponseWriter, r *http.Request, err error) {
+	Logger.Errorf("%s stream %v - %s error: %v", r.Method, uri, errorType, err)
+
+	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+		hub.CaptureException(err)
+	}
+
 	if errors.Is(err, errPaidStream) {
-		h.writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
+		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
 	} else if errors.Is(err, errStreamNotFound) {
-		h.writeErrorResponse(w, http.StatusNotFound, err.Error())
+		writeErrorResponse(w, http.StatusNotFound, err.Error())
 	} else if strings.Contains(err.Error(), "blob not found") {
-		h.writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
+		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else if strings.Contains(err.Error(), "hash in response does not match") {
-		h.writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
+		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else if strings.Contains(err.Error(), "token contains an invalid number of segments") {
-		h.writeErrorResponse(w, http.StatusUnauthorized, err.Error())
+		writeErrorResponse(w, http.StatusUnauthorized, err.Error())
 	} else if strings.Contains(err.Error(), "crypto/rsa: verification error") {
-		h.writeErrorResponse(w, http.StatusUnauthorized, err.Error())
+		writeErrorResponse(w, http.StatusUnauthorized, err.Error())
 	} else if strings.Contains(err.Error(), "token is expired") {
-		h.writeErrorResponse(w, http.StatusGone, err.Error())
+		writeErrorResponse(w, http.StatusGone, err.Error())
 	} else {
 		// logger.CaptureException(err, map[string]string{"uri": uri})
-		h.writeErrorResponse(w, http.StatusInternalServerError, err.Error())
+		writeErrorResponse(w, http.StatusInternalServerError, err.Error())
 	}
+}
+
+func writeErrorResponse(w http.ResponseWriter, statusCode int, msg string) {
+	w.WriteHeader(statusCode)
+	w.Write([]byte(msg))
 }
 
 func addBreadcrumb(r *http.Request, category, message string) {
@@ -87,81 +128,4 @@ func addBreadcrumb(r *http.Request, category, message string) {
 			Message:  message,
 		}, 99)
 	}
-}
-
-func logError(r *http.Request, err error) {
-	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
-		hub.CaptureException(err)
-	}
-}
-
-// Handle is responsible for all HTTP media delivery via player module.
-func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	uri := h.getURI(r)
-	token := h.getToken(r)
-	Logger.Infof("GET stream %v", uri) // , users.GetIPAddressForRequest(r))
-
-	s, err := h.player.ResolveStream(uri)
-	addBreadcrumb(r, "sdk", fmt.Sprintf("resolve %v", uri))
-	if err != nil {
-		Logger.Errorf("GET stream %v - resolve error: %v", uri, err)
-		logError(r, err)
-		h.processStreamError(w, uri, err)
-		return
-	}
-
-	err = h.player.VerifyAccess(s, token)
-	if err != nil {
-		Logger.Errorf("GET stream %v - access error: %v", uri, err)
-		logError(r, err)
-		h.processStreamError(w, uri, err)
-		return
-	}
-
-	err = s.PrepareForReading()
-	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))
-	if err != nil {
-		Logger.Errorf("GET stream %v - retrieval error: %v", uri, err)
-		logError(r, err)
-		h.processStreamError(w, uri, err)
-		return
-	}
-
-	h.writeHeaders(w, r, s)
-
-	addBreadcrumb(r, "player", fmt.Sprintf("play %v", uri))
-	err = h.player.Play(s, w, r)
-	if err != nil {
-		Logger.Errorf("GET stream %v - playback error: %v", uri, err)
-		logError(r, err)
-		h.processStreamError(w, uri, err)
-		return
-	}
-}
-
-// HandleHead handlers OPTIONS requests for media.
-func (h *RequestHandler) HandleHead(w http.ResponseWriter, r *http.Request) {
-	uri := h.getURI(r)
-	token := h.getToken(r)
-
-	s, err := h.player.ResolveStream(uri)
-	if err != nil {
-		h.processStreamError(w, uri, err)
-		return
-	}
-
-	err = h.player.VerifyAccess(s, token)
-	if err != nil {
-		h.processStreamError(w, uri, err)
-		return
-	}
-
-	err = s.PrepareForReading()
-	if err != nil {
-		h.processStreamError(w, uri, err)
-		return
-	}
-
-	h.writeHeaders(w, r, s)
-	w.WriteHeader(http.StatusOK)
 }

@@ -20,13 +20,14 @@ type rangeHeader struct {
 	start, end, knownLen int
 }
 
-func makeRequest(router *mux.Router, method, uri string, rng *rangeHeader) *http.Response {
+func makeRequest(t *testing.T, router *mux.Router, method, uri string, rng *rangeHeader) *http.Response {
 	if router == nil {
 		router = mux.NewRouter()
 		InstallPlayerRoutes(router, getTestPlayer())
 	}
 
-	r, _ := http.NewRequest(method, uri, nil)
+	r, err := http.NewRequest(method, uri, nil)
+	require.NoError(t, err)
 	if rng != nil {
 		if rng.start == 0 {
 			r.Header.Add("Range", fmt.Sprintf("bytes=0-%v", rng.end))
@@ -96,7 +97,7 @@ func TestHandleGet(t *testing.T) {
 	for _, row := range testCases {
 		t.Run(row.input.name, func(t *testing.T) {
 			var expectedLen int
-			response := makeRequest(router, http.MethodGet, row.input.uri, row.input.rng)
+			response := makeRequest(t, router, http.MethodGet, row.input.uri, row.input.rng)
 
 			if row.input.rng.knownLen > 0 {
 				expectedLen = row.input.rng.knownLen
@@ -119,12 +120,12 @@ func TestHandleGet(t *testing.T) {
 }
 
 func TestHandleUnpaid(t *testing.T) {
-	response := makeRequest(nil, http.MethodGet, "/content/claims/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/stream.mp4", nil)
+	response := makeRequest(t, nil, http.MethodGet, "/content/claims/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/stream.mp4", nil)
 	assert.Equal(t, http.StatusPaymentRequired, response.StatusCode)
 }
 
 func TestHandleHead(t *testing.T) {
-	response := makeRequest(nil, http.MethodHead, "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", nil)
+	response := makeRequest(t, nil, http.MethodHead, "/content/claims/what/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/stream.mp4", nil)
 
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	assert.Equal(t, "video/mp4", response.Header.Get("Content-Type"))
@@ -133,30 +134,30 @@ func TestHandleHead(t *testing.T) {
 }
 
 func TestHandleHeadErrors(t *testing.T) {
-	r := makeRequest(nil, http.MethodHead, "/content/claims/completely/ef/stream", nil)
+	r := makeRequest(t, nil, http.MethodHead, "/content/claims/completely/ef/stream", nil)
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
 }
 
 func TestHandleNotFound(t *testing.T) {
-	r := makeRequest(nil, http.MethodGet, "/content/claims/completely/ef/stream", nil)
+	r := makeRequest(t, nil, http.MethodGet, "/content/claims/completely/ef/stream", nil)
 	require.Equal(t, http.StatusNotFound, r.StatusCode)
 }
 
 func TestHandleOutOfBounds(t *testing.T) {
-	r := makeRequest(nil, http.MethodGet, "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{start: 999999999})
+	r := makeRequest(t, nil, http.MethodGet, "/content/claims/known-size/0590f924bbee6627a2e79f7f2ff7dfb50bf2877c/stream", &rangeHeader{start: 999999999})
 
 	require.Equal(t, http.StatusRequestedRangeNotSatisfiable, r.StatusCode)
 }
 
 func TestHandleDownloadableFile(t *testing.T) {
-	r := makeRequest(nil, http.MethodGet, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=1", nil)
+	r := makeRequest(t, nil, http.MethodGet, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=1", nil)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 	assert.Equal(t, "attachment; filename=861382668_228248581_tenor.gif", r.Header.Get("Content-Disposition"))
 	assert.Equal(t, "8722934", r.Header.Get("Content-Length"))
 }
 
 func TestHandleDownloadableFileHead(t *testing.T) {
-	r := makeRequest(nil, http.MethodHead, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=1", nil)
+	r := makeRequest(t, nil, http.MethodHead, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=1", nil)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 	assert.Equal(t, "attachment; filename=861382668_228248581_tenor.gif", r.Header.Get("Content-Disposition"))
 	assert.Equal(t, "8722934", r.Header.Get("Content-Length"))
@@ -170,24 +171,24 @@ func TestHandleHeadStreamsV2(t *testing.T) {
 	err = paid.InitPubKey(rawKey)
 	require.NoError(t, err)
 
-	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
 	body, _ := ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusUnauthorized, r.StatusCode, string(body))
 
-	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", nil)
 	body, _ = ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
 	paid.GeneratePrivateKey()
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 
-	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+expiredToken, nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+expiredToken, nil)
 	body, _ = ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusGone, r.StatusCode, string(body))
 
 	validToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, paid.ExpTenSecPer100MB)
 
-	r = makeRequest(nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+validToken, nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+validToken, nil)
 	body, _ = ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
@@ -200,24 +201,24 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 	err = paid.InitPubKey(rawKey)
 	require.NoError(t, err)
 
-	r = makeRequest(nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
 	body, _ := ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusUnauthorized, r.StatusCode, string(body))
 
-	r = makeRequest(nil, http.MethodHead, "/api/v3/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef", nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef", nil)
 	body, _ = ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
 	paid.GeneratePrivateKey()
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 
-	r = makeRequest(nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+expiredToken, nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+expiredToken, nil)
 	body, _ = ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusGone, r.StatusCode, string(body))
 
 	validToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, paid.ExpTenSecPer100MB)
 
-	r = makeRequest(nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+validToken, nil)
+	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+validToken, nil)
 	body, _ = ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }

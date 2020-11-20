@@ -16,26 +16,6 @@ import (
 var ThrottleScale float64 = 1.5
 var ThrottleSwitch = true
 
-// CopyN copies n bytes (or until an error) from src to dst.
-// It returns the number of bytes copied and the earliest
-// error encountered while copying.
-// On return, written == n if and only if err == nil.
-//
-// If dst implements the ReaderFrom interface,
-// the copy is implemented using it.
-func CopyN(dst io.Writer, src io.Reader, n int64) (written int64, err error) {
-	buf := make([]byte, 1024*256)
-	written, err = io.CopyBuffer(dst, io.LimitReader(src, n), buf)
-	if written == n {
-		return n, nil
-	}
-	if written < n && err == nil {
-		// src stopped early; must have been EOF.
-		err = io.EOF
-	}
-	return
-}
-
 // errNoOverlap is returned by serveContent's parseRange if first-byte-pos of
 // all of the byte-range-spec values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
@@ -55,22 +35,7 @@ var errNoOverlap = errors.New("invalid range: failed to overlap")
 // content must be seeked to the beginning of the file.
 func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 	code := http.StatusOK
-
-	size, err := func() (int64, error) {
-		size, err := content.Seek(0, io.SeekEnd)
-		if err != nil {
-			return 0, err // the error message used to be hidden from the user by returning a generic "seeker cant seek" error, but why hide it?
-		}
-		_, err = content.Seek(0, io.SeekStart)
-		if err != nil {
-			return 0, err // same comment as above
-		}
-		return size, nil
-	}()
-	if err != nil {
-		Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	size := int64(content.Size)
 
 	// handle Content-Range header.
 	sendSize := size
@@ -84,6 +49,7 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 			Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
 			return
 		}
+
 		if sumRangesSize(ranges) > size {
 			// The total number of bytes in all the ranges
 			// is larger than the size of the file by
@@ -91,6 +57,7 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 			// dumb client. Ignore the range request.
 			ranges = nil
 		}
+
 		if len(ranges) == 1 {
 			// RFC 7233, Section 4.1:
 			// "If a single part is being transferred, the server
@@ -110,8 +77,7 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 			}
 
 			if r.Method != http.MethodHead {
-				calc := getRange(ra.start, 1)
-				_, err = content.GetChunk(int(calc.FirstChunkIdx))
+				_, err = content.GetChunk(int(getRange(ra.start, 1).FirstChunkIdx))
 				if err != nil {
 					Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
 					return
@@ -138,7 +104,6 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 		} else {
 			io.CopyN(w, sendContent, sendSize)
 		}
-
 	}
 }
 
