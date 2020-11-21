@@ -124,6 +124,9 @@ func getBlobSource() store.BlobStore {
 	}
 
 	diskCacheMaxSize, diskCachePath := diskCacheParams()
+	//we are tracking blobs in memory with a 1 byte long boolean, which means that for each 2MB (a blob) we need 1Byte
+	// so if the underlying cache holds 10MB, 10MB/2MB=5Bytes which is also the exact count of objects to restore on startup
+	realCacheSize := float64(diskCacheMaxSize) / float64(stream.MaxBlobSize)
 	if diskCacheMaxSize > 0 {
 		err := os.MkdirAll(diskCachePath, os.ModePerm)
 		if err != nil {
@@ -132,7 +135,7 @@ func getBlobSource() store.BlobStore {
 		blobSource = store.NewCachingStore(
 			"player",
 			blobSource,
-			store.NewLRUStore("player", store.NewDiskStore(diskCachePath, 2), diskCacheMaxSize/stream.MaxBlobSize),
+			store.NewLFUDAStore("player", store.NewDiskStore(diskCachePath, 2), realCacheSize),
 		)
 	}
 
