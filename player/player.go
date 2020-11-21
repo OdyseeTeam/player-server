@@ -3,6 +3,7 @@ package player
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/lbryio/ccache/v2"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
@@ -60,7 +61,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 		if err != nil {
 			return nil, err
 		}
-		p.resolveCache.Set(uri, claim, longTTL)
+		p.resolveCache.Set(uri, claim, 10*time.Minute)
 	}
 
 	return NewStream(p, uri, claim), nil
