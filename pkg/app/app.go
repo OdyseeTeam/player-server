@@ -109,14 +109,14 @@ func (a *App) Start() {
 	}()
 
 	if a.peerServer != nil {
-		err := a.peerServer.Start(":5567")
+		err := a.peerServer.Start(":5667")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			Logger.Fatal(err)
 		}
 	}
 
 	if a.peer3Server != nil {
-		err := a.peer3Server.Start(":5568")
+		err := a.peer3Server.Start(":5668")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			Logger.Fatal(err)
 		}

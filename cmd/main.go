@@ -15,7 +15,6 @@ import (
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv-player/player"
 
-	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
 
@@ -132,7 +131,7 @@ func getBlobSource() store.BlobStore {
 		blobSource = store.NewCachingStore(
 			"player",
 			blobSource,
-			store.NewLRUStore("player", store.NewDiskStore(diskCachePath, 2), diskCacheMaxSize/stream.MaxBlobSize),
+			store.NewLFUDAStore("player", store.NewDiskStore(diskCachePath, 2), float64(diskCacheMaxSize)),
 		)
 	}
 
