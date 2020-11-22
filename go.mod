@@ -10,13 +10,13 @@ require (
 	github.com/aws/aws-sdk-go v1.23.19 // indirect
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/benbjohnson/clock v1.0.3 // indirect
-	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee
+	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gorilla/mux v1.7.4
 	github.com/lbryio/ccache/v2 v2.0.7-0.20201103203756-4f264cc4f101
 	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
-	github.com/lbryio/reflector.go v1.1.3-0.20201121184441-e156fce8f434
+	github.com/lbryio/reflector.go v1.1.3-0.20201122040636-266832500288
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.1.0
