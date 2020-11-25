@@ -1,6 +1,7 @@
 package player
 
 import (
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -61,7 +62,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 		if err != nil {
 			return nil, err
 		}
-		p.resolveCache.Set(uri, claim, 10*time.Minute)
+		p.resolveCache.Set(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
 	}
 
 	return NewStream(p, uri, claim), nil
