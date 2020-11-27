@@ -16,7 +16,7 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/lbryio/ccache/v2 v2.0.7-0.20201103203756-4f264cc4f101
 	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
-	github.com/lbryio/reflector.go v1.1.3-0.20201122040636-266832500288
+	github.com/lbryio/reflector.go v1.1.3-0.20201127151917-0f0b0cc67261
 	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.1.0
