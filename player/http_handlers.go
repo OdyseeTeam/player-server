@@ -1,10 +1,12 @@
 package player
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
@@ -26,8 +28,13 @@ func NewRequestHandler(p *Player) *RequestHandler {
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	uri := fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
+
 	token := vars["token"]
+	uri, err := getUri(vars)
+	if err != nil {
+		processStreamError("urldecode", uri, w, r, err)
+		return
+	}
 
 	Logger.Infof("%s stream %v", r.Method, uri)
 
@@ -64,6 +71,32 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func getUri(vars map[string]string) (string, error) {
+	if vars["url"] == "" {
+		return fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"]), nil
+	}
+
+	url, err := base64.URLEncoding.DecodeString(vars["url"])
+	if err != nil {
+		return "", err
+	}
+
+	r := regexp.MustCompile(`^(@(?P<channel>[^/]+?)/)?(?P<name>.+)$`)
+	match := r.FindStringSubmatch(string(url))
+	if match == nil {
+		return "", fmt.Errorf("invalid url format")
+	}
+
+	//result := make(map[string]string)
+	//for i, name := range r.SubexpNames() {
+	//	if i > 1 && name != "" {
+	//		result[name] = match[i]
+	//	}
+	//}
+
+	return string(url), nil
 }
 
 func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {

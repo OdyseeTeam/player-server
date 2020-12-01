@@ -237,17 +237,17 @@ func (s *Stream) getStreamSizeFromLastBlobSize() (uint64, error) {
 		return 0, errors.New("claim is not a stream")
 	}
 
-	numChunks := len(s.sdBlob.BlobInfos) - 2
+	numChunks := len(s.sdBlob.BlobInfos) - 1
 	if numChunks <= 0 {
 		return 0, nil
 	}
 
-	lastBlobInfo := s.sdBlob.BlobInfos[numChunks]
+	lastBlobInfo := s.sdBlob.BlobInfos[numChunks-1]
 
 	lastChunk, err := s.player.blobSource.GetChunk(hex.EncodeToString(lastBlobInfo.BlobHash), s.sdBlob.Key, lastBlobInfo.IV)
 	if err != nil {
 		return 0, err
 	}
 
-	return uint64(MaxChunkSize)*uint64(numChunks) + uint64(len(lastChunk)), nil
+	return uint64(MaxChunkSize)*uint64(numChunks-1) + uint64(len(lastChunk)), nil
 }
