@@ -19,10 +19,11 @@ import (
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
 // as well as some stream metadata.
 type Stream struct {
-	URI         string
-	Size        uint64
-	ContentType string
-	hash        string
+	URI              string
+	Size             uint64
+	ContentType      string
+	hash             string
+	prefetchedChunks map[int]bool
 
 	player         *Player
 	claim          *ljsonrpc.Claim
@@ -40,11 +41,12 @@ func NewStream(p *Player, uri string, claim *ljsonrpc.Claim) *Stream {
 		ContentType: patchMediaType(source.MediaType),
 		Size:        source.GetSize(),
 
-		player:         p,
-		claim:          claim,
-		source:         source,
-		resolvedStream: stream,
-		hash:           hex.EncodeToString(source.SdHash),
+		player:           p,
+		claim:            claim,
+		source:           source,
+		resolvedStream:   stream,
+		hash:             hex.EncodeToString(source.SdHash),
+		prefetchedChunks: make(map[int]bool, 50),
 	}
 }
 
@@ -192,8 +194,11 @@ func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 		return nil, err
 	}
 
-	if s.player.prefetch {
-		go s.prefetchChunk(chunkIdx + 1)
+	chunkToPrefetch := chunkIdx + 1
+	prefetched := s.prefetchedChunks[chunkToPrefetch]
+	if s.player.prefetch && !prefetched {
+		s.prefetchedChunks[chunkToPrefetch] = true
+		go s.prefetchChunk(chunkToPrefetch)
 	}
 	return chunk, nil
 }
