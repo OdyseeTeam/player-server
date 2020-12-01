@@ -25,11 +25,27 @@ func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
 
+const SpeechPrefix = "/speech/"
+
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	uri := fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
-	token := vars["token"]
+	var uri, token string
+
+	if strings.HasPrefix(r.URL.String(), SpeechPrefix) {
+		uri = r.URL.String()[len(SpeechPrefix):]
+		extStart := strings.LastIndex(uri, ".")
+		if extStart >= 0 {
+			uri = uri[:extStart]
+		}
+		if uri == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	} else {
+		vars := mux.Vars(r)
+		uri = fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
+		token = vars["token"]
+	}
 
 	Logger.Infof("%s stream %v", r.Method, uri)
 
