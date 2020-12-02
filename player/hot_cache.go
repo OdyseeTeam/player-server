@@ -26,7 +26,7 @@ type HotCache struct {
 func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
 	h := &HotCache{
 		origin: origin,
-		cache:  ccache.New(ccache.Configure().MaxSize(maxSizeInBytes)),
+		cache:  ccache.New(ccache.Configure().MaxSize(maxSizeInBytes).GetsPerPromote(180)),
 		sf:     new(singleflight.Group),
 	}
 
