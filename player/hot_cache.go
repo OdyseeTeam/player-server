@@ -1,9 +1,8 @@
 package player
 
 import (
-	"bytes"
-	"encoding/gob"
 	"time"
+	"unsafe"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 
@@ -45,70 +44,59 @@ func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
 
 // GetSDBlob gets an sd blob. If it's not in the cache, it is fetched from the origin and cached.
 // store.ErrBlobNotFound is returned if blob is not found.
-func (h *HotCache) GetSDBlob(hash string) (stream.SDBlob, error) {
-	blob, err, _ := h.sf.Do(hash, h.sdBlobGetter(hash))
-	if err != nil {
-		return stream.SDBlob{}, err
+func (h *HotCache) GetSDBlob(hash string) (*stream.SDBlob, error) {
+	cached := h.cache.Get(hash)
+	if cached != nil {
+		metrics.HotCacheRequestCount.WithLabelValues("sd", "hit").Inc()
+		return cached.Value().(sizedSD).sd, nil
 	}
-	return blob.(stream.SDBlob), nil
+
+	metrics.HotCacheRequestCount.WithLabelValues("sd", "miss").Inc()
+	return h.getSDFromOrigin(hash)
 }
 
-// sdBlobGetter actually gets the sd blob
-func (h *HotCache) sdBlobGetter(hash string) func() (interface{}, error) {
-	return func() (interface{}, error) {
-		cached := h.cache.Get(hash)
-		if cached != nil {
-			metrics.HotCacheRequestCount.WithLabelValues("sd", "hit").Inc()
-
-			var sd stream.SDBlob
-			err := gob.NewDecoder(bytes.NewBuffer(cached.Value().(sized))).Decode(&sd)
-			return sd, err
-		}
-
-		metrics.HotCacheRequestCount.WithLabelValues("sd", "miss").Inc()
+// getSDFromOrigin gets the blob from the origin, caches it, and returns it
+func (h *HotCache) getSDFromOrigin(hash string) (*stream.SDBlob, error) {
+	blob, err, _ := h.sf.Do(hash, func() (interface{}, error) {
 		blob, err := h.origin.Get(hash)
 		if err != nil {
-			return stream.SDBlob{}, err
+			return nil, err
 		}
 
-		var sdBlob stream.SDBlob
-		err = sdBlob.FromBlob(blob)
+		var sd stream.SDBlob
+		err = sd.FromBlob(blob)
 		if err != nil {
-			return sdBlob, err
+			return nil, err
 		}
 
-		encoded := new(bytes.Buffer)
-		err = gob.NewEncoder(encoded).Encode(sdBlob)
-		if err != nil {
-			return stream.SDBlob{}, err
-		}
+		h.cache.Set(hash, sizedSD{&sd}, longTTL)
 
-		h.cache.Set(hash, sized(encoded.Bytes()), longTTL)
+		return &sd, nil
+	})
 
-		return sdBlob, nil
+	if err != nil || blob == nil {
+		return nil, err
 	}
+
+	return blob.(*stream.SDBlob), nil
 }
 
 // GetChunk gets a decrypted stream chunk. If chunk is not cached, it is fetched from origin
 // and decrypted.
 func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) {
-	chunk, err, _ := h.sf.Do(hash, h.chunkGetter(hash, key, iv))
-	if err != nil {
-		return nil, err
+	item := h.cache.Get(hash)
+	if item != nil {
+		metrics.HotCacheRequestCount.WithLabelValues("chunk", "hit").Inc()
+		return ReadableChunk(item.Value().(sizedSlice)[:]), nil
 	}
-	return chunk.(ReadableChunk), nil
+
+	metrics.HotCacheRequestCount.WithLabelValues("chunk", "miss").Inc()
+	return h.getChunkFromOrigin(hash, key, iv)
 }
 
-// chunkGetter actually gets the chunk
-func (h *HotCache) chunkGetter(hash string, key, iv []byte) func() (interface{}, error) {
-	return func() (interface{}, error) {
-		item := h.cache.Get(hash)
-		if item != nil {
-			metrics.HotCacheRequestCount.WithLabelValues("chunk", "hit").Inc()
-			return ReadableChunk(item.Value().(sized)), nil
-		}
-
-		metrics.HotCacheRequestCount.WithLabelValues("chunk", "miss").Inc()
+// getChunkFromOrigin gets the chunk from the origin, decrypts it, caches it, and returns it
+func (h *HotCache) getChunkFromOrigin(hash string, key, iv []byte) (ReadableChunk, error) {
+	chunk, err, _ := h.sf.Do(hash, func() (interface{}, error) {
 		blob, err := h.origin.Get(hash)
 		if err != nil {
 			return nil, err
@@ -121,16 +109,34 @@ func (h *HotCache) chunkGetter(hash string, key, iv []byte) func() (interface{},
 			return nil, err
 		}
 
-		h.cache.Set(hash, sized(chunk), longTTL)
+		h.cache.Set(hash, sizedSlice(chunk), longTTL)
 
 		return ReadableChunk(chunk), nil
+	})
+
+	if err != nil || chunk == nil {
+		return nil, err
 	}
+
+	return chunk.(ReadableChunk)[:], nil
 }
 
 func (h *HotCache) IsCached(hash string) bool {
 	return h.cache.Get(hash) != nil
 }
 
-type sized []byte
+type sizedSlice []byte
 
-func (s sized) Size() int64 { return int64(len(s)) }
+func (s sizedSlice) Size() int64 { return int64(len(s)) }
+
+type sizedSD struct {
+	sd *stream.SDBlob
+}
+
+func (s sizedSD) Size() int64 {
+	total := int64(unsafe.Sizeof(s)) + int64(unsafe.Sizeof(&(s.sd)))
+	for _, bi := range s.sd.BlobInfos {
+		total += int64(unsafe.Sizeof(bi)) + int64(len(bi.BlobHash)+len(bi.IV))
+	}
+	return total + int64(len(s.sd.StreamName)+len(s.sd.StreamType)+len(s.sd.Key)+len(s.sd.SuggestedFileName)+len(s.sd.StreamHash))
+}

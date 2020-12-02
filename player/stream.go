@@ -71,7 +71,7 @@ func (s *Stream) PrepareForReading() error {
 		return err
 	}
 
-	s.sdBlob = &sdBlob
+	s.sdBlob = sdBlob
 
 	s.setSize()
 
