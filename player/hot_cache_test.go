@@ -41,7 +41,7 @@ func TestHotCache_Stream(t *testing.T) {
 
 	storedSDBlob, err := hc.GetSDBlob(s[0].HashHex())
 	require.NoError(t, err)
-	assert.EqualValues(t, streamSDBlob, storedSDBlob)
+	assert.EqualValues(t, streamSDBlob, *storedSDBlob)
 
 	// check the first chunk matches the stream data
 	chunkIdx := 0
