@@ -156,6 +156,11 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
 	}
 
+	if n == 0 && err == nil {
+		err := errors.New("read 0 bytes trigging endless loop, exiting stream")
+		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
+	}
+
 	return n, err
 }
 

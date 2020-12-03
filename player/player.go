@@ -1,6 +1,7 @@
 package player
 
 import (
+	"errors"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -63,6 +64,12 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 			return nil, err
 		}
 		p.resolveCache.Set(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
+	}
+	if claim.Value.GetStream() == nil {
+		return nil, errors.New("claim is not stream")
+	}
+	if claim.Value.GetStream().GetSource() == nil {
+		return nil, errors.New("stream has no source")
 	}
 
 	return NewStream(p, uri, claim), nil
