@@ -217,7 +217,7 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 	for _, bi := range s.sdBlob.BlobInfos[chunkIdx : chunkIdx+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 
-		if !s.player.blobSource.IsCached(hash) {
+		if s.player.blobSource.IsCached(hash) {
 			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
