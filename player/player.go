@@ -1,6 +1,7 @@
 package player
 
 import (
+	"encoding/hex"
 	"errors"
 	"math/rand"
 	"net/http"
@@ -63,8 +64,32 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		maxDepth := 5
+		for i := 0; i < maxDepth; i++ {
+			repost := claim.Value.GetRepost()
+			if repost == nil {
+				break
+			}
+			if repost.ClaimHash == nil {
+				return nil, errors.New("repost has no claim hash")
+			}
+
+			claimID := hex.EncodeToString(rev(repost.ClaimHash))
+			resp, err := p.lbrynetClient.ClaimSearch(nil, &claimID, nil, nil, 1, 1)
+			if err != nil {
+				return nil, err
+			}
+			if len(resp.Claims) == 0 {
+				return nil, errors.New("reposted claim not found")
+			}
+
+			claim = &resp.Claims[0]
+		}
+
 		p.resolveCache.Set(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
 	}
+
 	if claim.Value.GetStream() == nil {
 		return nil, errors.New("claim is not stream")
 	}
@@ -104,4 +129,12 @@ func (p *Player) VerifyAccess(s *Stream, token string) error {
 		return err
 	}
 	return nil
+}
+
+func rev(b []byte) []byte {
+	r := make([]byte, len(b))
+	for left, right := 0, len(b)-1; left < right; left, right = left+1, right-1 {
+		r[left], r[right] = b[right], b[left]
+	}
+	return r
 }
