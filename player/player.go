@@ -14,6 +14,7 @@ import (
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
+	tclient "github.com/lbryio/transcoder/client"
 )
 
 var Logger = logger.GetLogger()
@@ -24,6 +25,8 @@ type Player struct {
 	blobSource    *HotCache
 	prefetch      bool
 	resolveCache  *ccache.Cache
+	tclient       *tclient.Client
+	TCVideoPath   string
 }
 
 // NewPlayer initializes an instance with optional BlobStore.
@@ -41,6 +44,11 @@ func NewPlayer(hotCache *HotCache, lbrynetAddress string) *Player {
 
 func (p *Player) SetPrefetch(enabled bool) {
 	p.prefetch = enabled
+}
+
+func (p *Player) AddTranscoderClient(c *tclient.Client, path string) {
+	p.tclient = c
+	p.TCVideoPath = path
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
