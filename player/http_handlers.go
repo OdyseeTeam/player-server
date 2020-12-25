@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/containous/traefik/log"
 	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 )
@@ -54,6 +55,15 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		processStreamError("resolve", uri, w, r, err)
 		return
+	}
+	cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
+	if cv != nil {
+		http.Redirect(w, r, "/api/v3/streams/t/"+cv.LocalPath()+"master.m3u8", http.StatusPermanentRedirect)
+		return
+	}
+	err = dl.Download()
+	if err != nil {
+		log.Error(err)
 	}
 
 	err = h.player.VerifyAccess(s, token)

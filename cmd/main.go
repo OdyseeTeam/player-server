@@ -18,6 +18,7 @@ import (
 	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
+	tclient "github.com/lbryio/transcoder/client"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/sirupsen/logrus"
@@ -34,11 +35,14 @@ var (
 	lbrynetAddress string
 	paidPubKey     string
 
-	upstreamReflector  string
-	cloudFrontEndpoint string
-	diskCacheDir       string
-	diskCacheSize      string
-	hotCacheSize       string
+	upstreamReflector   string
+	cloudFrontEndpoint  string
+	diskCacheDir        string
+	diskCacheSize       string
+	hotCacheSize        string
+	transcoderVideoPath string
+	transcoderVideoSize string
+	transcoderAddr      string
 
 	rootCmd = &cobra.Command{
 		Use:     "lbrytv_player",
@@ -62,6 +66,9 @@ func init() {
 	rootCmd.Flags().StringVar(&diskCacheDir, "disk-cache-dir", "", "enable disk cache, storing blobs in dir")
 	rootCmd.Flags().StringVar(&diskCacheSize, "disk-cache-size", "100MB", "max size of disk cache: 16GB, 500MB, etc.")
 	rootCmd.Flags().StringVar(&hotCacheSize, "hot-cache-size", "", "enable hot cache for decrypted blobs and set max size: 16GB, 500MB, etc")
+	rootCmd.Flags().StringVar(&transcoderVideoPath, "transcoder-video-path", "", "path to store transcoded videos")
+	rootCmd.Flags().StringVar(&transcoderVideoSize, "transcoder-video-size", "200GB", "max size of transcoder video storage")
+	rootCmd.Flags().StringVar(&transcoderAddr, "transcoder-addr", "", "transcoder API address")
 
 	//Live Config
 	rootCmd.Flags().StringVar(&config.UserName, "config-username", "lbry", "Username to access the config endpoint with")
@@ -80,6 +87,16 @@ func run(cmd *cobra.Command, args []string) {
 
 	p := player.NewPlayer(initHotCache(blobSource), lbrynetAddress)
 	p.SetPrefetch(enablePrefetch)
+
+	var tcsize datasize.ByteSize
+	err := tcsize.UnmarshalText([]byte(transcoderVideoSize))
+	if err != nil {
+		Logger.Fatal(err)
+	}
+	if transcoderVideoPath != "" && tcsize > 0 && transcoderAddr != "" {
+		c := tclient.New(tclient.Configure().VideoPath(transcoderVideoPath).Server(transcoderAddr).CacheSize(int64(tcsize)))
+		p.AddTranscoderClient(&c, transcoderVideoPath)
+	}
 
 	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource})
 
