@@ -85,7 +85,7 @@ func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
 	header.Set("X-Powered-By", playerName)
 	header.Set("Access-Control-Expose-Headers", "X-Powered-By")
 	if r.URL.Query().Get(paramDownload) != "" {
-		header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
+		header.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%v\"", s.Filename()))
 	}
 }
 
