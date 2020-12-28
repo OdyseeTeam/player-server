@@ -94,6 +94,10 @@ func run(cmd *cobra.Command, args []string) {
 		Logger.Fatal(err)
 	}
 	if transcoderVideoPath != "" && tcsize > 0 && transcoderAddr != "" {
+		err := os.RemoveAll(transcoderVideoPath)
+		if err != nil {
+			Logger.Fatal(err)
+		}
 		c := tclient.New(tclient.Configure().VideoPath(transcoderVideoPath).Server(transcoderAddr).CacheSize(int64(tcsize)))
 		p.AddTranscoderClient(&c, transcoderVideoPath)
 	}

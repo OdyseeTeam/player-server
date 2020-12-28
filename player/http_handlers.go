@@ -113,7 +113,7 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 	}
 	cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
 	if cv != nil {
-		http.Redirect(w, r, "/api/v3/streams/t/"+cv.LocalPath()+"/master.m3u8", http.StatusPermanentRedirect)
+		http.Redirect(w, r, "/api/v4/streams/t/"+cv.LocalPath()+"/master.m3u8", http.StatusPermanentRedirect)
 		return
 	}
 	err = dl.Download()
