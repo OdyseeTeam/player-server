@@ -152,14 +152,14 @@ func TestHandleOutOfBounds(t *testing.T) {
 func TestHandleDownloadableFile(t *testing.T) {
 	r := makeRequest(t, nil, http.MethodGet, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=1", nil)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
-	assert.Equal(t, "attachment; filename=861382668_228248581_tenor.gif", r.Header.Get("Content-Disposition"))
+	assert.Equal(t, `attachment; filename="861382668_228248581_tenor.gif"; filename*=UTF-8''861382668_228248581_tenor.gif`, r.Header.Get("Content-Disposition"))
 	assert.Equal(t, "8722934", r.Header.Get("Content-Length"))
 }
 
 func TestHandleDownloadableFileHead(t *testing.T) {
 	r := makeRequest(t, nil, http.MethodHead, "/content/claims/scalable-test2/0a15a743ac078a83a02cc086fbb8b566e912b7c5/stream?download=1", nil)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
-	assert.Equal(t, "attachment; filename=861382668_228248581_tenor.gif", r.Header.Get("Content-Disposition"))
+	assert.Equal(t, `attachment; filename="861382668_228248581_tenor.gif"; filename*=UTF-8''861382668_228248581_tenor.gif`, r.Header.Get("Content-Disposition"))
 	assert.Equal(t, "8722934", r.Header.Get("Content-Length"))
 }
 
