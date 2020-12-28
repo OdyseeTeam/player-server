@@ -1,7 +1,6 @@
 package player
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/pprof"
 
@@ -24,11 +23,15 @@ func InstallPlayerRoutes(r *mux.Router, p *Player) {
 	v3Router.Path("/streams/free/{claim_name}/{claim_id}/{sd_hash}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 	v3Router.Path("/streams/paid/{claim_name}/{claim_id}/{sd_hash}/{token}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 
+	v4Router := r.PathPrefix("/api/v4").Subrouter()
+	v4Router.Path("/streams/free/{claim_name}/{claim_id}/{sd_hash}").HandlerFunc(playerHandler.HandleV4).Methods(http.MethodGet, http.MethodHead)
+
 	r.PathPrefix(SpeechPrefix).HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 
-	fmt.Println(p.TCVideoPath)
-	fs := http.FileServer(http.Dir(p.TCVideoPath))
-	v3Router.PathPrefix("/streams/t").Handler(http.StripPrefix("/api/v3/streams/t", fs))
+	if p.TCVideoPath != "" {
+		fs := http.FileServer(http.Dir(p.TCVideoPath))
+		v4Router.PathPrefix("/streams/t").Handler(http.StripPrefix("/api/v4/streams/t", fs))
+	}
 }
 
 func InstallProfilingRoutes(r *mux.Router) {

@@ -38,7 +38,7 @@ services:
       --prefetch=true
       --upstream-reflector="reflector.lbry.com:5568"
       --transcoder-video-path=/tmp/transcoder
-      --transcoder-addr=http://t0.lbry.tv:8080
+      --transcoder-addr=http://t0.lbry.tv:18081
     environment:
       - PLAYER_NAME=my-own-player
     depends_on:
