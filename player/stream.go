@@ -166,33 +166,45 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 
 func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 	var read int
-	i := sr.FirstChunkIdx
-	for i < sr.LastChunkIdx+1 {
-		offset, readLen := sr.ByteRangeForChunk(i)
-
-		b, err := s.GetChunk(int(i))
-		if err != nil {
-			return read, err
-		}
-
-		n, err := b.Read(offset, readLen, dest[read:])
-		read += n
-		if err != nil {
-			return read, err
-		}
-
-		i++
+	i, read, err := s.attemptReadFromChunks(sr, dest)
+	if err != nil {
+		return read, err
 	}
-	if read == 0 {
-		err := s.RemoveChunk(int(i)) // Dirty data likely
+	if read == 0 { // Dirty data likely - delete from cache and retry
+		err := s.RemoveChunk(int(i))
 		if err != nil {
 			return read, err
 		}
 		Logger.Warnf("Read 0 bytes for %s at blob index %d/%d at offset %d", s.URI, int(i), len(s.sdBlob.BlobInfos),
 			s.seekOffset)
+		i, read, err = s.attemptReadFromChunks(sr, dest)
+		if err != nil {
+			return read, err
+		}
 	}
 
 	return read, nil
+}
+
+func (s *Stream) attemptReadFromChunks(sr streamRange, dest []byte) (i int64, read int, err error) {
+	i = sr.FirstChunkIdx
+	for i < sr.LastChunkIdx+1 {
+		offset, readLen := sr.ByteRangeForChunk(i)
+
+		b, err := s.GetChunk(int(i))
+		if err != nil {
+			return i, read, err
+		}
+
+		n, err := b.Read(offset, readLen, dest[read:])
+		read += n
+		if err != nil {
+			return i, read, err
+		}
+
+		i++
+	}
+	return i, read, nil
 }
 
 func (s *Stream) RemoveChunk(chunkIdx int) error {
