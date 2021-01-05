@@ -15,6 +15,8 @@ import (
 
 const longTTL = 365 * 24 * time.Hour
 
+var DiskCacheAsOrgin bool
+
 // HotCache is basically an in-memory BlobStore but it stores the blobs decrypted
 // You have to know which blobs you expect to be sd blobs when using HotCache
 type HotCache struct {
@@ -92,6 +94,15 @@ func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) 
 
 	metrics.HotCacheRequestCount.WithLabelValues("chunk", "miss").Inc()
 	return h.getChunkFromOrigin(hash, key, iv)
+}
+
+// clearChunkFromCache will remove the chunk from the hotcache and from its origin.
+func (h *HotCache) clearChuckFromCache(hash string) error {
+	h.cache.Delete(hash)
+	if DiskCacheAsOrgin {
+		return h.origin.Delete(hash)
+	}
+	return nil
 }
 
 // getChunkFromOrigin gets the chunk from the origin, decrypts it, caches it, and returns it

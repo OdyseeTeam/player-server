@@ -166,8 +166,8 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 
 func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 	var read int
-
-	for i := sr.FirstChunkIdx; i < sr.LastChunkIdx+1; i++ {
+	i := sr.FirstChunkIdx
+	for i < sr.LastChunkIdx+1 {
 		offset, readLen := sr.ByteRangeForChunk(i)
 
 		b, err := s.GetChunk(int(i))
@@ -180,9 +180,29 @@ func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 		if err != nil {
 			return read, err
 		}
+
+		i++
+	}
+	if read == 0 {
+		err := s.RemoveChunk(int(i)) // Dirty data likely
+		if err != nil {
+			return read, err
+		}
+		Logger.Warnf("Read 0 bytes for %s at blob index %d/%d at offset %d", s.URI, int(i), len(s.sdBlob.BlobInfos),
+			s.seekOffset)
 	}
 
 	return read, nil
+}
+
+func (s *Stream) RemoveChunk(chunkIdx int) error {
+	if chunkIdx > len(s.sdBlob.BlobInfos) {
+		return errors.New("blob index out of bounds")
+	}
+
+	bi := s.sdBlob.BlobInfos[chunkIdx]
+	hash := hex.EncodeToString(bi.BlobHash)
+	return s.player.blobSource.clearChuckFromCache(hash)
 }
 
 // GetChunk returns the nth ReadableChunk of the stream.
