@@ -125,7 +125,7 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 			addBreadcrumb(r, "transcoder", fmt.Sprintf("getting %v", s.URI))
 			err = dl.Download()
 			if err != nil {
-				processStreamError("download", uri, nil, nil, err)
+				processStreamError("download", uri, nil, r, err)
 				return
 			}
 			for p := range dl.Progress() {
@@ -133,7 +133,7 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if p.Error != nil {
-					processStreamError("download", uri, nil, nil, err)
+					processStreamError("download", uri, nil, r, err)
 					break
 				}
 			}
