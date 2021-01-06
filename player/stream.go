@@ -157,7 +157,7 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	}
 
 	if n == 0 && err == nil {
-		err := errors.New("read 0 bytes triggering an endless loop, exiting stream")
+		err = errors.New("read 0 bytes triggering an endless loop, exiting stream")
 		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
 	}
 
@@ -166,8 +166,10 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 
 func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 	var read int
+	var index int64
+	var err error
 	for i := 0; i < 2; i++ {
-		index, read, err := s.attemptReadFromChunks(sr, dest)
+		index, read, err = s.attemptReadFromChunks(sr, dest)
 		if err != nil {
 			return read, err
 		}
