@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/containous/traefik/log"
 	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 )
@@ -113,14 +112,32 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 		processStreamError("resolve", uri, w, r, err)
 		return
 	}
-	cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
-	if cv != nil {
-		http.Redirect(w, r, "/api/v4/streams/t/"+cv.LocalPath()+"/master.m3u8", http.StatusPermanentRedirect)
-		return
-	}
-	err = dl.Download()
-	if err != nil {
-		log.Error(err)
+
+	// Attempt transcoded video retrieval
+	if s.ContentType == "video/mp4" {
+		cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
+		if cv != nil {
+			http.Redirect(w, r, "/api/v4/streams/t/"+cv.LocalPath()+"/master.m3u8", http.StatusPermanentRedirect)
+			return
+		}
+
+		go func() {
+			addBreadcrumb(r, "transcoder", fmt.Sprintf("getting %v", s.URI))
+			err = dl.Download()
+			if err != nil {
+				processStreamError("download", uri, nil, nil, err)
+				return
+			}
+			for p := range dl.Progress() {
+				if p.Done {
+					break
+				}
+				if p.Error != nil {
+					processStreamError("download", uri, nil, nil, err)
+					break
+				}
+			}
+		}()
 	}
 
 	err = h.player.VerifyAccess(s, token)
@@ -176,11 +193,16 @@ func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
 }
 
 func processStreamError(errorType string, uri string, w http.ResponseWriter, r *http.Request, err error) {
-	Logger.Errorf("%s stream %v - %s error: %v", r.Method, uri, errorType, err)
-
 	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 		hub.CaptureException(err)
 	}
+
+	if w == nil {
+		Logger.Errorf("%s stream GET - %s error: %v", uri, errorType, err)
+		return
+	}
+
+	Logger.Errorf("%s stream %v - %s error: %v", r.Method, uri, errorType, err)
 
 	if errors.Is(err, errPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
