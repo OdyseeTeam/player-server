@@ -165,11 +165,13 @@ func TestHandleDownloadableFileHead(t *testing.T) {
 }
 
 func TestUTF8Filename(t *testing.T) {
+	_ = ` 【大苑子APP宣傳影片】分享新鮮＿精彩生活-20181106.mp4` // original filename, just for reference
 	r := makeRequest(t, nil, http.MethodHead, "/content/claims/"+url.PathEscape(`-【大苑子APP宣傳影片】分享新鮮＿精彩生活-20181106`)+"/e9bbe7a0ffe8bb1070ffe41b342e93b054641b6c/stream?download=1", nil)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 	assert.Equal(t, `attachment; filename=" 大苑子APP宣傳影片分享新鮮精彩生活-20181106.mp4"; filename*=UTF-8''%20%E5%A4%A7%E8%8B%91%E5%AD%90APP%E5%AE%A3%E5%82%B3%E5%BD%B1%E7%89%87%E5%88%86%E4%BA%AB%E6%96%B0%E9%AE%AE%E7%B2%BE%E5%BD%A9%E7%94%9F%E6%B4%BB-20181106.mp4`, r.Header.Get("Content-Disposition"))
 	assert.Equal(t, "294208625", r.Header.Get("Content-Length"))
 
+	_ = `"Bitcoin je scam" - informujú média.mp4` // original filename, just for reference
 	r = makeRequest(t, nil, http.MethodHead, "/content/claims/"+url.PathEscape(`-Bitcoin-je-scam----informujú-média`)+"/554c23406b0821c5e2a101ea0e865e35948b632c/stream?download=1", nil)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
 	assert.Equal(t, `attachment; filename="Bitcoin je scam - informuju media.mp4"; filename*=UTF-8''Bitcoin%20je%20scam%20-%20informuju%20media.mp4`, r.Header.Get("Content-Disposition"))
