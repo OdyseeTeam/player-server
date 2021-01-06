@@ -4,7 +4,7 @@ services:
     image: 'lbry/lbrynet-tv:latest'
     restart: always
     labels:
-      com.centurylinklabs.watchtower.enable: true
+      com.centurylinklabs.watchtower.enable: 1
     ports:
       - "5280:5279"
   docker-host:
@@ -14,16 +14,10 @@ services:
     environment:
       - PORTS=5567
   player:
-    image: 'lbry/lbrytv-player:latest'
+    image: 'lbry/lbrytv-player:fuda-next'
     restart: always
-    logging:
-      driver: awslogs
-      options:
-        awslogs-group: lbrytv
-        awslogs-region: us-east-1
-        awslogs-stream: "player-player7.lbry.tv"
     labels:
-      com.centurylinklabs.watchtower.enable: true
+      com.centurylinklabs.watchtower.enable: 1
     ports:
       - "8080:8080"
     volumes:
@@ -33,7 +27,7 @@ services:
       --lbrynet=http://lbrynet:5279
       --bind=0.0.0.0:8080
       --disk-cache-dir="/tmp/reflector_player_blobs"
-      --disk-cache-size="1.9TB"
+      --disk-cache-size="1TB"
       --hot-cache-size="10GB"
       --prefetch=true
       --upstream-reflector="reflector.lbry.com:5568"
