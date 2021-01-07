@@ -14,18 +14,31 @@ import (
 )
 
 const paramDownload = "download"
+const SpeechPrefix = "/speech/"
+
+var playerName = "unknown-player"
 
 // RequestHandler is a HTTP request handler for player package.
 type RequestHandler struct {
 	player *Player
 }
 
+func init() {
+	var err error
+
+	playerName = os.Getenv("PLAYER_NAME")
+	if playerName == "" {
+		playerName, err = os.Hostname()
+		if err != nil {
+			playerName = "unknown-player"
+		}
+	}
+}
+
 // NewRequestHandler initializes a HTTP request handler with the provided Player instance.
 func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
-
-const SpeechPrefix = "/speech/"
 
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
@@ -113,11 +126,13 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Attempt transcoded video retrieval
-	if s.ContentType == "video/mp4" {
+	if r.URL.Query().Get(paramDownload) != "" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
+	} else if strings.HasPrefix(s.ContentType, "video/") {
+		// Attempt transcoded video retrieval
 		cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
 		if cv != nil {
-			http.Redirect(w, r, "/api/v4/streams/t/"+cv.LocalPath()+"/master.m3u8", http.StatusPermanentRedirect)
+			http.Redirect(w, r, "/api/v4/streams/t/"+cv.DirName()+"/master.m3u8", http.StatusPermanentRedirect)
 			return
 		}
 
@@ -169,23 +184,12 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
-	var err error
-
-	playerName := os.Getenv("PLAYER_NAME")
-	if playerName == "" {
-		playerName, err = os.Hostname()
-		if err != nil {
-			playerName = "unknown-player"
-		}
-	}
-
 	header := w.Header()
 	header.Set("Content-Length", fmt.Sprintf("%v", s.Size))
 	header.Set("Content-Type", s.ContentType)
 	header.Set("Cache-Control", "public, max-age=31536000")
 	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
-	header.Set("X-Powered-By", playerName)
-	header.Set("Access-Control-Expose-Headers", "X-Powered-By")
+	addPoweredByHeaders(w)
 	if r.URL.Query().Get(paramDownload) != "" {
 		filename := regexp.MustCompile(`[^\p{L}\d\-\._ ]+`).ReplaceAllString(s.Filename(), "")
 		header.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename)))
@@ -236,4 +240,9 @@ func addBreadcrumb(r *http.Request, category, message string) {
 			Message:  message,
 		}, 99)
 	}
+}
+
+func addPoweredByHeaders(w http.ResponseWriter) {
+	w.Header().Set("X-Powered-By", playerName)
+	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
 }

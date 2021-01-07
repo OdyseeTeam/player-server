@@ -343,6 +343,8 @@ github.com/lbryio/transcoder v0.2.0 h1:G460b47Q0y96ib0lWPnmEJUW1qia1eo2JkpM7RyMN
 github.com/lbryio/transcoder v0.2.0/go.mod h1:CZMa0mBnYdugfMTGQ9dAevcKw8ipAus6ydBtt6POL04=
 github.com/lbryio/transcoder v0.2.1 h1:+GKjPMeUM2b8SqVNRekxEO4wvTvjumcd9cnu+d3egX0=
 github.com/lbryio/transcoder v0.2.1/go.mod h1:CZMa0mBnYdugfMTGQ9dAevcKw8ipAus6ydBtt6POL04=
+github.com/lbryio/transcoder v0.3.0 h1:Zgf15CRuf7c2QnwclR1mdpSwhq9PY/zrjg47bBrhmOQ=
+github.com/lbryio/transcoder v0.3.0/go.mod h1:rABkcuFHOMLL63MfFwh1TR15g3hVxD6Odac7GCxNA/c=
 github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lbryio/types v0.0.0-20191009145016-1bb8107e04f8/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec h1:2xk/qg4VTOCJ8RzV/ED5AKqDcJ00zVb08ltf9V+sr3c=

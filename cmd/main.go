@@ -94,11 +94,23 @@ func run(cmd *cobra.Command, args []string) {
 		Logger.Fatal(err)
 	}
 	if transcoderVideoPath != "" && tcsize > 0 && transcoderAddr != "" {
-		err := os.RemoveAll(transcoderVideoPath)
-		if err != nil {
+		err := os.Mkdir(transcoderVideoPath, os.ModePerm)
+		if err != nil && !os.IsExist(err) {
 			Logger.Fatal(err)
 		}
-		c := tclient.New(tclient.Configure().VideoPath(transcoderVideoPath).Server(transcoderAddr).CacheSize(int64(tcsize)))
+
+		c := tclient.New(
+			tclient.Configure().
+				VideoPath(transcoderVideoPath).
+				Server(transcoderAddr).
+				CacheSize(int64(tcsize)))
+		n, err := c.RestoreCache()
+		if err != nil {
+			Logger.Error(err)
+		} else {
+			Logger.Infof("restored %v items into transcoder cache", n)
+		}
+
 		p.AddTranscoderClient(&c, transcoderVideoPath)
 	}
 

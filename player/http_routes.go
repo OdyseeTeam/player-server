@@ -30,7 +30,13 @@ func InstallPlayerRoutes(r *mux.Router, p *Player) {
 
 	if p.TCVideoPath != "" {
 		fs := http.FileServer(http.Dir(p.TCVideoPath))
-		v4Router.PathPrefix("/streams/t").Handler(http.StripPrefix("/api/v4/streams/t", fs))
+		v4Router.PathPrefix("/streams/t").Handler(
+			func(h http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					addPoweredByHeaders(w)
+					h.ServeHTTP(w, r)
+				})
+			}(http.StripPrefix("/api/v4/streams/t", fs)))
 	}
 }
 
