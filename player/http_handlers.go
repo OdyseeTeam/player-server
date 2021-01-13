@@ -83,6 +83,9 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeHeaders(w, r, s)
+	if r.URL.Query().Get(paramDownload) != "" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
+	}
 
 	switch r.Method {
 	case http.MethodHead:

@@ -6,7 +6,7 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: 1
     ports:
-      - "5280:5279"
+      - "5279:5279"
   docker-host:
     image: qoomon/docker-host
     cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
