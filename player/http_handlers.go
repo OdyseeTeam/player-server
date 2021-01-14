@@ -129,13 +129,19 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = h.player.VerifyAccess(s, token)
+	if err != nil {
+		processStreamError("access", uri, w, r, err)
+		return
+	}
+
 	if r.URL.Query().Get(paramDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
 	} else if strings.HasPrefix(s.ContentType, "video/") {
 		// Attempt transcoded video retrieval
 		cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
 		if cv != nil {
-			http.Redirect(w, r, "/api/v4/streams/t/"+cv.DirName()+"/master.m3u8", http.StatusPermanentRedirect)
+			redirectToPlaylistURL(w, r, cv.DirName())
 			return
 		}
 
@@ -156,12 +162,6 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}()
-	}
-
-	err = h.player.VerifyAccess(s, token)
-	if err != nil {
-		processStreamError("access", uri, w, r, err)
-		return
 	}
 
 	err = s.PrepareForReading()
@@ -248,4 +248,19 @@ func addBreadcrumb(r *http.Request, category, message string) {
 func addPoweredByHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Powered-By", playerName)
 	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
+}
+
+func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, vPath string) {
+	prefix := "http://"
+	host := playerName
+
+	if match, _ := regexp.MatchString(`^player\d+$`, host); match {
+		host += ".lbryplayer.xyz"
+	}
+
+	url := fmt.Sprintf("%v/api/v4/streams/t/%v/master.m3u8", host, vPath)
+	if strings.HasPrefix(r.URL.String(), "https://") {
+		prefix = "https://"
+	}
+	http.Redirect(w, r, prefix+url, http.StatusPermanentRedirect)
 }

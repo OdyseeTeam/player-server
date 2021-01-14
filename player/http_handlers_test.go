@@ -237,3 +237,30 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 	body, _ = ioutil.ReadAll(r.Body)
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
+
+func Test_redirectToPlaylistURL(t *testing.T) {
+	var (
+		rr  *httptest.ResponseRecorder
+		r   *http.Request
+		url *url.URL
+	)
+
+	origValue := playerName
+	defer func() { playerName = origValue }()
+
+	playerName = "localhost:8000"
+	r, _ = http.NewRequest(http.MethodGet, "http://localhost:8080/irrelevant", nil)
+	rr = httptest.NewRecorder()
+
+	redirectToPlaylistURL(rr, r, "abc")
+	url, _ = rr.Result().Location()
+	assert.Equal(t, "http://localhost:8000/api/v4/streams/t/abc/master.m3u8", url.String())
+
+	playerName = "player8"
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/irrelevant", nil)
+	rr = httptest.NewRecorder()
+
+	redirectToPlaylistURL(rr, r, "abc")
+	url, _ = rr.Result().Location()
+	assert.Equal(t, "https://player8.lbryplayer.xyz/api/v4/streams/t/abc/master.m3u8", url.String())
+}
