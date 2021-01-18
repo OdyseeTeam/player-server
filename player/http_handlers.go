@@ -256,11 +256,9 @@ func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, vPath string)
 
 	if match, _ := regexp.MatchString(`^player\d+$`, host); match {
 		host += ".lbryplayer.xyz"
+		prefix = "https://"
 	}
 
 	url := fmt.Sprintf("%v/api/v4/streams/t/%v/master.m3u8", host, vPath)
-	if strings.HasPrefix(r.URL.String(), "https://") {
-		prefix = "https://"
-	}
 	http.Redirect(w, r, prefix+url, http.StatusPermanentRedirect)
 }
