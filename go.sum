@@ -38,6 +38,8 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/andybalholm/brotli v1.0.0 h1:7UCwP93aiSfvWpapti8g88vVVGp2qqtGyePsSuDafo4=
 github.com/andybalholm/brotli v1.0.0/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
+github.com/andybeletsky/transcoder v1.2.0 h1:fRWuALzTwQ6jUqAYPfQViwSGGALIX6yIKEt+d2ctF8A=
+github.com/andybeletsky/transcoder v1.2.0/go.mod h1:lT+f8NEGaHP6AVeYLicas0EI0+TforD+DRuLziJg6bY=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
@@ -341,6 +343,12 @@ github.com/lbryio/reflector.go v1.1.3-0.20201222201948-869030fc584c h1:Rg1fPMNbu
 github.com/lbryio/reflector.go v1.1.3-0.20201222201948-869030fc584c/go.mod h1:eaBSv01RPtDhg6eSHeLBfibSagCw0XGewA3LES+P/RA=
 github.com/lbryio/transcoder v0.4.3 h1:HtGpFpaMW9O4GMF0yz5QBAXflOUZiypodIW9YB9ZhB0=
 github.com/lbryio/transcoder v0.4.3/go.mod h1:bsi5aV6kTblV//rrb7HNp+BnaRRLqxxJVrn6DXrY5wY=
+github.com/lbryio/transcoder v0.4.4 h1:9cUFWJoP4jxfya3WjwO9RgRcCJ65+fz8zLCDL1wCVGc=
+github.com/lbryio/transcoder v0.4.4/go.mod h1:nYKI7Qfi0xO2woclFIqCABJm+ryraok1yc1JuahQM8g=
+github.com/lbryio/transcoder v0.4.5 h1:5wJRAK0QFtnd7mIPCRI27PLAf98DkpCD+/81JhToEMI=
+github.com/lbryio/transcoder v0.4.5/go.mod h1:boC6sF/6PzkBaw1P7IJto5TBoTziPm7748CFwNlSfKs=
+github.com/lbryio/transcoder v0.4.6 h1:ZAmr2JYb8Sg94W1jtW0fhhrC1Wue1pShZHMu28SwnuU=
+github.com/lbryio/transcoder v0.4.6/go.mod h1:1MQ4LB2b+2vGtnul9GhKX8bca6Nv7Iilz3acLn8W+ag=
 github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lbryio/types v0.0.0-20191009145016-1bb8107e04f8/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
 github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec h1:2xk/qg4VTOCJ8RzV/ED5AKqDcJ00zVb08ltf9V+sr3c=
