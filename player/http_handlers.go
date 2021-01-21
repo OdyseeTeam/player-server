@@ -9,6 +9,9 @@ import (
 	"regexp"
 	"strings"
 
+	tclient "github.com/lbryio/transcoder/client"
+	"github.com/lbryio/transcoder/video"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 )
@@ -149,7 +152,9 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 			addBreadcrumb(r, "transcoder", fmt.Sprintf("getting %v", s.URI))
 			err = dl.Download()
 			if err != nil {
-				processStreamError("download", uri, nil, r, err)
+				if err != video.ErrChannelNotEnabled || err != tclient.ErrAlreadyDownloading {
+					processStreamError("download", uri, nil, r, err)
+				}
 				return
 			}
 			for p := range dl.Progress() {
