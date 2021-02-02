@@ -205,6 +205,10 @@ func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
 }
 
 func processStreamError(errorType string, uri string, w http.ResponseWriter, r *http.Request, err error) {
+	if err == video.ErrChannelNotEnabled {
+		return
+	}
+
 	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 		hub.CaptureException(err)
 	}

@@ -19,6 +19,7 @@ import (
 	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
 	tclient "github.com/lbryio/transcoder/client"
+	tlogging "github.com/lbryio/transcoder/pkg/logging"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/sirupsen/logrus"
@@ -104,6 +105,7 @@ func run(cmd *cobra.Command, args []string) {
 				VideoPath(transcoderVideoPath).
 				Server(transcoderAddr).
 				CacheSize(int64(tcsize)))
+		tclient.SetLogger(tlogging.Create("tclient", tlogging.Prod))
 		n, err := c.RestoreCache()
 		if err != nil {
 			Logger.Error(err)
