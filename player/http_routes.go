@@ -5,6 +5,7 @@ import (
 	"net/http/pprof"
 
 	"github.com/gorilla/mux"
+	"github.com/lbryio/lbrytv-player/internal/metrics"
 )
 
 const ProfileRoutePath = "/superdebug/pprof"
@@ -34,6 +35,8 @@ func InstallPlayerRoutes(r *mux.Router, p *Player) {
 			func(h http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					addPoweredByHeaders(w)
+					metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
+					defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
 					h.ServeHTTP(w, r)
 				})
 			}(http.StripPrefix("/api/v4/streams/t", fs)))

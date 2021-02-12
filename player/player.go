@@ -53,8 +53,8 @@ func (p *Player) AddTranscoderClient(c *tclient.Client, path string) {
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
 func (p *Player) Play(s *Stream, w http.ResponseWriter, r *http.Request) error {
-	metrics.StreamsRunning.Inc()
-	defer metrics.StreamsRunning.Dec()
+	metrics.StreamsRunning.WithLabelValues(metrics.StreamOriginal).Inc()
+	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamOriginal).Dec()
 	ServeStream(w, r, s)
 	return nil
 }
