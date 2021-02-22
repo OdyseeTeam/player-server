@@ -140,7 +140,7 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Query().Get(paramDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
-	} else if strings.HasPrefix(s.ContentType, "video/") {
+	} else if strings.HasPrefix(s.ContentType, "video/") && r.Header.Get("range") == "" {
 		// Attempt transcoded video retrieval
 		cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
 		if cv != nil {
