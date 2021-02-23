@@ -216,7 +216,7 @@ func (s *Stream) RemoveChunk(chunkIdx int) error {
 
 	bi := s.sdBlob.BlobInfos[chunkIdx]
 	hash := hex.EncodeToString(bi.BlobHash)
-	return s.player.blobSource.clearChuckFromCache(hash)
+	return s.player.blobSource.clearChunkFromCache(hash)
 }
 
 // GetChunk returns the nth ReadableChunk of the stream.

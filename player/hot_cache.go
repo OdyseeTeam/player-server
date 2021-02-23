@@ -1,10 +1,12 @@
 package player
 
 import (
+	"errors"
 	"time"
 	"unsafe"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
+	"github.com/lbryio/reflector.go/shared"
 
 	"github.com/lbryio/ccache/v2"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -14,8 +16,6 @@ import (
 )
 
 const longTTL = 365 * 24 * time.Hour
-
-var DiskCacheAsOrgin bool
 
 // HotCache is basically an in-memory BlobStore but it stores the blobs decrypted
 // You have to know which blobs you expect to be sd blobs when using HotCache
@@ -97,10 +97,11 @@ func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) 
 }
 
 // clearChunkFromCache will remove the chunk from the hotcache and from its origin.
-func (h *HotCache) clearChuckFromCache(hash string) error {
+func (h *HotCache) clearChunkFromCache(hash string) error {
 	h.cache.Delete(hash)
-	if DiskCacheAsOrgin {
-		return h.origin.Delete(hash)
+	err := h.origin.Delete(hash)
+	if !errors.Is(err, shared.ErrNotImplemented) {
+		return err
 	}
 	return nil
 }

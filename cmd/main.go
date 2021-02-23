@@ -163,7 +163,6 @@ func getBlobSource() store.BlobStore {
 	// so if the underlying cache holds 10MB, 10MB/2MB=5Bytes which is also the exact count of objects to restore on startup
 	realCacheSize := float64(diskCacheMaxSize) / float64(stream.MaxBlobSize)
 	if diskCacheMaxSize > 0 {
-		player.DiskCacheAsOrgin = true
 		err := os.MkdirAll(diskCachePath, os.ModePerm)
 		if err != nil {
 			Logger.Fatal(err)
