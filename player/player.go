@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/ccache/v2"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 
+	"github.com/lbryio/ccache/v2"
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	tclient "github.com/lbryio/transcoder/client"
 )

@@ -6,10 +6,10 @@ import (
 	"unsafe"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
-	"github.com/lbryio/reflector.go/shared"
 
 	"github.com/lbryio/ccache/v2"
 	"github.com/lbryio/lbry.go/v2/stream"
+	"github.com/lbryio/reflector.go/shared"
 	"github.com/lbryio/reflector.go/store"
 
 	"golang.org/x/sync/singleflight"
@@ -60,11 +60,13 @@ func (h *HotCache) GetSDBlob(hash string) (*stream.SDBlob, error) {
 // getSDFromOrigin gets the blob from the origin, caches it, and returns it
 func (h *HotCache) getSDFromOrigin(hash string) (*stream.SDBlob, error) {
 	blob, err, _ := h.sf.Do(hash, func() (interface{}, error) {
-		blob, trace, err := h.origin.Get(hash)
+		blob, _, err := h.origin.Get(hash)
 		if err != nil {
 			return nil, err
 		}
-		Logger.Debugf("trace for %s:\n%s", hash, trace.String())
+		//we'll use blobdownloader to trace for now. this line is left in here commented so that we remember how to use the trace
+		//it's a bad idea to run it like this in production because even though the line doesn't get printed, the trace.String() function gets evaluated
+		//Logger.Debugf("trace for %s:\n%s", hash, trace.String())
 		var sd stream.SDBlob
 		err = sd.FromBlob(blob)
 		if err != nil {
@@ -109,11 +111,13 @@ func (h *HotCache) clearChunkFromCache(hash string) error {
 // getChunkFromOrigin gets the chunk from the origin, decrypts it, caches it, and returns it
 func (h *HotCache) getChunkFromOrigin(hash string, key, iv []byte) (ReadableChunk, error) {
 	chunk, err, _ := h.sf.Do(hash, func() (interface{}, error) {
-		blob, trace, err := h.origin.Get(hash)
+		blob, _, err := h.origin.Get(hash)
 		if err != nil {
 			return nil, err
 		}
-		Logger.Debugf("trace for %s:\n%s", hash, trace.String())
+		//we'll use blobdownloader to trace for now. this line is left in here commented so that we remember how to use the trace
+		//it's a bad idea to run it like this in production because even though the line doesn't get printed, the trace.String() function gets evaluated
+		//Logger.Debugf("trace for %s:\n%s", hash, trace.String())
 		metrics.InBytes.Add(float64(len(blob)))
 
 		chunk, err := stream.DecryptBlob(blob, key, iv)
