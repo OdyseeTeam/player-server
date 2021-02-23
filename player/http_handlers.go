@@ -47,6 +47,7 @@ func NewRequestHandler(p *Player) *RequestHandler {
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var uri, token string
 
+	// Speech stuff
 	if strings.HasPrefix(r.URL.String(), SpeechPrefix) {
 		uri = r.URL.String()[len(SpeechPrefix):]
 		extStart := strings.LastIndex(uri, ".")
@@ -62,6 +63,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		uri = fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
 		token = vars["token"]
 	}
+	// Speech stuff over
 
 	Logger.Infof("%s stream %v", r.Method, uri)
 
@@ -143,12 +145,10 @@ func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
 }
 
 func processStreamError(errorType string, uri string, w http.ResponseWriter, r *http.Request, err error) {
+	sendToSentry := true
+
 	if err == video.ErrChannelNotEnabled {
 		return
-	}
-
-	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
-		hub.CaptureException(err)
 	}
 
 	if w == nil {
@@ -161,8 +161,10 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 	if errors.Is(err, errPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
 	} else if errors.Is(err, errStreamNotFound) {
+		sendToSentry = false
 		writeErrorResponse(w, http.StatusNotFound, err.Error())
 	} else if strings.Contains(err.Error(), "blob not found") {
+		sendToSentry = false
 		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else if strings.Contains(err.Error(), "hash in response does not match") {
 		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
@@ -175,6 +177,10 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 	} else {
 		// logger.CaptureException(err, map[string]string{"uri": uri})
 		writeErrorResponse(w, http.StatusInternalServerError, err.Error())
+	}
+
+	if hub := sentry.GetHubFromContext(r.Context()); hub != nil && sendToSentry && err != nil {
+		hub.CaptureException(err)
 	}
 }
 
