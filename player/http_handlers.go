@@ -17,6 +17,8 @@ import (
 )
 
 const paramDownload = "download"
+
+// SpeechPrefix is root level prefix for speech URLs.
 const SpeechPrefix = "/speech/"
 
 var playerName = "unknown-player"
@@ -117,6 +119,8 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		processStreamError("retrieval", uri, w, r, err)
 		return
 	}
+
+	writeHeaders(w, r, s)
 
 	switch r.Method {
 	case http.MethodHead:
