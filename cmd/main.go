@@ -71,7 +71,8 @@ func init() {
 	rootCmd.Flags().StringVar(&transcoderVideoSize, "transcoder-video-size", "200GB", "max size of transcoder video storage")
 	rootCmd.Flags().StringVar(&transcoderAddr, "transcoder-addr", "", "transcoder API address")
 
-	//Live Config
+	rootCmd.Flags().UintVar(&player.PrefetchCount, "prefetch-count", player.DefaultPrefetchLen, "how many blobs to retrieve from origin in advance")
+
 	rootCmd.Flags().StringVar(&config.UserName, "config-username", "lbry", "Username to access the config endpoint with")
 	rootCmd.Flags().StringVar(&config.Password, "config-password", "lbry", "Password to access the config endpoint with")
 	rootCmd.Flags().Float64Var(&player.ThrottleScale, "throttle-scale", 1.5, "Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s")

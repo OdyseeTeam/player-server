@@ -243,9 +243,9 @@ func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 }
 
 func (s *Stream) prefetchChunk(chunkIdx int) {
-	prefetchLen := DefaultPrefetchLen
+	prefetchLen := int(PrefetchCount)
 	chunksLeft := len(s.sdBlob.BlobInfos) - chunkIdx - 1 // Last blob is empty
-	if chunksLeft < DefaultPrefetchLen {
+	if chunksLeft < prefetchLen {
 		prefetchLen = chunksLeft
 	}
 	if prefetchLen <= 0 {

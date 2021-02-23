@@ -16,6 +16,8 @@ const (
 	DefaultPrefetchLen = 2
 )
 
+var PrefetchCount uint
+
 // ReadableChunk is a chunk object that Stream can Read() from.
 type ReadableChunk []byte
 
