@@ -78,69 +78,9 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.PrepareForReading()
-	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))
-	if err != nil {
-		processStreamError("retrieval", uri, w, r, err)
-		return
-	}
-
-	writeHeaders(w, r, s)
 	if r.URL.Query().Get(paramDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
-	}
-
-	switch r.Method {
-	case http.MethodHead:
-		w.WriteHeader(http.StatusOK)
-	case http.MethodGet:
-		addBreadcrumb(r, "player", fmt.Sprintf("play %v", uri))
-		err = h.player.Play(s, w, r)
-		if err != nil {
-			processStreamError("playback", uri, w, r, err)
-			return
-		}
-	}
-}
-
-// HandleV4 will redirect to a transcoded version of the video or ship it the V3 way if it's not there.
-func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
-	var uri, token string
-
-	if strings.HasPrefix(r.URL.String(), SpeechPrefix) {
-		uri = r.URL.String()[len(SpeechPrefix):]
-		extStart := strings.LastIndex(uri, ".")
-		if extStart >= 0 {
-			uri = uri[:extStart]
-		}
-		if uri == "" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-	} else {
-		vars := mux.Vars(r)
-		uri = fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
-		token = vars["token"]
-	}
-
-	Logger.Infof("%s stream %v", r.Method, uri)
-
-	s, err := h.player.ResolveStream(uri)
-	addBreadcrumb(r, "sdk", fmt.Sprintf("resolve %v", uri))
-	if err != nil {
-		processStreamError("resolve", uri, w, r, err)
-		return
-	}
-
-	err = h.player.VerifyAccess(s, token)
-	if err != nil {
-		processStreamError("access", uri, w, r, err)
-		return
-	}
-
-	if r.URL.Query().Get(paramDownload) != "" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
-	} else if strings.HasPrefix(s.ContentType, "video/") && r.Header.Get("range") == "" {
+	} else if fitForTranscoder(r, s) {
 		// Attempt transcoded video retrieval
 		cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
 		if cv != nil {
@@ -175,8 +115,6 @@ func (h *RequestHandler) HandleV4(w http.ResponseWriter, r *http.Request) {
 		processStreamError("retrieval", uri, w, r, err)
 		return
 	}
-
-	writeHeaders(w, r, s)
 
 	switch r.Method {
 	case http.MethodHead:
@@ -270,4 +208,10 @@ func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, vPath string)
 
 	url := fmt.Sprintf("%v/api/v4/streams/t/%v/master.m3u8", host, vPath)
 	http.Redirect(w, r, prefix+url, http.StatusPermanentRedirect)
+}
+
+func fitForTranscoder(r *http.Request, s *Stream) bool {
+	return strings.HasPrefix(r.URL.Path, "/api/v4/") &&
+		strings.HasPrefix(s.ContentType, "video/") &&
+		r.Header.Get("range") == ""
 }

@@ -25,7 +25,7 @@ func InstallPlayerRoutes(r *mux.Router, p *Player) {
 	v3Router.Path("/streams/paid/{claim_name}/{claim_id}/{sd_hash}/{token}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 
 	v4Router := r.PathPrefix("/api/v4").Subrouter()
-	v4Router.Path("/streams/free/{claim_name}/{claim_id}/{sd_hash}").HandlerFunc(playerHandler.HandleV4).Methods(http.MethodGet, http.MethodHead)
+	v4Router.Path("/streams/free/{claim_name}/{claim_id}/{sd_hash}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 
 	r.PathPrefix(SpeechPrefix).HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 
