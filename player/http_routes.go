@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"net/http/pprof"
 
-	"github.com/gorilla/mux"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
+
+	"github.com/gorilla/mux"
 )
 
 const ProfileRoutePath = "/superdebug/pprof"
