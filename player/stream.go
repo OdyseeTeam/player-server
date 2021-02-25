@@ -19,10 +19,11 @@ import (
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
 // as well as some stream metadata.
 type Stream struct {
-	URI         string
-	Size        uint64
-	ContentType string
-	hash        string
+	URI              string
+	Size             uint64
+	ContentType      string
+	hash             string
+	prefetchedChunks map[int]bool
 
 	player         *Player
 	claim          *ljsonrpc.Claim
@@ -40,11 +41,12 @@ func NewStream(p *Player, uri string, claim *ljsonrpc.Claim) *Stream {
 		ContentType: patchMediaType(source.MediaType),
 		Size:        source.GetSize(),
 
-		player:         p,
-		claim:          claim,
-		source:         source,
-		resolvedStream: stream,
-		hash:           hex.EncodeToString(source.SdHash),
+		player:           p,
+		claim:            claim,
+		source:           source,
+		resolvedStream:   stream,
+		hash:             hex.EncodeToString(source.SdHash),
+		prefetchedChunks: make(map[int]bool, 50),
 	}
 }
 
@@ -71,7 +73,7 @@ func (s *Stream) PrepareForReading() error {
 		return err
 	}
 
-	s.sdBlob = &sdBlob
+	s.sdBlob = sdBlob
 
 	s.setSize()
 
@@ -154,28 +156,67 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
 	}
 
+	if n == 0 && err == nil {
+		err = errors.New("read 0 bytes triggering an endless loop, exiting stream")
+		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
+	}
+
 	return n, err
 }
 
 func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 	var read int
+	var index int64
+	var err error
+	for i := 0; i < 2; i++ {
+		index, read, err = s.attemptReadFromChunks(sr, dest)
+		if err != nil {
+			return read, err
+		}
+		if read > 0 {
+			break
+		}
+		// Dirty data likely - delete from cache and retry
+		err = s.RemoveChunk(int(index))
+		if err != nil {
+			return read, err
+		}
+		Logger.Warnf("Read 0 bytes for %s at blob index %d/%d at offset %d", s.URI, int(index), len(s.sdBlob.BlobInfos),
+			s.seekOffset)
+	}
 
-	for i := sr.FirstChunkIdx; i < sr.LastChunkIdx+1; i++ {
+	return read, nil
+}
+
+func (s *Stream) attemptReadFromChunks(sr streamRange, dest []byte) (i int64, read int, err error) {
+	i = sr.FirstChunkIdx
+	for i < sr.LastChunkIdx+1 {
 		offset, readLen := sr.ByteRangeForChunk(i)
 
 		b, err := s.GetChunk(int(i))
 		if err != nil {
-			return read, err
+			return i, read, err
 		}
 
 		n, err := b.Read(offset, readLen, dest[read:])
 		read += n
 		if err != nil {
-			return read, err
+			return i, read, err
 		}
+
+		i++
+	}
+	return i, read, nil
+}
+
+func (s *Stream) RemoveChunk(chunkIdx int) error {
+	if chunkIdx > len(s.sdBlob.BlobInfos) {
+		return errors.New("blob index out of bounds")
 	}
 
-	return read, nil
+	bi := s.sdBlob.BlobInfos[chunkIdx]
+	hash := hex.EncodeToString(bi.BlobHash)
+	return s.player.blobSource.clearChunkFromCache(hash)
 }
 
 // GetChunk returns the nth ReadableChunk of the stream.
@@ -192,16 +233,19 @@ func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 		return nil, err
 	}
 
-	if s.player.prefetch {
-		go s.prefetchChunk(chunkIdx + 1)
+	chunkToPrefetch := chunkIdx + 1
+	prefetched := s.prefetchedChunks[chunkToPrefetch]
+	if s.player.prefetch && !prefetched {
+		s.prefetchedChunks[chunkToPrefetch] = true
+		go s.prefetchChunk(chunkToPrefetch)
 	}
 	return chunk, nil
 }
 
 func (s *Stream) prefetchChunk(chunkIdx int) {
-	prefetchLen := DefaultPrefetchLen
+	prefetchLen := int(PrefetchCount)
 	chunksLeft := len(s.sdBlob.BlobInfos) - chunkIdx - 1 // Last blob is empty
-	if chunksLeft < DefaultPrefetchLen {
+	if chunksLeft < prefetchLen {
 		prefetchLen = chunksLeft
 	}
 	if prefetchLen <= 0 {
@@ -212,7 +256,7 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 	for _, bi := range s.sdBlob.BlobInfos[chunkIdx : chunkIdx+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 
-		if !s.player.blobSource.IsCached(hash) {
+		if s.player.blobSource.IsCached(hash) {
 			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
@@ -232,17 +276,17 @@ func (s *Stream) getStreamSizeFromLastBlobSize() (uint64, error) {
 		return 0, errors.New("claim is not a stream")
 	}
 
-	numChunks := len(s.sdBlob.BlobInfos) - 2
+	numChunks := len(s.sdBlob.BlobInfos) - 1
 	if numChunks <= 0 {
 		return 0, nil
 	}
 
-	lastBlobInfo := s.sdBlob.BlobInfos[numChunks]
+	lastBlobInfo := s.sdBlob.BlobInfos[numChunks-1]
 
 	lastChunk, err := s.player.blobSource.GetChunk(hex.EncodeToString(lastBlobInfo.BlobHash), s.sdBlob.Key, lastBlobInfo.IV)
 	if err != nil {
 		return 0, err
 	}
 
-	return uint64(MaxChunkSize)*uint64(numChunks) + uint64(len(lastChunk)), nil
+	return uint64(MaxChunkSize)*uint64(numChunks-1) + uint64(len(lastChunk)), nil
 }

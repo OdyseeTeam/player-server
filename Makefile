@@ -37,3 +37,10 @@ retag:
 	git push origin :$(tag)
 	git tag -d $(tag)
 	git tag $(tag)
+
+
+.PHONY: dev hotdev
+dev:
+	go run . --upstream-reflector=reflector.lbry.com:5568 --verbose --hot-cache-size=50M
+hotdev:
+	reflex --decoration=none --start-service=true --regex='\.go$$' make dev

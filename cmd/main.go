@@ -18,6 +18,8 @@ import (
 	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
+	tclient "github.com/lbryio/transcoder/client"
+	tlogging "github.com/lbryio/transcoder/pkg/logging"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/sirupsen/logrus"
@@ -34,11 +36,14 @@ var (
 	lbrynetAddress string
 	paidPubKey     string
 
-	upstreamReflector  string
-	cloudFrontEndpoint string
-	diskCacheDir       string
-	diskCacheSize      string
-	hotCacheSize       string
+	upstreamReflector   string
+	cloudFrontEndpoint  string
+	diskCacheDir        string
+	diskCacheSize       string
+	hotCacheSize        string
+	transcoderVideoPath string
+	transcoderVideoSize string
+	transcoderAddr      string
 
 	rootCmd = &cobra.Command{
 		Use:     "lbrytv_player",
@@ -61,9 +66,13 @@ func init() {
 	rootCmd.Flags().StringVar(&cloudFrontEndpoint, "cloudfront-endpoint", "", "CloudFront edge endpoint for standard HTTP retrieval")
 	rootCmd.Flags().StringVar(&diskCacheDir, "disk-cache-dir", "", "enable disk cache, storing blobs in dir")
 	rootCmd.Flags().StringVar(&diskCacheSize, "disk-cache-size", "100MB", "max size of disk cache: 16GB, 500MB, etc.")
-	rootCmd.Flags().StringVar(&hotCacheSize, "hot-cache-size", "", "enable hot cache for decrypted blobs and set max size: 16GB, 500MB, etc")
+	rootCmd.Flags().StringVar(&hotCacheSize, "hot-cache-size", "50MB", "max size for in-memory cache: 16GB, 500MB, etc")
+	rootCmd.Flags().StringVar(&transcoderVideoPath, "transcoder-video-path", "", "path to store transcoded videos")
+	rootCmd.Flags().StringVar(&transcoderVideoSize, "transcoder-video-size", "200GB", "max size of transcoder video storage")
+	rootCmd.Flags().StringVar(&transcoderAddr, "transcoder-addr", "", "transcoder API address")
 
-	//Live Config
+	rootCmd.Flags().UintVar(&player.PrefetchCount, "prefetch-count", player.DefaultPrefetchLen, "how many blobs to retrieve from origin in advance")
+
 	rootCmd.Flags().StringVar(&config.UserName, "config-username", "lbry", "Username to access the config endpoint with")
 	rootCmd.Flags().StringVar(&config.Password, "config-password", "lbry", "Password to access the config endpoint with")
 	rootCmd.Flags().Float64Var(&player.ThrottleScale, "throttle-scale", 1.5, "Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s")
@@ -80,6 +89,33 @@ func run(cmd *cobra.Command, args []string) {
 
 	p := player.NewPlayer(initHotCache(blobSource), lbrynetAddress)
 	p.SetPrefetch(enablePrefetch)
+
+	var tcsize datasize.ByteSize
+	err := tcsize.UnmarshalText([]byte(transcoderVideoSize))
+	if err != nil {
+		Logger.Fatal(err)
+	}
+	if transcoderVideoPath != "" && tcsize > 0 && transcoderAddr != "" {
+		err := os.Mkdir(transcoderVideoPath, os.ModePerm)
+		if err != nil && !os.IsExist(err) {
+			Logger.Fatal(err)
+		}
+
+		c := tclient.New(
+			tclient.Configure().
+				VideoPath(transcoderVideoPath).
+				Server(transcoderAddr).
+				CacheSize(int64(tcsize)))
+		tclient.SetLogger(tlogging.Create("tclient", tlogging.Prod))
+		n, err := c.RestoreCache()
+		if err != nil {
+			Logger.Error(err)
+		} else {
+			Logger.Infof("restored %v items into transcoder cache", n)
+		}
+
+		p.AddTranscoderClient(&c, transcoderVideoPath)
+	}
 
 	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource})
 
@@ -124,6 +160,9 @@ func getBlobSource() store.BlobStore {
 	}
 
 	diskCacheMaxSize, diskCachePath := diskCacheParams()
+	//we are tracking blobs in memory with a 1 byte long boolean, which means that for each 2MB (a blob) we need 1Byte
+	// so if the underlying cache holds 10MB, 10MB/2MB=5Bytes which is also the exact count of objects to restore on startup
+	realCacheSize := float64(diskCacheMaxSize) / float64(stream.MaxBlobSize)
 	if diskCacheMaxSize > 0 {
 		err := os.MkdirAll(diskCachePath, os.ModePerm)
 		if err != nil {
@@ -132,7 +171,7 @@ func getBlobSource() store.BlobStore {
 		blobSource = store.NewCachingStore(
 			"player",
 			blobSource,
-			store.NewLRUStore("player", store.NewDiskStore(diskCachePath, 2), diskCacheMaxSize/stream.MaxBlobSize),
+			store.NewLFUDAStore("player", store.NewDiskStore(diskCachePath, 2), realCacheSize),
 		)
 	}
 

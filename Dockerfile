@@ -1,6 +1,9 @@
 FROM alpine
 EXPOSE 8080
 
+# This is for /etc/mime.types
+RUN apk add mailcap
+
 WORKDIR /app
 COPY lbrytv_player /app/
 

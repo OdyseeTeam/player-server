@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/pprof"
 
+	"github.com/lbryio/lbrytv-player/internal/metrics"
+
 	"github.com/gorilla/mux"
 )
 
@@ -22,6 +24,24 @@ func InstallPlayerRoutes(r *mux.Router, p *Player) {
 	v3Router := r.PathPrefix("/api/v3").Subrouter()
 	v3Router.Path("/streams/free/{claim_name}/{claim_id}/{sd_hash}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 	v3Router.Path("/streams/paid/{claim_name}/{claim_id}/{sd_hash}/{token}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
+
+	v4Router := r.PathPrefix("/api/v4").Subrouter()
+	v4Router.Path("/streams/free/{claim_name}/{claim_id}/{sd_hash}").HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
+
+	r.PathPrefix(SpeechPrefix).HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
+
+	if p.TCVideoPath != "" {
+		fs := http.FileServer(http.Dir(p.TCVideoPath))
+		v4Router.PathPrefix("/streams/t").Handler(
+			func(h http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					addPoweredByHeaders(w)
+					metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
+					defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
+					h.ServeHTTP(w, r)
+				})
+			}(http.StripPrefix("/api/v4/streams/t", fs)))
+	}
 }
 
 func InstallProfilingRoutes(r *mux.Router) {

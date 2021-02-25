@@ -15,15 +15,18 @@ func InstallRoute(r *mux.Router) {
 
 const (
 	ns = "player"
+
+	StreamOriginal   = "original"
+	StreamTranscoded = "transcoded"
 )
 
 var (
-	StreamsRunning = promauto.NewGauge(prometheus.GaugeOpts{
+	StreamsRunning = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: ns,
 		Subsystem: "streams",
 		Name:      "running",
 		Help:      "Number of streams currently playing",
-	})
+	}, []string{"variant"})
 
 	InBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: ns,

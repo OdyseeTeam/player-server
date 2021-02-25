@@ -12,9 +12,11 @@ const (
 
 	// DefaultPrefetchLen is how many blobs we should prefetch ahead.
 	// 3 should be enough to deliver 2 x 4 = 8MB/s streams.
-	// however since we can't keep up, let's see if 1 works
-	DefaultPrefetchLen = 1
+	// however since we can't keep up, let's see if 2 works
+	DefaultPrefetchLen = 2
 )
+
+var PrefetchCount uint
 
 // ReadableChunk is a chunk object that Stream can Read() from.
 type ReadableChunk []byte

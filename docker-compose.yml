@@ -4,37 +4,34 @@ services:
     image: 'lbry/lbrynet-tv:latest'
     restart: always
     labels:
-      com.centurylinklabs.watchtower.enable: true
-  docker-host:
-    image: qoomon/docker-host
-    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
-    restart: on-failure
-    environment:
-      - PORTS=5567
+      com.centurylinklabs.watchtower.enable: 1
+    ports:
+      - "5279:5279"
   player:
-    image: 'lbry/lbrytv-player:latest'
+    image: 'lbry/lbrytv-player:fuda-next'
     restart: always
-    logging:
-      driver: awslogs
-      options:
-        awslogs-group: lbrytv
-        awslogs-region: us-east-1
-        awslogs-stream: "player-player7.lbry.tv"
     labels:
-      com.centurylinklabs.watchtower.enable: true
+      com.centurylinklabs.watchtower.enable: 1
     ports:
       - "8080:8080"
+      - "5567:5567"
+      - "5568:5568/udp"
+      - "5568:5568/tcp"
     volumes:
-      - "/tmp/player_cache:/tmp/player_cache"
+      - "/tmp/reflector_cache:/tmp/player_cache"
+      - "/tmp/reflector_cache:/tmp/transcoded_cache"
     entrypoint: >
       ./lbrytv_player
       --lbrynet=http://lbrynet:5279
       --bind=0.0.0.0:8080
-      --disk-cache-dir="/tmp/reflector_player_blobs"
-      --disk-cache-size="1.9TB"
+      --disk-cache-dir="/tmp/player_cache"
+      --disk-cache-size="1TB"
       --hot-cache-size="10GB"
       --prefetch=true
       --upstream-reflector="reflector.lbry.com:5568"
+      --transcoder-video-path=/tmp/transcoded_cache
+      --transcoder-video-size=200GB
+      --transcoder-addr=http://t0.lbry.tv:18081
     environment:
       - PLAYER_NAME=my-own-player
     depends_on:
