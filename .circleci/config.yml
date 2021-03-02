@@ -1,8 +1,8 @@
-version: 2
+version: 2.1
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.15
+      - image: circleci/golang:1.16
       - image: lbry/lbrynet-tv:latest
     steps:
       - checkout
@@ -17,18 +17,18 @@ jobs:
             - "/go/pkg/mod"
   build_snapshot:
     docker:
-      - image: circleci/golang:1.15
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - restore_cache:
           keys:
             - go-mod-cache-v2-{{ checksum "go.sum" }}
-      - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser
+      - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
       - setup_remote_docker
       - run:
           name: Build Snapshot
           command: make snapshot
-  publish:
+  release:
     docker:
       - image: circleci/golang:1.15
     steps:
@@ -36,7 +36,7 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-v2-{{ checksum "go.sum" }}
-      - run: curl -sL https://git.io/goreleaser -o /go/bin/goreleaser && chmod +x /go/bin/goreleaser
+      - run: curl -sL https://git.io/goreleaser | bash
       - setup_remote_docker
       - run:
           name: Build Release
@@ -59,9 +59,11 @@ workflows:
           filters:
             branches:
               ignore: master
-      - publish:
+      - release:
           requires:
             - test
           filters:
             branches:
               only: master
+            tags:
+              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
