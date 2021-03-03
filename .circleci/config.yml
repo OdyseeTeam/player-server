@@ -36,6 +36,8 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-v2-{{ checksum "go.sum" }}
+      - run: make test_circleci
+      - run: git reset --hard HEAD
       - setup_remote_docker
       - run:
           name: Build release image
@@ -61,8 +63,6 @@ workflows:
             branches:
               ignore: master
       - release:
-          requires:
-            - test
           filters:
             branches:
               ignore: /.*/
