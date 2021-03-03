@@ -107,7 +107,7 @@ func run(cmd *cobra.Command, args []string) {
 				Server(transcoderAddr).
 				CacheSize(int64(tcsize)))
 		tclient.SetLogger(tlogging.Create("tclient", tlogging.Prod))
-		n, err := c.RestoreCache()
+		n, err := c.SweepCache(true)
 		if err != nil {
 			Logger.Error(err)
 		} else {
