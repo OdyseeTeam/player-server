@@ -44,7 +44,7 @@ jobs:
           name: Build release image
           command: |
             curl -sOL https://git.io/goreleaser && chmod +x ./goreleaser
-            ./goreleaser.sh --rm-dist --skip-publish
+            ./goreleaser --rm-dist --skip-publish
       - run:
           name: Publish Docker image to Docker Hub
           command: |
