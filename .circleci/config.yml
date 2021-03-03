@@ -36,7 +36,11 @@ jobs:
       - restore_cache:
           keys:
             - go-mod-cache-v2-{{ checksum "go.sum" }}
-      - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
+      - run:
+          name: Install goreleaser
+          command: |
+            curl -sOL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh && chmod +x goreleaser.sh
+            ./goreleaser.sh -b /usr/local/bin
       - setup_remote_docker
       - run:
           name: Build Release
