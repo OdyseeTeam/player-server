@@ -2,7 +2,7 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.16
+      - image: cimg/go:1.16
       - image: lbry/lbrynet-tv:latest
     steps:
       - checkout
@@ -17,8 +17,7 @@ jobs:
             - "/go/pkg/mod"
   release:
     docker:
-      - image: circleci/golang:1.16
-      - image: lbry/lbrynet-tv:latest
+      - image: cimg/go:1.16
     steps:
       - checkout
       - restore_cache:
