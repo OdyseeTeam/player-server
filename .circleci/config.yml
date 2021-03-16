@@ -15,19 +15,6 @@ jobs:
           key: go-mod-cache-v2-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
-  build_snapshot:
-    docker:
-      - image: circleci/golang:1.16
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - go-mod-cache-v2-{{ checksum "go.sum" }}
-      - run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
-      - setup_remote_docker
-      - run:
-          name: Build Snapshot
-          command: make snapshot
   release:
     docker:
       - image: circleci/golang:1.16
