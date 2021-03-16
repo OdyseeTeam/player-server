@@ -12,12 +12,6 @@ test_circleci:
 	go test -covermode=count -coverprofile=coverage.out ./...
 	goveralls -coverprofile=coverage.out -service=circle-ci -repotoken $(COVERALLS_TOKEN)
 
-release:
-	goreleaser --rm-dist --skip-publish
-
-snapshot:
-	goreleaser --rm-dist --snapshot
-
 linux:
 	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -o dist/lbrytv_player -ldflags "-s -w -X github.com/lbryio/lbrytv-player/internal/version.version=$(VERSION)"
 

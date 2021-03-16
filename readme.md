@@ -63,9 +63,22 @@ docker-compose up -d
 
 # Releasing
 
-Releases are built and packed into docker images automatically off the master branch by Circle CI. You need to tag your commit with a proper semver tag.
+Releases are built and packed into docker images automatically off `master` branch by Circle CI. Approximate `Makefile` commands that are used:
 
-Both release binary and docker image are built using goreleaser. Check [Makefile](./Makefile) and [goreleaser config](./.goreleaser.yml) for more details.
+```
+make linux
+make image
+docker push lbry/lbrytv-player:v21.3.1
+docker push lbry/lbrytv-player:latest
+```
+
+You need to tag your commit with a proper CalVer tag. Example:
+
+```
+git tag v21.3.1  # March 2021, minor version 3
+```
+
+Check [Makefile](./Makefile) for more details.
 
 ## Contributing
 
