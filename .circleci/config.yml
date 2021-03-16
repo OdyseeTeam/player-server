@@ -8,11 +8,11 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - go-mod-cache-v2-{{ checksum "go.sum" }}
+            - go-mod-cache-v3-{{ checksum "go.sum" }}
       - run: make test_circleci
       - run: git reset --hard HEAD
       - save_cache:
-          key: go-mod-cache-v2-{{ checksum "go.sum" }}
+          key: go-mod-cache-v3-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
   release:
@@ -22,7 +22,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - go-mod-cache-v2-{{ checksum "go.sum" }}
+            - go-mod-cache-v3-{{ checksum "go.sum" }}
       - setup_remote_docker
       - run:
           name: Build release image
