@@ -5,6 +5,6 @@ EXPOSE 8080
 RUN apk add mailcap
 
 WORKDIR /app
-COPY lbrytv_player /app/
+COPY dist/lbrytv_player /app/
 
 CMD ["./lbrytv_player"]

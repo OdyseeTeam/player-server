@@ -30,8 +30,8 @@ jobs:
       - run:
           name: Build release image
           command: |
-            curl -sOL https://git.io/goreleaser && chmod +x ./goreleaser && mv ./goreleaser /tmp/goreleaser
-            /tmp/goreleaser --rm-dist --skip-publish
+            make linux
+            make image
       - run:
           name: Publish Docker image to Docker Hub
           command: |

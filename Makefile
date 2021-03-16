@@ -18,6 +18,12 @@ release:
 snapshot:
 	goreleaser --rm-dist --snapshot
 
+linux:
+	GOARCH=amd64 GOOS=linux go build -o dist/ -ldflags "-s -w -X github.com/lbryio/lbrytv-player/internal/version.version=$(VERSION)"
+
+macos:
+	GOARCH=amd64 GOOS=darwin go build -o dist/ -ldflags "-s -w -X github.com/lbryio/lbrytv-player/internal/version.version=$(VERSION)"
+
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: image
 image:
