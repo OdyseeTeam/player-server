@@ -44,12 +44,6 @@ workflows:
   integrate:
     jobs:
       - test
-      - build_snapshot:
-          requires:
-            - test
-          filters:
-            branches:
-              ignore: master
       - release:
           filters:
             branches:
