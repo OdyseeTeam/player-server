@@ -61,6 +61,10 @@ func (p *Player) Play(s *Stream, w http.ResponseWriter, r *http.Request) error {
 
 // ResolveStream resolves provided URI by calling the SDK.
 func (p *Player) ResolveStream(uri string) (*Stream, error) {
+	defer func(t time.Time) {
+		metrics.ResolveTimeMS.Observe(float64(time.Since(t).Milliseconds()))
+	}(time.Now())
+
 	var claim *ljsonrpc.Claim
 
 	cachedClaim := p.resolveCache.Get(uri)

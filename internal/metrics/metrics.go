@@ -64,6 +64,14 @@ var (
 		Help:      "Total number of items evicted from the cache",
 	})
 
+	ResolveTimeMS = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: ns,
+		Subsystem: "resolve",
+		Name:      "time",
+		Help:      "Resolve times",
+		Buckets:   []float64{1, 2, 5, 25, 50, 100, 250, 400, 1000},
+	})
+
 	playerInfo = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: ns,
 		Subsystem: "hotcache",
