@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/lbryio/lbrytv-player/internal/metrics"
 	tclient "github.com/lbryio/transcoder/client"
 	"github.com/lbryio/transcoder/video"
 
@@ -88,11 +89,14 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		// Attempt transcoded video retrieval
 		cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
 		if cv != nil {
+			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
 			redirectToPlaylistURL(w, r, cv.DirName())
 			return
 		}
 		tclient.PoolDownload(dl)
 	}
+
+	metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
 
 	err = s.PrepareForReading()
 	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))

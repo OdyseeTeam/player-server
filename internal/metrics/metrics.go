@@ -28,6 +28,13 @@ var (
 		Help:      "Number of streams currently playing",
 	}, []string{"variant"})
 
+	StreamsDelivered = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "streams",
+		Name:      "delivered",
+		Help:      "Total number streams delivered",
+	}, []string{"variant"})
+
 	InBytes = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: ns,
 		Name:      "in_bytes",
