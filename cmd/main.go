@@ -105,7 +105,8 @@ func run(cmd *cobra.Command, args []string) {
 			tclient.Configure().
 				VideoPath(transcoderVideoPath).
 				Server(transcoderAddr).
-				CacheSize(int64(tcsize)))
+				CacheSize(int64(tcsize)).
+				ItemsToPrune(10))
 		tclient.SetLogger(tlogging.Create("tclient", tlogging.Prod))
 		n, err := c.SweepCache(true)
 		if err != nil {
