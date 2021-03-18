@@ -91,26 +91,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			redirectToPlaylistURL(w, r, cv.DirName())
 			return
 		}
-
-		go func() {
-			addBreadcrumb(r, "transcoder", fmt.Sprintf("getting %v", s.URI))
-			err = dl.Download()
-			if err != nil {
-				if err != video.ErrChannelNotEnabled || err != tclient.ErrAlreadyDownloading {
-					processStreamError("download", uri, nil, r, err)
-				}
-				return
-			}
-			for p := range dl.Progress() {
-				if p.Done {
-					break
-				}
-				if p.Error != nil {
-					processStreamError("download", uri, nil, r, err)
-					break
-				}
-			}
-		}()
+		tclient.PoolDownload(dl)
 	}
 
 	err = s.PrepareForReading()
