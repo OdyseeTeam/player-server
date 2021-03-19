@@ -19,7 +19,6 @@ import (
 	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
 	tclient "github.com/lbryio/transcoder/client"
-	tlogging "github.com/lbryio/transcoder/pkg/logging"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/sirupsen/logrus"
@@ -107,7 +106,6 @@ func run(cmd *cobra.Command, args []string) {
 				Server(transcoderAddr).
 				CacheSize(int64(tcsize)).
 				ItemsToPrune(10))
-		tclient.SetLogger(tlogging.Create("tclient", tlogging.Prod))
 		n, err := c.SweepCache(true)
 		if err != nil {
 			Logger.Error(err)
