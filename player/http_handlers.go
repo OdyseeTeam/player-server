@@ -93,11 +93,12 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			redirectToPlaylistURL(w, r, cv.DirName())
 			return
 		}
-		err := dl.Init()
-		if err == nil {
-			tclient.PoolDownload(dl)
-		}
-
+		go func() {
+			err := dl.Init()
+			if err == nil {
+				tclient.PoolDownload(dl)
+			}
+		}()
 	}
 
 	metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
