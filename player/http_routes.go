@@ -47,6 +47,7 @@ func InstallPlayerRoutes(r *mux.Router, p *Player) {
 func InstallProfilingRoutes(r *mux.Router) {
 	debugRouter := r.PathPrefix(ProfileRoutePath).Subrouter()
 	debugRouter.HandleFunc("/", pprof.Index)
+	debugRouter.Handle("/goroutine", pprof.Handler("goroutine"))
 	debugRouter.HandleFunc("/cmdline", pprof.Cmdline)
 	debugRouter.HandleFunc("/profile", pprof.Profile)
 	debugRouter.HandleFunc("/symbol", pprof.Symbol)
