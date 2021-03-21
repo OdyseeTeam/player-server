@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
-	tclient "github.com/lbryio/transcoder/client"
 	"github.com/lbryio/transcoder/video"
 
 	"github.com/getsentry/sentry-go"
@@ -87,18 +86,18 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
 	} else if fitForTranscoder(r, s) {
 		// Attempt transcoded video retrieval
-		cv, dl := h.player.tclient.Get("hls", s.URI, s.hash)
+		cv, _ := h.player.tclient.Get("hls", s.URI, s.hash)
 		if cv != nil {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
 			redirectToPlaylistURL(w, r, cv.DirName())
 			return
 		}
-		go func() {
-			err := dl.Init()
-			if err == nil {
-				tclient.PoolDownload(dl)
-			}
-		}()
+		// go func() {
+		// 	err := dl.Init()
+		// 	if err == nil {
+		// 		tclient.PoolDownload(dl)
+		// 	}
+		// }()
 	}
 
 	metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
