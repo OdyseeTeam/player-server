@@ -2,12 +2,12 @@ package player
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"math"
 	"time"
 
+	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 	"github.com/lbryio/lbrytv-player/pkg/mime"
 
@@ -133,7 +133,7 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		newOffset = int64(s.Size) - offset
 	default:
-		return 0, errors.New("invalid seek whence argument")
+		return 0, errors.Err("invalid seek whence argument")
 	}
 
 	if newOffset < 0 {
@@ -153,11 +153,11 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	metrics.OutBytes.Add(float64(n))
 
 	if err != nil {
-		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
+		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, errors.FullTrace(err))
 	}
 
 	if n == 0 && err == nil {
-		err = errors.New("read 0 bytes triggering an endless loop, exiting stream")
+		err = errors.Err("read 0 bytes triggering an endless loop, exiting stream")
 		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
 	}
 
@@ -211,7 +211,7 @@ func (s *Stream) attemptReadFromChunks(sr streamRange, dest []byte) (i int64, re
 
 func (s *Stream) RemoveChunk(chunkIdx int) error {
 	if chunkIdx > len(s.sdBlob.BlobInfos) {
-		return errors.New("blob index out of bounds")
+		return errors.Err("blob index out of bounds")
 	}
 
 	bi := s.sdBlob.BlobInfos[chunkIdx]
@@ -222,7 +222,7 @@ func (s *Stream) RemoveChunk(chunkIdx int) error {
 // GetChunk returns the nth ReadableChunk of the stream.
 func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 	if chunkIdx > len(s.sdBlob.BlobInfos) {
-		return nil, errors.New("blob index out of bounds")
+		return nil, errors.Err("blob index out of bounds")
 	}
 
 	bi := s.sdBlob.BlobInfos[chunkIdx]
@@ -273,7 +273,7 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 // getStreamSizeFromLastChunkSize gets the exact size of a stream from the sd blob and the last chunk
 func (s *Stream) getStreamSizeFromLastBlobSize() (uint64, error) {
 	if s.claim.Value.GetStream() == nil {
-		return 0, errors.New("claim is not a stream")
+		return 0, errors.Err("claim is not a stream")
 	}
 
 	numChunks := len(s.sdBlob.BlobInfos) - 1

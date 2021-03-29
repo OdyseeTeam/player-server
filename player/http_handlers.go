@@ -84,7 +84,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Query().Get(paramDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
-	} else if fitForTranscoder(r, s) {
+	} else if fitForTranscoder(r, s) && h.player.tclient != nil {
 		// Attempt transcoded video retrieval
 		cv, _ := h.player.tclient.Get("hls", s.URI, s.hash)
 		if cv != nil {

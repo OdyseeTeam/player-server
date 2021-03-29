@@ -16,15 +16,15 @@ require (
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/lbryio/ccache/v2 v2.0.7-0.20201103203756-4f264cc4f101
-	github.com/lbryio/lbry.go/v2 v2.6.1-0.20200901183659-29574578c1c1
-	github.com/lbryio/reflector.go v1.1.3-0.20210223142346-8cb73896199b
+	github.com/lbryio/lbry.go/v2 v2.7.2-0.20210316000044-988178df5011
+	github.com/lbryio/reflector.go v1.1.3-0.20210329175618-3a441aed3abb
 	github.com/lbryio/transcoder v0.9.0
-	github.com/lbryio/types v0.0.0-20191228214437-05a22073b4ec
+	github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386
 	github.com/prometheus/client_golang v1.9.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/protobuf v1.24.0 // indirect
