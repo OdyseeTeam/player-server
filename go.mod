@@ -14,10 +14,11 @@ require (
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.5.1
+	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/lbryio/ccache/v2 v2.0.7-0.20201103203756-4f264cc4f101
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20210316000044-988178df5011
-	github.com/lbryio/reflector.go v1.1.3-0.20210329175618-3a441aed3abb
+	github.com/lbryio/reflector.go v1.1.3-0.20210331025327-90c36fbe243f
 	github.com/lbryio/transcoder v0.9.0
 	github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386
 	github.com/prometheus/client_golang v1.9.0

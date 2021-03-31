@@ -264,7 +264,7 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 		Logger.Debugf("prefetching chunk %v", hash)
 		_, err := s.player.blobSource.GetChunk(hash, s.sdBlob.Key, bi.IV)
 		if err != nil {
-			Logger.Errorf("failed to prefetch chunk %v: %v", hash, err)
+			Logger.Errorf("failed to prefetch chunk %v: %v", hash, errors.FullTrace(err))
 			return
 		}
 	}

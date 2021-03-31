@@ -2,6 +2,7 @@ package player
 
 import (
 	"errors"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -102,7 +103,7 @@ func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) 
 func (h *HotCache) clearChunkFromCache(hash string) error {
 	h.cache.Delete(hash)
 	err := h.origin.Delete(hash)
-	if !errors.Is(err, shared.ErrNotImplemented) {
+	if !errors.Is(err, shared.ErrNotImplemented) && !strings.Contains(err.Error(), shared.ErrNotImplemented.Error()) {
 		return err
 	}
 	return nil
