@@ -31,6 +31,9 @@ type Stream struct {
 	resolvedStream *pb.Stream
 	sdBlob         *stream.SDBlob
 	seekOffset     int64
+
+	currentChunkHash string
+	currentChunk     *ReadableChunk
 }
 
 func NewStream(p *Player, uri string, claim *ljsonrpc.Claim) *Stream {
@@ -228,6 +231,10 @@ func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 	bi := s.sdBlob.BlobInfos[chunkIdx]
 	hash := hex.EncodeToString(bi.BlobHash)
 
+	if s.currentChunkHash == hash {
+		return *s.currentChunk, nil
+	}
+
 	chunk, err := s.player.blobSource.GetChunk(hash, s.sdBlob.Key, bi.IV)
 	if err != nil || chunk == nil {
 		return nil, err
@@ -239,6 +246,9 @@ func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 		s.prefetchedChunks[chunkToPrefetch] = true
 		go s.prefetchChunk(chunkToPrefetch)
 	}
+
+	s.currentChunk = &chunk
+	s.currentChunkHash = hash
 	return chunk, nil
 }
 

@@ -36,7 +36,6 @@ services:
       - PLAYER_NAME=my-own-player
     depends_on:
       - lbrynet
-      - docker-host
   watchtower:
     image: 'containrrr/watchtower'
     restart: always
