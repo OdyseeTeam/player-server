@@ -89,7 +89,6 @@ func (h *HotCache) getSDFromOrigin(hash string) (*stream.SDBlob, error) {
 // GetChunk gets a decrypted stream chunk. If chunk is not cached, it is fetched from origin
 // and decrypted.
 func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) {
-	Logger.Infof("in your hot cache, eating up your chunk! %v", hash)
 	item := h.cache.Get(hash)
 	if item != nil {
 		metrics.HotCacheRequestCount.WithLabelValues("chunk", "hit").Inc()
