@@ -45,6 +45,11 @@ func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
 
+// Status is to allow for a status check that the player is accessible
+func (h *RequestHandler) Status(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "OK")
+}
+
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var uri, token string
