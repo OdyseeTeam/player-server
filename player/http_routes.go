@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 
-	"github.com/lbryio/lbrytv-player/internal/metrics"
-
 	"github.com/gorilla/mux"
 )
 
@@ -31,16 +29,7 @@ func InstallPlayerRoutes(r *mux.Router, p *Player) {
 	r.PathPrefix(SpeechPrefix).HandlerFunc(playerHandler.Handle).Methods(http.MethodGet, http.MethodHead)
 
 	if p.TCVideoPath != "" {
-		fs := http.FileServer(http.Dir(p.TCVideoPath))
-		v4Router.PathPrefix("/streams/t").Handler(
-			func(h http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					addPoweredByHeaders(w)
-					metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
-					defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-					h.ServeHTTP(w, r)
-				})
-			}(http.StripPrefix("/api/v4/streams/t", fs)))
+		v4Router.Path("/streams/tc/{claim_name}/{claim_id}/{sd_hash}/{fragment}").HandlerFunc(playerHandler.HandleTranscodedFragment)
 	}
 }
 
