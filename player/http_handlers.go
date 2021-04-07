@@ -85,19 +85,12 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get(paramDownload) != "" {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
 	} else if fitForTranscoder(r, s) && h.player.tclient != nil {
-		// Attempt transcoded video retrieval
-		cv, _ := h.player.tclient.Get("hls", s.URI, s.hash)
-		if cv != nil {
+		path := h.player.tclient.GetPlaybackPath(uri, s.hash)
+		if path != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			redirectToPlaylistURL(w, r, cv.DirName())
+			redirectToPlaylistURL(w, r, path)
 			return
 		}
-		// go func() {
-		// 	err := dl.Init()
-		// 	if err == nil {
-		// 		tclient.PoolDownload(dl)
-		// 	}
-		// }()
 	}
 
 	metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
@@ -122,6 +115,16 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func (h *RequestHandler) HandleTranscodedFragment(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	uri := fmt.Sprintf("%s#%s", v["claim_name"], v["claim_id"])
+
+	addPoweredByHeaders(w)
+	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
+	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
+	h.player.tclient.PlayFragment(uri, v["sd_hash"], v["fragment"], w, r)
 }
 
 func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
@@ -196,7 +199,7 @@ func addPoweredByHeaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
 }
 
-func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, vPath string) {
+func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, path string) {
 	prefix := "http://"
 	host := playerName
 
@@ -205,7 +208,7 @@ func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, vPath string)
 		prefix = "https://"
 	}
 
-	url := fmt.Sprintf("%v/api/v4/streams/t/%v/master.m3u8", host, vPath)
+	url := fmt.Sprintf("%v/api/v4/streams/tc/%v", host, path)
 	http.Redirect(w, r, prefix+url, http.StatusPermanentRedirect)
 }
 

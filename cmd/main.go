@@ -100,13 +100,16 @@ func run(cmd *cobra.Command, args []string) {
 			Logger.Fatal(err)
 		}
 
-		c := tclient.New(
-			tclient.Configure().
-				VideoPath(transcoderVideoPath).
-				Server(transcoderAddr).
-				CacheSize(int64(tcsize)).
-				ItemsToPrune(10))
-		n, err := c.SweepCache(true)
+		tCfg := tclient.Configure().
+			VideoPath(transcoderVideoPath).
+			Server(transcoderAddr).
+			CacheSize(int64(tcsize)).
+			ItemsToPrune(10)
+		if verboseOutput {
+			tCfg = tCfg.LogLevel(tclient.Dev)
+		}
+		c := tclient.New(tCfg)
+		n, err := c.RestoreCache()
 		if err != nil {
 			Logger.Error(err)
 		} else {

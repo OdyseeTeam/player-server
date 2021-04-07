@@ -252,17 +252,17 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 	r, _ = http.NewRequest(http.MethodGet, "http://localhost:8080/irrelevant", nil)
 	rr = httptest.NewRecorder()
 
-	redirectToPlaylistURL(rr, r, "abc")
+	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
 	url, _ = rr.Result().Location()
-	assert.Equal(t, "http://localhost:8000/api/v4/streams/t/abc/master.m3u8", url.String())
+	assert.Equal(t, "http://localhost:8000/api/v4/streams/tc/abc/master.m3u8", url.String())
 
 	playerName = "player8"
 	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/irrelevant", nil)
 	rr = httptest.NewRecorder()
 
-	redirectToPlaylistURL(rr, r, "abc")
+	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
 	url, _ = rr.Result().Location()
-	assert.Equal(t, "https://player8.lbryplayer.xyz/api/v4/streams/t/abc/master.m3u8", url.String())
+	assert.Equal(t, "https://player8.lbryplayer.xyz/api/v4/streams/tc/abc/master.m3u8", url.String())
 }
 
 func Test_fitForTranscoder(t *testing.T) {
