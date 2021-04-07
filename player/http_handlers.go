@@ -86,7 +86,6 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
 	} else if fitForTranscoder(r, s) && h.player.tclient != nil {
 		path := h.player.tclient.GetPlaybackPath(uri, s.hash)
-		fmt.Println("got path", path)
 		if path != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
 			redirectToPlaylistURL(w, r, path)
