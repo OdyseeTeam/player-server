@@ -124,7 +124,10 @@ func (h *RequestHandler) HandleTranscodedFragment(w http.ResponseWriter, r *http
 	addPoweredByHeaders(w)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-	h.player.tclient.PlayFragment(uri, v["sd_hash"], v["fragment"], w, r)
+	err := h.player.tclient.PlayFragment(uri, v["sd_hash"], v["fragment"], w, r)
+	if err != nil {
+		writeErrorResponse(w, http.StatusNotFound, err.Error())
+	}
 }
 
 func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
