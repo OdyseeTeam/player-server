@@ -57,9 +57,13 @@ func init() {
 	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
 	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.lbry.tv/api/v1/paid/pubkey", "pubkey for playing paid content")
 
+	rootCmd.Flags().UintVar(&player.StreamWriteTimeout, "http-stream-write-timeout", player.StreamWriteTimeout, "write timeout for stream http requests (seconds)")
+	rootCmd.Flags().UintVar(&app.WriteTimeout, "http-write-timeout", app.WriteTimeout, "write timeout for http requests (seconds)")
+	rootCmd.Flags().UintVar(&app.ReadTimeout, "http-read-timeout", app.ReadTimeout, "read timeout for http requests (seconds)")
+
 	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", false, "enable prefetch for blobs")
 	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
-	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, fmt.Sprintf("enable verbose logging"))
+	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, "enable verbose logging")
 
 	rootCmd.Flags().StringVar(&upstreamReflector, "upstream-reflector", "", "host:port of a reflector server where blobs are fetched from")
 	rootCmd.Flags().StringVar(&cloudFrontEndpoint, "cloudfront-endpoint", "", "CloudFront edge endpoint for standard HTTP retrieval")

@@ -8,8 +8,10 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
+	"github.com/lbryio/lbrytv-player/pkg/app"
 	"github.com/lbryio/transcoder/video"
 
 	"github.com/getsentry/sentry-go"
@@ -21,7 +23,10 @@ const paramDownload = "download"
 // SpeechPrefix is root level prefix for speech URLs.
 const SpeechPrefix = "/speech/"
 
-var playerName = "unknown-player"
+var (
+	playerName         = "unknown-player"
+	StreamWriteTimeout = uint(86400)
+)
 
 // RequestHandler is a HTTP request handler for player package.
 type RequestHandler struct {
@@ -93,7 +98,9 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
+	if r.Header.Get("range") == "" {
+		metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
+	}
 
 	err = s.PrepareForReading()
 	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))
@@ -103,6 +110,12 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeHeaders(w, r, s)
+
+	conn := app.GetConnection(r)
+	err = conn.SetWriteDeadline(time.Now().Add(time.Duration(StreamWriteTimeout) * time.Second))
+	if err != nil {
+		Logger.Error("can't set write timeout:", err)
+	}
 
 	switch r.Method {
 	case http.MethodHead:
