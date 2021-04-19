@@ -169,6 +169,10 @@ func (a *App) Shutdown() error {
 }
 
 // GetConnection returns the connection for the request.
-func GetConnection(r *http.Request) net.Conn {
-	return r.Context().Value(connContextKey).(net.Conn)
+func GetConnection(r *http.Request) (net.Conn, error) {
+	c, ok := r.Context().Value(connContextKey).(net.Conn)
+	if !ok {
+		return nil, errors.Err("cannot retrieve connection from request")
+	}
+	return c, nil
 }

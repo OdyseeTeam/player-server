@@ -111,10 +111,14 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	writeHeaders(w, r, s)
 
-	conn := app.GetConnection(r)
-	err = conn.SetWriteDeadline(time.Now().Add(time.Duration(StreamWriteTimeout) * time.Second))
+	conn, err := app.GetConnection(r)
 	if err != nil {
-		Logger.Error("can't set write timeout:", err)
+		Logger.Warn("can't set write timeout: ", err)
+	} else {
+		err = conn.SetWriteDeadline(time.Now().Add(time.Duration(StreamWriteTimeout) * time.Second))
+		if err != nil {
+			Logger.Error("can't set write timeout: ", err)
+		}
 	}
 
 	switch r.Method {
