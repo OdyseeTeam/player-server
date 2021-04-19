@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,7 +19,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var Logger = logger.GetLogger()
+var (
+	Logger         = logger.GetLogger()
+	connContextKey = &contextKey{"conn"}
+	ReadTimeout    = uint(10)
+	WriteTimeout   = uint(15)
+)
+
+type contextKey struct {
+	key string
+}
 
 // App holds entities that can be used to control the web server
 type App struct {
@@ -75,9 +85,13 @@ func (a *App) newServer() *http.Server {
 		Addr:    a.Address,
 		Handler: a.Router,
 		// Can't have WriteTimeout set for streaming endpoints
-		WriteTimeout:      time.Second * 0,
-		IdleTimeout:       time.Second * 0,
-		ReadHeaderTimeout: time.Second * 10,
+		ReadTimeout:       time.Duration(ReadTimeout) * time.Second,
+		WriteTimeout:      time.Duration(WriteTimeout) * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       10 * time.Second,
+		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+			return context.WithValue(ctx, connContextKey, c)
+		},
 	}
 }
 
@@ -125,7 +139,7 @@ func (a *App) Start() {
 
 // ServeUntilShutdown blocks until a shutdown signal is received, then shuts down the HTTP server.
 func (a *App) ServeUntilShutdown() {
-	signal.Notify(a.stopChan, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(a.stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-a.stopChan
 
 	Logger.Printf("caught a signal (%v), shutting down http server...", sig)
@@ -152,4 +166,13 @@ func (a *App) Shutdown() error {
 	defer cancel()
 	err := a.server.Shutdown(ctx)
 	return err
+}
+
+// GetConnection returns the connection for the request.
+func GetConnection(r *http.Request) (net.Conn, error) {
+	c, ok := r.Context().Value(connContextKey).(net.Conn)
+	if !ok {
+		return nil, errors.Err("cannot retrieve connection from request")
+	}
+	return c, nil
 }
