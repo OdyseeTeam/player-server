@@ -16,6 +16,7 @@ import (
 	"github.com/lbryio/lbrytv-player/player"
 
 	"github.com/lbryio/lbry.go/v2/stream"
+	"github.com/lbryio/reflector.go/peer"
 	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
 	tclient "github.com/lbryio/transcoder/client"
@@ -36,6 +37,7 @@ var (
 	paidPubKey     string
 
 	upstreamReflector   string
+	useTCP              bool
 	cloudFrontEndpoint  string
 	diskCacheDir        string
 	diskCacheSize       string
@@ -66,6 +68,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, "enable verbose logging")
 
 	rootCmd.Flags().StringVar(&upstreamReflector, "upstream-reflector", "", "host:port of a reflector server where blobs are fetched from")
+	rootCmd.Flags().BoolVar(&useTCP, "use-tcp", false, "use TCP protocol instead of QUIC")
 	rootCmd.Flags().StringVar(&cloudFrontEndpoint, "cloudfront-endpoint", "", "CloudFront edge endpoint for standard HTTP retrieval")
 	rootCmd.Flags().StringVar(&diskCacheDir, "disk-cache-dir", "", "enable disk cache, storing blobs in dir")
 	rootCmd.Flags().StringVar(&diskCacheSize, "disk-cache-size", "100MB", "max size of disk cache: 16GB, 500MB, etc.")
@@ -155,10 +158,17 @@ func getBlobSource() store.BlobStore {
 	var blobSource store.BlobStore
 
 	if upstreamReflector != "" {
-		blobSource = http3.NewStore(http3.StoreOpts{
-			Address: upstreamReflector,
-			Timeout: 30 * time.Second,
-		})
+		if useTCP {
+			blobSource = peer.NewStore(peer.StoreOpts{
+				Address: upstreamReflector,
+				Timeout: 30 * time.Second,
+			})
+		} else {
+			blobSource = http3.NewStore(http3.StoreOpts{
+				Address: upstreamReflector,
+				Timeout: 30 * time.Second,
+			})
+		}
 	} else if cloudFrontEndpoint != "" {
 		blobSource = store.NewCloudFrontROStore(cloudFrontEndpoint)
 	} else {
@@ -177,7 +187,7 @@ func getBlobSource() store.BlobStore {
 		blobSource = store.NewCachingStore(
 			"player",
 			blobSource,
-			store.NewLFUDAStore("player", store.NewDiskStore(diskCachePath, 2), realCacheSize),
+			store.NewLRUStore("player", store.NewDiskStore(diskCachePath, 2), int(realCacheSize)),
 		)
 	}
 
