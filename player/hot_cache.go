@@ -6,13 +6,13 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 
-	"github.com/lbryio/ccache/v2"
-	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/shared"
 	"github.com/lbryio/reflector.go/store"
 
+	"github.com/bluele/gcache"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -22,23 +22,24 @@ const longTTL = 365 * 24 * time.Hour
 // You have to know which blobs you expect to be sd blobs when using HotCache
 type HotCache struct {
 	origin store.BlobStore
-	cache  *ccache.Cache
+	cache  gcache.Cache
 	sf     *singleflight.Group
 }
 
 func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
 	h := &HotCache{
 		origin: origin,
-		cache:  ccache.New(ccache.Configure().MaxSize(maxSizeInBytes).GetsPerPromote(180)),
-		sf:     new(singleflight.Group),
+		cache: gcache.New(int(maxSizeInBytes / stream.MaxBlobSize)).ARC().EvictedFunc(func(key interface{}, value interface{}) {
+			metrics.HotCacheEvictions.Add(1)
+		}).Build(),
+		sf: new(singleflight.Group),
 	}
 
 	go func() {
 		for {
 			<-time.After(15 * time.Second)
-			metrics.HotCacheSize.Set(float64(h.cache.Size()))
-			metrics.HotCacheItems.Set(float64(h.cache.ItemCount()))
-			metrics.HotCacheEvictions.Add(float64(h.cache.GetDropped()))
+			metrics.HotCacheSize.Set(float64(maxSizeInBytes))
+			metrics.HotCacheItems.Set(float64(h.cache.Len(false)))
 		}
 	}()
 
@@ -48,10 +49,10 @@ func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
 // GetSDBlob gets an sd blob. If it's not in the cache, it is fetched from the origin and cached.
 // store.ErrBlobNotFound is returned if blob is not found.
 func (h *HotCache) GetSDBlob(hash string) (*stream.SDBlob, error) {
-	cached := h.cache.Get(hash)
-	if cached != nil {
+	cached, err := h.cache.Get(hash)
+	if err == nil && cached != nil {
 		metrics.HotCacheRequestCount.WithLabelValues("sd", "hit").Inc()
-		return cached.Value().(sizedSD).sd, nil
+		return cached.(sizedSD).sd, nil
 	}
 
 	metrics.HotCacheRequestCount.WithLabelValues("sd", "miss").Inc()
@@ -74,7 +75,7 @@ func (h *HotCache) getSDFromOrigin(hash string) (*stream.SDBlob, error) {
 			return nil, err
 		}
 
-		h.cache.Set(hash, sizedSD{&sd}, longTTL)
+		_ = h.cache.Set(hash, sizedSD{&sd})
 
 		return &sd, nil
 	})
@@ -89,10 +90,10 @@ func (h *HotCache) getSDFromOrigin(hash string) (*stream.SDBlob, error) {
 // GetChunk gets a decrypted stream chunk. If chunk is not cached, it is fetched from origin
 // and decrypted.
 func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) {
-	item := h.cache.Get(hash)
-	if item != nil {
+	item, err := h.cache.Get(hash)
+	if err == nil {
 		metrics.HotCacheRequestCount.WithLabelValues("chunk", "hit").Inc()
-		return ReadableChunk(item.Value().(sizedSlice)[:]), nil
+		return ReadableChunk(item.(sizedSlice)[:]), nil
 	}
 
 	metrics.HotCacheRequestCount.WithLabelValues("chunk", "miss").Inc()
@@ -101,7 +102,7 @@ func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) 
 
 // clearChunkFromCache will remove the chunk from the hotcache and from its origin.
 func (h *HotCache) clearChunkFromCache(hash string) error {
-	h.cache.Delete(hash)
+	h.cache.Remove(hash)
 	err := h.origin.Delete(hash)
 	if !errors.Is(err, shared.ErrNotImplemented) && !strings.Contains(err.Error(), shared.ErrNotImplemented.Error()) {
 		return err
@@ -126,7 +127,7 @@ func (h *HotCache) getChunkFromOrigin(hash string, key, iv []byte) (ReadableChun
 			return nil, err
 		}
 
-		h.cache.Set(hash, sizedSlice(chunk), longTTL)
+		_ = h.cache.Set(hash, sizedSlice(chunk))
 
 		return ReadableChunk(chunk), nil
 	})
@@ -139,7 +140,7 @@ func (h *HotCache) getChunkFromOrigin(hash string, key, iv []byte) (ReadableChun
 }
 
 func (h *HotCache) IsCached(hash string) bool {
-	return h.cache.Get(hash) != nil
+	return h.cache.Has(hash)
 }
 
 type sizedSlice []byte

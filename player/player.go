@@ -12,9 +12,10 @@ import (
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 
-	"github.com/lbryio/ccache/v2"
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	tclient "github.com/lbryio/transcoder/client"
+
+	"github.com/bluele/gcache"
 )
 
 var Logger = logger.GetLogger()
@@ -24,7 +25,7 @@ type Player struct {
 	lbrynetClient *ljsonrpc.Client
 	blobSource    *HotCache
 	prefetch      bool
-	resolveCache  *ccache.Cache
+	resolveCache  gcache.Cache
 	tclient       *tclient.Client
 	TCVideoPath   string
 }
@@ -38,7 +39,7 @@ func NewPlayer(hotCache *HotCache, lbrynetAddress string) *Player {
 	return &Player{
 		lbrynetClient: ljsonrpc.NewClient(lbrynetAddress),
 		blobSource:    hotCache,
-		resolveCache:  ccache.New(ccache.Configure().MaxSize(10000)),
+		resolveCache:  gcache.New(10000).ARC().Build(),
 	}
 }
 
@@ -67,9 +68,9 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 
 	var claim *ljsonrpc.Claim
 
-	cachedClaim := p.resolveCache.Get(uri)
-	if cachedClaim != nil && !cachedClaim.Expired() {
-		claim = cachedClaim.Value().(*ljsonrpc.Claim)
+	cachedClaim, err := p.resolveCache.Get(uri)
+	if err == nil {
+		claim = cachedClaim.(*ljsonrpc.Claim)
 	} else {
 		var err error
 		claim, err = p.resolve(uri)
@@ -99,7 +100,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 			claim = &resp.Claims[0]
 		}
 
-		p.resolveCache.Set(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
+		_ = p.resolveCache.SetWithExpire(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
 	}
 
 	if claim.Value.GetStream() == nil {
