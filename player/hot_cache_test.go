@@ -1,8 +1,8 @@
 package player
 
 import (
+	"bytes"
 	"testing"
-	"time"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -25,7 +25,7 @@ func TestHotCache_Stream(t *testing.T) {
 	origin := store.NewMemStore()
 
 	data := randomString(MaxChunkSize * 3)
-	s, err := stream.New([]byte(data))
+	s, err := stream.New(bytes.NewReader([]byte(data)))
 	require.NoError(t, err)
 	require.Equal(t, 4, len(s)) // make sure we got an sd blob plus 3 content blobs
 
@@ -50,17 +50,18 @@ func TestHotCache_Stream(t *testing.T) {
 	assert.EqualValues(t, data[:20], chunk[:20])
 }
 
-func TestHotCache_Size(t *testing.T) {
-	origin := store.NewMemStore()
-	dataLen := 444
-	data, err := stream.NewBlob([]byte(randomString(dataLen)), stream.NullIV(), stream.NullIV())
-	require.NoError(t, err)
-	origin.Put("hash", data)
-
-	hc := NewHotCache(origin, 100000000)
-	hc.GetChunk("hash", stream.NullIV(), stream.NullIV())
-
-	time.Sleep(10 * time.Millisecond) // give cache worker time to update cache size
-
-	assert.EqualValues(t, dataLen, hc.cache.Size())
-}
+// new LRU library has no size method
+//func TestHotCache_Size(t *testing.T) {
+//	origin := store.NewMemStore()
+//	dataLen := 444
+//	data, err := stream.NewBlob([]byte(randomString(dataLen)), stream.NullIV(), stream.NullIV())
+//	require.NoError(t, err)
+//	origin.Put("hash", data)
+//
+//	hc := NewHotCache(origin, 100000000)
+//	hc.GetChunk("hash", stream.NullIV(), stream.NullIV())
+//
+//	time.Sleep(10 * time.Millisecond) // give cache worker time to update cache size
+//
+//	assert.EqualValues(t, dataLen, hc.cache.Size())
+//}
