@@ -20,6 +20,7 @@ require (
 	github.com/lbryio/reflector.go v1.1.3-0.20210506205318-070938e12afb
 	github.com/lbryio/transcoder v0.10.5
 	github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386
+	github.com/lucas-clemente/quic-go v0.20.1 // indirect
 	github.com/prometheus/client_golang v1.9.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v0.0.5
