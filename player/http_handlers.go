@@ -223,7 +223,8 @@ func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, path string) 
 	prefix := "http://"
 	host := playerName
 
-	if match, _ := regexp.MatchString(`^player\d+$`, host); match {
+	match, _ := regexp.MatchString(`^\w+\-?\w+\d+$`, host)
+	if match {
 		host += ".lbryplayer.xyz"
 		prefix = "https://"
 	}

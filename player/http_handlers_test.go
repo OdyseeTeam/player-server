@@ -254,6 +254,7 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 
 	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
 	url, _ = rr.Result().Location()
+	require.NotNil(t, url)
 	assert.Equal(t, "http://localhost:8000/api/v4/streams/tc/abc/master.m3u8", url.String())
 
 	playerName = "player8"
@@ -263,6 +264,14 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
 	url, _ = rr.Result().Location()
 	assert.Equal(t, "https://player8.lbryplayer.xyz/api/v4/streams/tc/abc/master.m3u8", url.String())
+
+	playerName = "use-p2"
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/irrelevant", nil)
+	rr = httptest.NewRecorder()
+
+	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
+	url, _ = rr.Result().Location()
+	assert.Equal(t, "https://use-p2.lbryplayer.xyz/api/v4/streams/tc/abc/master.m3u8", url.String())
 }
 
 func Test_fitForTranscoder(t *testing.T) {
