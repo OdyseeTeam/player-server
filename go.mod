@@ -1,6 +1,6 @@
 module github.com/lbryio/lbrytv-player
 
-go 1.15
+go 1.16
 
 replace github.com/btcsuite/btcd => github.com/lbryio/lbrycrd.go v0.0.0-20200203050410-e1076f12bf19
 
@@ -15,7 +15,6 @@ require (
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.5.1
-	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20210412222918-ed51ece75c3d
 	github.com/lbryio/reflector.go v1.1.3-0.20210506205318-070938e12afb
@@ -27,7 +26,10 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
+	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
+	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
 	google.golang.org/protobuf v1.24.0 // indirect
 )
 

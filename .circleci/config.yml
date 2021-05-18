@@ -2,27 +2,27 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: cimg/go:1.16
+      - image: cimg/go:1.16.4
       - image: lbry/lbrynet-tv:latest
     steps:
       - checkout
       - restore_cache:
           keys:
-            - go-mod-cache-v3-{{ checksum "go.sum" }}
+            - go-mod-cache-v4-{{ checksum "go.sum" }}
       - run: make test_circleci
       - run: git reset --hard HEAD
       - save_cache:
-          key: go-mod-cache-v3-{{ checksum "go.sum" }}
+          key: go-mod-cache-v4-{{ checksum "go.sum" }}
           paths:
             - "/go/pkg/mod"
   release:
     docker:
-      - image: cimg/go:1.16
+      - image: cimg/go:1.16.4
     steps:
       - checkout
       - restore_cache:
           keys:
-            - go-mod-cache-v3-{{ checksum "go.sum" }}
+            - go-mod-cache-v4-{{ checksum "go.sum" }}
       - setup_remote_docker
       - run:
           name: Build release image
