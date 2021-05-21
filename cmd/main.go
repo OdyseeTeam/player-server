@@ -172,7 +172,7 @@ func getBlobSource() store.BlobStore {
 		case "http":
 			blobSource = store.NewHttpStore(upstreamReflector)
 		default:
-			logrus.Fatal("invalid upstream protocol: %s", upstreamProtocol)
+			logrus.Fatalf("invalid upstream protocol: %s", upstreamProtocol)
 		}
 
 	} else if cloudFrontEndpoint != "" {
