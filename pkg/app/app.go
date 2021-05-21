@@ -74,7 +74,7 @@ func New(opts Opts) *App {
 
 	if a.BlobStore != nil {
 		a.peerServer = peer.NewServer(a.BlobStore)
-		a.peer3Server = http3.NewServer(a.BlobStore)
+		a.peer3Server = http3.NewServer(a.BlobStore, 200)
 	}
 
 	return a

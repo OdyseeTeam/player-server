@@ -14,10 +14,10 @@ import (
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv-player/player"
+	"github.com/lbryio/reflector.go/peer/http3"
 
 	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/peer"
-	"github.com/lbryio/reflector.go/peer/http3"
 	"github.com/lbryio/reflector.go/store"
 	tclient "github.com/lbryio/transcoder/client"
 
@@ -37,7 +37,7 @@ var (
 	paidPubKey     string
 
 	upstreamReflector   string
-	useTCP              bool
+	upstreamProtocol    string
 	cloudFrontEndpoint  string
 	diskCacheDir        string
 	diskCacheSize       string
@@ -68,7 +68,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, "enable verbose logging")
 
 	rootCmd.Flags().StringVar(&upstreamReflector, "upstream-reflector", "", "host:port of a reflector server where blobs are fetched from")
-	rootCmd.Flags().BoolVar(&useTCP, "use-tcp", false, "use TCP protocol instead of QUIC")
+	rootCmd.Flags().StringVar(&upstreamProtocol, "upstream-protocol", "http", "which protocol to use to fetch blobs from upstream (quic/tcp/http)")
 	rootCmd.Flags().StringVar(&cloudFrontEndpoint, "cloudfront-endpoint", "", "CloudFront edge endpoint for standard HTTP retrieval")
 	rootCmd.Flags().StringVar(&diskCacheDir, "disk-cache-dir", "", "enable disk cache, storing blobs in dir")
 	rootCmd.Flags().StringVar(&diskCacheSize, "disk-cache-size", "100MB", "max size of disk cache: 16GB, 500MB, etc.")
@@ -158,17 +158,23 @@ func getBlobSource() store.BlobStore {
 	var blobSource store.BlobStore
 
 	if upstreamReflector != "" {
-		if useTCP {
-			blobSource = peer.NewStore(peer.StoreOpts{
-				Address: upstreamReflector,
-				Timeout: 30 * time.Second,
-			})
-		} else {
+		switch upstreamProtocol {
+		case "quic":
 			blobSource = http3.NewStore(http3.StoreOpts{
 				Address: upstreamReflector,
 				Timeout: 30 * time.Second,
 			})
+		case "tcp":
+			blobSource = peer.NewStore(peer.StoreOpts{
+				Address: upstreamReflector,
+				Timeout: 30 * time.Second,
+			})
+		case "http":
+			blobSource = store.NewHttpStore(upstreamReflector)
+		default:
+			logrus.Fatalf("invalid upstream protocol: %s", upstreamProtocol)
 		}
+
 	} else if cloudFrontEndpoint != "" {
 		blobSource = store.NewCloudFrontROStore(cloudFrontEndpoint)
 	} else {
