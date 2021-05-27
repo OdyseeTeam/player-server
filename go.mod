@@ -17,20 +17,19 @@ require (
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20210416195322-6516df1418e3
-	github.com/lbryio/reflector.go v1.1.3-0.20210521190659-9670bc14f88d
+	github.com/lbryio/reflector.go v1.1.3-0.20210527231957-c99330a7e052
 	github.com/lbryio/transcoder v0.10.5
 	github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386
-	github.com/prometheus/client_golang v1.9.0
-	github.com/sirupsen/logrus v1.7.0
-	github.com/spf13/cobra v0.0.5
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/prometheus/client_golang v1.10.0
+	github.com/sirupsen/logrus v1.8.1
+	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
 	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
-	google.golang.org/protobuf v1.24.0 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 )
 
 // replace github.com/lbryio/transcoder => /Users/silence/Documents/Lbry/Repos/transcoder
