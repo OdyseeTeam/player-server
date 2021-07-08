@@ -12,7 +12,7 @@ import (
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 	"github.com/lbryio/lbrytv-player/pkg/app"
-	"github.com/lbryio/transcoder/video"
+	tclient "github.com/lbryio/transcoder/client"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
@@ -163,7 +163,7 @@ func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
 func processStreamError(errorType string, uri string, w http.ResponseWriter, r *http.Request, err error) {
 	sendToSentry := true
 
-	if err == video.ErrChannelNotEnabled {
+	if err == tclient.ErrChannelNotEnabled {
 		return
 	}
 
