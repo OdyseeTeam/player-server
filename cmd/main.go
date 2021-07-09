@@ -36,15 +36,18 @@ var (
 	lbrynetAddress string
 	paidPubKey     string
 
-	upstreamReflector   string
-	upstreamProtocol    string
-	cloudFrontEndpoint  string
-	diskCacheDir        string
-	diskCacheSize       string
-	hotCacheSize        string
+	upstreamReflector  string
+	upstreamProtocol   string
+	cloudFrontEndpoint string
+	diskCacheDir       string
+	diskCacheSize      string
+	hotCacheSize       string
+
 	transcoderVideoPath string
 	transcoderVideoSize string
 	transcoderAddr      string
+
+	transcoderRemoteServer string
 
 	rootCmd = &cobra.Command{
 		Use:     "lbrytv_player",
@@ -76,6 +79,7 @@ func init() {
 	rootCmd.Flags().StringVar(&transcoderVideoPath, "transcoder-video-path", "", "path to store transcoded videos")
 	rootCmd.Flags().StringVar(&transcoderVideoSize, "transcoder-video-size", "200GB", "max size of transcoder video storage")
 	rootCmd.Flags().StringVar(&transcoderAddr, "transcoder-addr", "", "transcoder API address")
+	rootCmd.Flags().StringVar(&transcoderRemoteServer, "transcoder-remote-server", "", "remote transcoder storage server URL")
 
 	rootCmd.Flags().UintVar(&player.PrefetchCount, "prefetch-count", player.DefaultPrefetchLen, "how many blobs to retrieve from origin in advance")
 
@@ -114,6 +118,9 @@ func run(cmd *cobra.Command, args []string) {
 			ItemsToPrune(10)
 		if verboseOutput {
 			tCfg = tCfg.LogLevel(tclient.Dev)
+		}
+		if transcoderRemoteServer != "" {
+			tCfg = tCfg.RemoteServer(transcoderRemoteServer)
 		}
 		c := tclient.New(tCfg)
 		n, err := c.RestoreCache()
