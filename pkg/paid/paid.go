@@ -14,7 +14,7 @@ import (
 
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 )
 
 var Logger = logger.GetLogger()
