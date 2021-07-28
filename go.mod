@@ -13,8 +13,8 @@ require (
 	github.com/benbjohnson/clock v1.0.3 // indirect
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getsentry/sentry-go v0.5.1
+	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20210416195322-6516df1418e3
 	github.com/lbryio/reflector.go v1.1.3-0.20210715113740-f72e68abde25
