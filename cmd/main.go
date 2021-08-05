@@ -14,10 +14,10 @@ import (
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 	"github.com/lbryio/lbrytv-player/pkg/paid"
 	"github.com/lbryio/lbrytv-player/player"
-	"github.com/lbryio/reflector.go/peer/http3"
+	"github.com/lbryio/reflector.go/server/http3"
 
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/reflector.go/peer"
+	"github.com/lbryio/reflector.go/server/peer"
 	"github.com/lbryio/reflector.go/store"
 	tclient "github.com/lbryio/transcoder/client"
 
@@ -71,7 +71,8 @@ func init() {
 	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, "enable verbose logging")
 
 	rootCmd.Flags().StringVar(&upstreamReflector, "upstream-reflector", "", "host:port of a reflector server where blobs are fetched from")
-	rootCmd.Flags().StringVar(&upstreamProtocol, "upstream-protocol", "http", "which protocol to use to fetch blobs from upstream (quic/tcp/http)")
+	rootCmd.Flags().StringVar(&upstreamProtocol, "upstream-protocol", "http", "protocol used to fetch blobs from another upstream reflector server (tcp/http3/http)")
+
 	rootCmd.Flags().StringVar(&cloudFrontEndpoint, "cloudfront-endpoint", "", "CloudFront edge endpoint for standard HTTP retrieval")
 	rootCmd.Flags().StringVar(&diskCacheDir, "disk-cache-dir", "", "enable disk cache, storing blobs in dir")
 	rootCmd.Flags().StringVar(&diskCacheSize, "disk-cache-size", "100MB", "max size of disk cache: 16GB, 500MB, etc.")
@@ -166,20 +167,20 @@ func getBlobSource() store.BlobStore {
 
 	if upstreamReflector != "" {
 		switch upstreamProtocol {
-		case "quic":
-			blobSource = http3.NewStore(http3.StoreOpts{
+		case "tcp":
+			blobSource = peer.NewStore(peer.StoreOpts{
 				Address: upstreamReflector,
 				Timeout: 30 * time.Second,
 			})
-		case "tcp":
-			blobSource = peer.NewStore(peer.StoreOpts{
+		case "http3":
+			blobSource = http3.NewStore(http3.StoreOpts{
 				Address: upstreamReflector,
 				Timeout: 30 * time.Second,
 			})
 		case "http":
 			blobSource = store.NewHttpStore(upstreamReflector)
 		default:
-			logrus.Fatalf("invalid upstream protocol: %s", upstreamProtocol)
+			Logger.Fatalf("protocol is not recognized: %s", upstreamProtocol)
 		}
 
 	} else if cloudFrontEndpoint != "" {
@@ -188,7 +189,7 @@ func getBlobSource() store.BlobStore {
 		Logger.Fatal("one of [--upstream-reflector|--cloudfront-endpoint] is required")
 	}
 
-	diskCacheMaxSize, diskCachePath := diskCacheParams()
+	diskCacheMaxSize, diskCachePath := diskCacheParams() //TODO: use reflector code instead of code duplication
 	//we are tracking blobs in memory with a 1 byte long boolean, which means that for each 2MB (a blob) we need 1Byte
 	// so if the underlying cache holds 10MB, 10MB/2MB=5Bytes which is also the exact count of objects to restore on startup
 	realCacheSize := float64(diskCacheMaxSize) / float64(stream.MaxBlobSize)
@@ -200,7 +201,7 @@ func getBlobSource() store.BlobStore {
 		blobSource = store.NewCachingStore(
 			"player",
 			blobSource,
-			store.NewLRUStore("player", store.NewDiskStore(diskCachePath, 2), int(realCacheSize)),
+			store.NewGcacheStore("player", store.NewDiskStore(diskCachePath, 2), int(realCacheSize), store.LRU),
 		)
 	}
 
