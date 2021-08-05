@@ -11,7 +11,7 @@ import (
 	"time"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	"github.com/lbryio/reflector.go/peer/http3"
+	"github.com/lbryio/reflector.go/server/http3"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -2,12 +2,6 @@ module github.com/lbryio/lbrytv-player
 
 go 1.16
 
-replace github.com/btcsuite/btcd => github.com/lbryio/lbrycrd.go v0.0.0-20200203050410-e1076f12bf19
-
-replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1.2.0
-
-//replace github.com/lbryio/reflector.go => /home/niko/go/src/github.com/lbryio/reflector.go
-
 require (
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/benbjohnson/clock v1.0.3 // indirect
@@ -17,8 +11,8 @@ require (
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20210416195322-6516df1418e3
-	github.com/lbryio/reflector.go v1.1.3-0.20210715113740-f72e68abde25
-	github.com/lbryio/transcoder v0.13.0
+	github.com/lbryio/reflector.go v1.1.3-0.20210805154720-86f3e62aa8d6
+	github.com/lbryio/transcoder v0.13.2
 	github.com/lbryio/types v0.0.0-20201019032447-f0b4476ef386
 	github.com/prometheus/client_golang v1.10.0
 	github.com/sirupsen/logrus v1.8.1
@@ -31,5 +25,10 @@ require (
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 )
 
-// replace github.com/lbryio/transcoder => /Users/silence/Documents/Lbry/Repos/transcoder
-replace github.com/nikooo777/lbry-blobs-downloader => github.com/andybeletsky/lbry-blobs-downloader v1.0.4-fixed6
+replace github.com/btcsuite/btcd => github.com/lbryio/lbrycrd.go v0.0.0-20200203050410-e1076f12bf19
+
+replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1.2.0
+
+//replace github.com/lbryio/reflector.go => /home/niko/go/src/github.com/lbryio/reflector.go
+//replace github.com/lbryio/transcoder => /home/niko/work/repositories/transcoder
+//replace github.com/nikooo777/lbry-blobs-downloader => github.com/andybeletsky/lbry-blobs-downloader v1.0.4-fixed6

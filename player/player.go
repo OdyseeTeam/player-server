@@ -36,8 +36,10 @@ func NewPlayer(hotCache *HotCache, lbrynetAddress string) *Player {
 		lbrynetAddress = "http://localhost:5279"
 	}
 
+	lbrynetClient := ljsonrpc.NewClient(lbrynetAddress)
+	lbrynetClient.SetRPCTimeout(10 * time.Second)
 	return &Player{
-		lbrynetClient: ljsonrpc.NewClient(lbrynetAddress),
+		lbrynetClient: lbrynetClient,
 		blobSource:    hotCache,
 		resolveCache:  gcache.New(10000).ARC().Build(),
 	}

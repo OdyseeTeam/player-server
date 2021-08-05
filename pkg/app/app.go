@@ -12,8 +12,9 @@ import (
 	"github.com/lbryio/lbrytv-player/pkg/logger"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/reflector.go/peer"
-	"github.com/lbryio/reflector.go/peer/http3"
+	reflectorHttp "github.com/lbryio/reflector.go/server/http"
+	"github.com/lbryio/reflector.go/server/http3"
+	"github.com/lbryio/reflector.go/server/peer"
 	"github.com/lbryio/reflector.go/store"
 
 	"github.com/gorilla/mux"
@@ -41,7 +42,8 @@ type App struct {
 	stopWait    time.Duration
 	server      *http.Server
 	peerServer  *peer.Server
-	peer3Server *http3.Server
+	http3Server *http3.Server
+	httpServer  *reflectorHttp.Server
 }
 
 // Opts holds basic web server settings.
@@ -74,7 +76,8 @@ func New(opts Opts) *App {
 
 	if a.BlobStore != nil {
 		a.peerServer = peer.NewServer(a.BlobStore)
-		a.peer3Server = http3.NewServer(a.BlobStore, 200)
+		a.http3Server = http3.NewServer(a.BlobStore, 200)
+		a.httpServer = reflectorHttp.NewServer(a.BlobStore, 200)
 	}
 
 	return a
@@ -129,8 +132,15 @@ func (a *App) Start() {
 		}
 	}
 
-	if a.peer3Server != nil {
-		err := a.peer3Server.Start(":5568")
+	if a.http3Server != nil {
+		err := a.http3Server.Start(":5568")
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			Logger.Fatal(err)
+		}
+	}
+
+	if a.httpServer != nil {
+		err := a.httpServer.Start(":5569")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			Logger.Fatal(err)
 		}
@@ -155,8 +165,12 @@ func (a *App) ServeUntilShutdown() {
 		a.peerServer.Shutdown()
 	}
 
-	if a.peer3Server != nil {
-		a.peer3Server.Shutdown()
+	if a.http3Server != nil {
+		a.http3Server.Shutdown()
+	}
+
+	if a.httpServer != nil {
+		a.httpServer.Shutdown()
 	}
 }
 
