@@ -545,8 +545,9 @@ github.com/lbryio/lbrycrd.go v0.0.0-20200203050410-e1076f12bf19/go.mod h1:wVuoA8
 github.com/lbryio/lbryschema.go v0.0.0-20190428231007-c54836bca002/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
 github.com/lbryio/lbryschema.go v0.0.0-20190602173230-6d2f69a36f46/go.mod h1:dAzPCBj3CKKWBGYBZxK6tKBP5SCgY2tqd9SnQd/OyKo=
 github.com/lbryio/ozzo-validation v0.0.0-20170323141101-d1008ad1fd04/go.mod h1:fbG/dzobG8r95KzMwckXiLMHfFjZaBRQqC9hPs2XAQ4=
-github.com/lbryio/reflector.go v1.1.3-0.20210805154720-86f3e62aa8d6 h1:RGfdogQEbFpuRp6+G6zVCX07QY26wJFFElejrYUWq+0=
 github.com/lbryio/reflector.go v1.1.3-0.20210805154720-86f3e62aa8d6/go.mod h1:+mvHgPdsmWaGu+MJ+RT5gD2B0LigdeKOFIP97cWaKBc=
+github.com/lbryio/reflector.go v1.1.3-0.20210818173647-b2272fef3a6b h1:6ZUah9w+jH0I/deB2dfJrOHcW1D88Cm41qeFJUFa/v4=
+github.com/lbryio/reflector.go v1.1.3-0.20210818173647-b2272fef3a6b/go.mod h1:+mvHgPdsmWaGu+MJ+RT5gD2B0LigdeKOFIP97cWaKBc=
 github.com/lbryio/transcoder v0.13.2 h1:+XbD5Y3YFcv1Px1KVaOBjdQ1cIL/M8xJn8VneZt4z5E=
 github.com/lbryio/transcoder v0.13.2/go.mod h1:FyklG3HcVfEuZZUlG1fa8mRIcNDxSvOIGhltMhH9wV8=
 github.com/lbryio/types v0.0.0-20190422033210-321fb2abda9c/go.mod h1:CG3wsDv5BiVYQd5i1Jp7wGsaVyjZTJshqXeWMVKsISE=
