@@ -2,7 +2,7 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: cimg/go:1.16.4
+      - image: cimg/go:1.16.7
       - image: lbry/lbrynet-tv:latest
     steps:
       - checkout
@@ -17,7 +17,7 @@ jobs:
             - "/go/pkg/mod"
   release:
     docker:
-      - image: cimg/go:1.16.4
+      - image: cimg/go:1.16.7
     steps:
       - checkout
       - restore_cache:
