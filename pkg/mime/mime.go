@@ -261,7 +261,7 @@ var extensions = map[string]string{
 	"audio/csound":                         "csd",
 	"audio/flac":                           "flac",
 	"audio/midi":                           "mid",
-	"audio/mpeg":                           "mpga",
+	"audio/mpeg":                           "mp3",
 	"audio/mpegurl":                        "m3u",
 	"audio/ogg":                            "oga",
 	"audio/prs.sid":                        "sid",
