@@ -8,7 +8,7 @@ services:
     ports:
       - "5279:5279"
   player:
-    image: 'lbry/lbrytv-player:fuda-next'
+    image: 'lbry/lbrytv-player:latest'
     restart: always
     labels:
       com.centurylinklabs.watchtower.enable: 1

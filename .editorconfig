@@ -19,7 +19,7 @@ indent_size = 2
 indent_size = 2
 insert_final_newline = ignore
 
-[*.yml]
+[{*.yml,*.yaml}]
 indent_size = 2
 
 [**/admin/js/vendor/**]
