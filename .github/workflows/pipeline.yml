@@ -38,19 +38,15 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Get release details
-        id: release
-        run: echo "::set-output name=version::$(git tag --points-at=HEAD|sed -e 's/v//')"
+        run: |
+          echo "head_version=$(git tag --points-at=HEAD|sed -e 's/v//')" >> $GITHUB_ENV
+          echo "version=$(git describe --tags --abbrev=1|sed -e 's/v//')" >> $GITHUB_ENV
 
-      - name: Get more release details
-        if: steps.release.outputs.version == ''
-        id: release
-        run: echo "::set-output name=version::$(git describe --tags|sed -e 's/v//')"
-
-      - run: echo "::warning ::Release ${{ steps.release.outputs.version }}"
+      - run: echo "::warning ::Release ${{ env.head_version }} ${{ env.version }}"
 
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2
         with:
           push: false
-          tags: odyseeteam/player-server:${{ steps.release.outputs.version }}
+          tags: odyseeteam/player-server:${{ env.version }}
