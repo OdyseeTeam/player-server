@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Set up containers
         run: docker-compose up -d lbrynet
@@ -25,11 +27,23 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
-          go-version: ^1.16
+          go-version: '1.16.7'
         id: go
 
       - name: Test
         run: make test_ci
+
+      # - name: Submit coverage
+      #   run: goveralls -coverprofile=coverage.out -service=circle-ci -repotoken ${{ secrets.COVERALLS_TOKEN }}
+
+      - name: Submit coverage report
+        uses: coverallsapp/github-action@1.1.3
+        with:
+          path-to-lcov: coverage.lcov
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Make binary
+        run: make linux
 
       - name: Login to DockerHub
         uses: docker/login-action@v1
@@ -38,19 +52,24 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Get release details
-        id: release
-        run: echo "::set-output name=version::$(git tag --points-at=HEAD|sed -e 's/v//')"
+        run: |
+          echo "head_version=$(git tag --points-at=HEAD|sed -e 's/v//')" >> $GITHUB_ENV
+          echo "version=$(git describe --tags --abbrev=1|sed -e 's/v//')" >> $GITHUB_ENV
 
-      - name: Get more release details
-        if: steps.release.outputs.version == ''
-        id: release
-        run: echo "::set-output name=version::$(git describe --tags|sed -e 's/v//')"
+      - run: echo "::warning ::Release ${{ env.head_version }} ${{ env.version }}"
 
-      - run: echo "::warning ::Release ${{ steps.release.outputs.version }}"
-
-      - name: Build and push
-        id: docker_build
+      - name: Build docker image
+        if: ${{ env.head_version == '' }}
         uses: docker/build-push-action@v2
         with:
           push: false
-          tags: odyseeteam/player-server:${{ steps.release.outputs.version }}
+          tags: odyseeteam/player-server:${{ env.version }}
+          context: .
+
+      - name: Build and push docker image
+        if: ${{ env.head_version != '' && github.ref == 'refs/heads/master' }}
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: odyseeteam/player-server:${{ env.head_version }},odyseeteam/player-server:latest
+          context: .

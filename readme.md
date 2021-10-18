@@ -1,6 +1,6 @@
 # Media server for Odysee
 
-[![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbrytv-player/master.svg)](https://circleci.com/gh/lbryio/lbrytv-player/tree/master) [![Coverage](https://img.shields.io/coveralls/github/lbryio/lbrytv-player.svg)](https://coveralls.io/github/lbryio/lbrytv-player)
+[![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbrytv-player/master.svg)](https://circleci.com/gh/lbryio/lbrytv-player/tree/master) [![Coverage Status](https://coveralls.io/repos/github/OdyseeTeam/player-server/badge.svg?branch=master)](https://coveralls.io/github/OdyseeTeam/player-server?branch=master)
 
 
 # Usage
@@ -55,7 +55,7 @@ Flags:
 
 ## Running with Docker
 
-The primary way lbrytv-player is intended to run is in a docker environment managed by `docker-compose`. To launch and start serving:
+The primary way player server is intended to run is in a docker environment managed by `docker-compose`. To launch and start serving:
 
 ```
 docker-compose up -d
@@ -68,14 +68,14 @@ Releases are built and packed into docker images automatically off `master` bran
 ```
 make linux
 make image
-docker push odyseeteam/player-server:21.3.1
+docker push odyseeteam/player-server:21.3.4
 docker push odyseeteam/player-server:latest
 ```
 
 You need to tag your commit with a proper CalVer tag. Example:
 
 ```
-git tag v21.3.1  # March 2021, minor version 3
+git tag v21.3.4  # March 2021, version 4
 ```
 
 Check [Makefile](./Makefile) for more details.
