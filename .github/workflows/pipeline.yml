@@ -1,0 +1,56 @@
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up containers
+        run: docker-compose up -d lbrynet
+
+      - name: Check running containers
+        run: docker ps -a
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.16
+        id: go
+
+      - name: Test
+        run: make test_ci
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get release details
+        id: release
+        run: echo "::set-output name=version::$(git tag --points-at=HEAD|sed -e 's/v//')"
+
+      - name: Get more release details
+        if: steps.release.outputs.version == ''
+        id: release
+        run: echo "::set-output name=version::$(git describe --tags|sed -e 's/v//')"
+
+      - run: echo "::warning ::Release ${{ steps.release.outputs.version }}"
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          push: false
+          tags: odyseeteam/player-server:${{ steps.release.outputs.version }}

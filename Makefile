@@ -4,8 +4,8 @@ VERSION := $(shell git describe --tags)
 test:
 	go test -cover ./...
 
-.PHONY: test_circleci
-test_circleci:
+.PHONY: test_ci
+test_ci:
 	scripts/wait_for_wallet.sh
 	go get golang.org/x/tools/cmd/cover
 	go get github.com/mattn/goveralls
