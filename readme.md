@@ -1,6 +1,6 @@
 # Media server for Odysee
 
-[![CircleCI](https://img.shields.io/circleci/project/github/lbryio/lbrytv-player/master.svg)](https://circleci.com/gh/lbryio/lbrytv-player/tree/master) [![Coverage Status](https://coveralls.io/repos/github/OdyseeTeam/player-server/badge.svg?branch=master)](https://coveralls.io/github/OdyseeTeam/player-server?branch=master)
+![Tests](https://github.com/OdyseeTeam/player-server/actions/workflows/pipeline.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/OdyseeTeam/player-server/badge.svg?branch=master)](https://coveralls.io/github/OdyseeTeam/player-server?branch=master)
 
 
 # Usage
