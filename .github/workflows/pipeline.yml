@@ -54,12 +54,12 @@ jobs:
       - name: Get release details
         run: |
           echo "head_version=$(git tag --points-at=HEAD|sed -e 's/v//')" >> $GITHUB_ENV
-          echo "version=$(git describe --tags --abbrev=1|sed -e 's/v//')" >> $GITHUB_ENV
+          echo "version=$(git describe --tags --abbrev=0|sed -e 's/v//')" >> $GITHUB_ENV
 
       - run: echo "::warning ::Release ${{ env.head_version }} ${{ env.version }}"
 
       - name: Build docker image
-        if: ${{ env.head_version == '' }}
+        if: ${{ github.ref != 'refs/heads/master' }}
         uses: docker/build-push-action@v2
         with:
           push: false
@@ -67,9 +67,9 @@ jobs:
           context: .
 
       - name: Build and push docker image
-        if: ${{ env.head_version != '' && github.ref == 'refs/heads/master' }}
+        if: ${{ github.ref == 'refs/heads/master' }}
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: odyseeteam/player-server:${{ env.head_version }},odyseeteam/player-server:latest
+          tags: odyseeteam/player-server:${{ env.version }},odyseeteam/player-server:latest
           context: .
