@@ -137,7 +137,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 func (h *RequestHandler) HandleTranscodedFragment(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	uri := fmt.Sprintf("%s#%s", v["claim_name"], v["claim_id"])
-
+	addCSPHeaders(w)
 	addPoweredByHeaders(w)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
@@ -153,6 +153,7 @@ func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
 	header.Set("Content-Type", s.ContentType)
 	header.Set("Cache-Control", "public, max-age=31536000")
 	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
+	addCSPHeaders(w)
 	addPoweredByHeaders(w)
 	if r.URL.Query().Get(paramDownload) != "" {
 		filename := regexp.MustCompile(`[^\p{L}\d\-\._ ]+`).ReplaceAllString(s.Filename(), "")
@@ -217,6 +218,10 @@ func addBreadcrumb(r *http.Request, category, message string) {
 func addPoweredByHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Powered-By", playerName)
 	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
+}
+func addCSPHeaders(w http.ResponseWriter) {
+	w.Header().Set("Report-To", `{"group":"default","max_age":31536000,"endpoints":[{"url":"https://6fd448c230d0731192f779791c8e45c3.report-uri.com/a/d/g"}],"include_subdomains":true}`)
+	w.Header().Set("Content-Security-Policy", "script-src 'none'; report-uri https://6fd448c230d0731192f779791c8e45c3.report-uri.com/r/d/csp/enforce; report-to default")
 }
 
 func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, path string) {
