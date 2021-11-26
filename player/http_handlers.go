@@ -77,6 +77,7 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	s, err := h.player.ResolveStream(uri)
 	addBreadcrumb(r, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
+		metrics.ResolveFailures.Inc()
 		processStreamError("resolve", uri, w, r, err)
 		return
 	}

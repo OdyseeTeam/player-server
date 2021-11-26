@@ -101,7 +101,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 
 			claim = &resp.Claims[0]
 		}
-
+		metrics.ResolveSuccesses.Inc()
 		_ = p.resolveCache.SetWithExpire(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
 	}
 

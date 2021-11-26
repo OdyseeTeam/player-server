@@ -70,7 +70,18 @@ var (
 		Name:      "evictions_total",
 		Help:      "Total number of items evicted from the cache",
 	})
-
+	ResolveFailures = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "resolve",
+		Name:      "failures",
+		Help:      "Total number of failed SDK resolves",
+	})
+	ResolveSuccesses = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "resolve",
+		Name:      "successes",
+		Help:      "Total number of succeeded SDK resolves",
+	})
 	ResolveTimeMS = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: ns,
 		Subsystem: "resolve",
