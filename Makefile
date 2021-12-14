@@ -7,9 +7,9 @@ test:
 .PHONY: test_ci
 test_ci:
 	scripts/wait_for_wallet.sh
-	go get golang.org/x/tools/cmd/cover
-	go get github.com/mattn/goveralls
-	go get github.com/jandelgado/gcov2lcov
+	go install golang.org/x/tools/cmd/cover@latest
+	go install github.com/mattn/goveralls@latest
+	go install github.com/jandelgado/gcov2lcov@latest
 	go test -covermode=count -coverprofile=coverage.out ./...
 	gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
