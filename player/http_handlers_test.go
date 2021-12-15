@@ -245,9 +245,6 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 		url *url.URL
 	)
 
-	origValue := playerName
-	defer func() { playerName = origValue }()
-
 	playerName = "localhost:8000"
 	r, _ = http.NewRequest(http.MethodGet, "http://localhost:8080/irrelevant", nil)
 	rr = httptest.NewRecorder()
@@ -255,7 +252,7 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
 	url, _ = rr.Result().Location()
 	require.NotNil(t, url)
-	assert.Equal(t, "http://localhost:8000/api/v4/streams/tc/abc/master.m3u8", url.String())
+	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
 
 	playerName = "player8"
 	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/irrelevant", nil)
@@ -263,7 +260,7 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 
 	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
 	url, _ = rr.Result().Location()
-	assert.Equal(t, "https://player8.lbryplayer.xyz/api/v4/streams/tc/abc/master.m3u8", url.String())
+	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
 
 	playerName = "use-p2"
 	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/irrelevant", nil)
@@ -271,7 +268,7 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 
 	redirectToPlaylistURL(rr, r, "abc/master.m3u8")
 	url, _ = rr.Result().Location()
-	assert.Equal(t, "https://use-p2.lbryplayer.xyz/api/v4/streams/tc/abc/master.m3u8", url.String())
+	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
 }
 
 func Test_fitForTranscoder(t *testing.T) {

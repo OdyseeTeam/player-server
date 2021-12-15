@@ -220,23 +220,14 @@ func addPoweredByHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Powered-By", playerName)
 	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
 }
+
 func addCSPHeaders(w http.ResponseWriter) {
 	w.Header().Set("Report-To", `{"group":"default","max_age":31536000,"endpoints":[{"url":"https://6fd448c230d0731192f779791c8e45c3.report-uri.com/a/d/g"}],"include_subdomains":true}`)
 	w.Header().Set("Content-Security-Policy", "script-src 'none'; report-uri https://6fd448c230d0731192f779791c8e45c3.report-uri.com/r/d/csp/enforce; report-to default")
 }
 
 func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, path string) {
-	prefix := "http://"
-	host := playerName
-
-	match, _ := regexp.MatchString(`^\w+\-?\w+\d+$`, host)
-	if match {
-		host += ".lbryplayer.xyz"
-		prefix = "https://"
-	}
-
-	url := fmt.Sprintf("%v/api/v4/streams/tc/%v", host, path)
-	http.Redirect(w, r, prefix+url, http.StatusPermanentRedirect)
+	http.Redirect(w, r, fmt.Sprintf("/api/v4/streams/tc/%v", path), http.StatusPermanentRedirect)
 }
 
 func fitForTranscoder(r *http.Request, s *Stream) bool {
