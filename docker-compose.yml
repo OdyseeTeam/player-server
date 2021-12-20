@@ -8,32 +8,45 @@ services:
     ports:
       - "5279:5279"
   player:
-    image: 'lbry/lbrytv-player:latest'
+    image: 'odyseeteam/player-server:latest'
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "3"
     labels:
-      com.centurylinklabs.watchtower.enable: 1
+      com.centurylinklabs.watchtower.enable: true
     ports:
       - "8080:8080"
       - "5567:5567"
+      - "5569:5569"
       - "5568:5568/udp"
       - "5568:5568/tcp"
+    #mem_limit: 28597m
     volumes:
       - "/tmp/reflector_cache:/tmp/player_cache"
       - "/tmp/reflector_cache:/tmp/transcoded_cache"
     entrypoint: >
       ./lbrytv_player
-      --lbrynet=http://lbrynet:5279
-      --bind=0.0.0.0:8080
       --disk-cache-dir="/tmp/player_cache"
-      --disk-cache-size="1TB"
-      --hot-cache-size="10GB"
+      --disk-cache-size=1GB
+      --lbrynet=http://lbrynet:5279
+      --upstream-reflector=reflector.lbry.com:5569
+      --upstream-protocol=http
+      --bind=0.0.0.0:8080
       --prefetch=true
-      --upstream-reflector="reflector.lbry.com:5568"
+      --hot-cache-size=100MB
+      --profile=true
+      --config-username=test
+      --config-password=test
+      --throttle-scale=3.0
+      --throttle-enabled=false
       --transcoder-video-path=/tmp/transcoded_cache
-      --transcoder-video-size=200GB
-      --transcoder-addr=http://t0.lbry.tv:18081
+
     environment:
-      - PLAYER_NAME=my-own-player
+      - PLAYER_NAME=test-player
+      - GOGC=60
     depends_on:
       - lbrynet
   watchtower:
