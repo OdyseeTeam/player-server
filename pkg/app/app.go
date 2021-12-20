@@ -100,6 +100,7 @@ func (a *App) newServer() *http.Server {
 }
 
 func (a *App) newRouter() *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Logger())
 	// Install nice.Recovery, passing the handler to call after recovery
