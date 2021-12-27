@@ -253,33 +253,41 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 //}
 
 func Test_fitForTranscoder(t *testing.T) {
+	gin.SetMode(gin.TestMode)
 	var r *http.Request
 	p := getTestPlayer()
 
 	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
+	c, e := gin.CreateTestContext(w)
 
-	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/t/abc/", nil)
+	InstallPlayerRoutes(e, p)
+
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/free/claimname/abc/sdhash", nil)
 	c.Request = r
+	e.HandleContext(c)
+
 	s, err := p.ResolveStream("what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
 	require.NoError(t, err)
 	assert.True(t, fitForTranscoder(c, s))
 
-	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/t/abc/", nil)
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/free/claimname/abc/sdhash", nil)
 	c.Request = r
+	e.HandleContext(c)
 	s, err = p.ResolveStream("iOS-13-AdobeXD#9cd2e93bfc752dd6560e43623f36d0c3504dbca6")
 	require.NoError(t, err)
 	assert.False(t, fitForTranscoder(c, s))
 
-	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/t/abc/", nil)
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/free/claimname/abc/sdhash", nil)
 	c.Request = r
+	e.HandleContext(c)
 	r.Header.Add("Range", "bytes=12121-")
 	s, err = p.ResolveStream("iOS-13-AdobeXD#9cd2e93bfc752dd6560e43623f36d0c3504dbca6")
 	require.NoError(t, err)
 	assert.False(t, fitForTranscoder(c, s))
 
-	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v3/streams/t/abc/", nil)
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v3/streams/free/claimname/abc/sdhash", nil)
 	c.Request = r
+	e.HandleContext(c)
 	s, err = p.ResolveStream("what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
 	require.NoError(t, err)
 	assert.False(t, fitForTranscoder(c, s))
