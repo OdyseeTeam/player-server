@@ -88,7 +88,8 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	if c.GetString(paramDownload) != "" {
+	if c.Query(paramDownload) != "" {
+		//TODO: understand why this is also done further down below
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
 	} else if fitForTranscoder(c, s) && h.player.tclient != nil {
 		path := h.player.tclient.GetPlaybackPath(uri, s.hash)
@@ -155,7 +156,7 @@ func writeHeaders(c *gin.Context, s *Stream) {
 	addCSPHeaders(c)
 	addPoweredByHeaders(c)
 
-	if c.GetString(paramDownload) != "" {
+	if c.Query(paramDownload) != "" {
 		filename := regexp.MustCompile(`[^\p{L}\d\-\._ ]+`).ReplaceAllString(s.Filename(), "")
 		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename)))
 	}
