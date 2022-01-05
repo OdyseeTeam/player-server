@@ -30,8 +30,8 @@ func InstallPlayerRoutes(r *gin.Engine, p *Player) {
 	v4Router.GET("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
 	v4Router.HEAD("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
 
-	r.GET(SpeechPrefix, playerHandler.Handle)
-	r.HEAD(SpeechPrefix, playerHandler.Handle)
+	r.GET(SpeechPrefix+"*whatever", playerHandler.Handle)
+	r.HEAD(SpeechPrefix+"*whatever", playerHandler.Handle)
 
 	if p.TCVideoPath != "" {
 		v4Router.GET("/streams/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
