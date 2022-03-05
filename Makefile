@@ -22,14 +22,14 @@ macos:
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: image
 image:
-	docker build -t lbry/lbrytv-player:$(version) -t lbry/lbrytv-player:latest .
+	docker build -t odyseeteam/player-server:$(version) -t odyseeteam/player-server:latest .
 
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: publish_image
 publish_image:
-	docker push lbry/lbrytv-player:$(version)
-	docker tag lbry/lbrytv-player:$(version) lbry/lbrytv-player:latest
-	docker push lbry/lbrytv-player:latest
+	docker push odyseeteam/player-server:$(version)
+	docker tag odyseeteam/player-server:$(version) odyseeteam/player-server:latest
+	docker push odyseeteam/player-server:latest
 
 tag := $(shell git describe --abbrev=0 --tags)
 .PHONY: retag

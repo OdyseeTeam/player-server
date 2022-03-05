@@ -12,10 +12,11 @@ import (
 
 	"github.com/lbryio/lbrytv-player/internal/metrics"
 	"github.com/lbryio/lbrytv-player/pkg/app"
+
 	tclient "github.com/lbryio/transcoder/client"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 )
 
 const paramDownload = "download"
@@ -51,68 +52,68 @@ func NewRequestHandler(p *Player) *RequestHandler {
 }
 
 // Handle is responsible for all HTTP media delivery via player module.
-func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
+func (h *RequestHandler) Handle(c *gin.Context) {
 	var uri, token string
 
 	// Speech stuff
-	if strings.HasPrefix(r.URL.String(), SpeechPrefix) {
-		uri = r.URL.String()[len(SpeechPrefix):]
+	if strings.HasPrefix(c.Request.URL.String(), SpeechPrefix) {
+		uri = c.Request.URL.String()[len(SpeechPrefix):]
 		extStart := strings.LastIndex(uri, ".")
 		if extStart >= 0 {
 			uri = uri[:extStart]
 		}
 		if uri == "" {
-			w.WriteHeader(http.StatusNotFound)
+			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
 	} else {
-		vars := mux.Vars(r)
-		uri = fmt.Sprintf("%s#%s", vars["claim_name"], vars["claim_id"])
-		token = vars["token"]
+		uri = fmt.Sprintf("%s#%s", c.Param("claim_name"), c.Param("claim_id"))
+		token = c.Param("token")
 	}
 	// Speech stuff over
 
-	Logger.Infof("%s stream %v", r.Method, uri)
+	Logger.Infof("%s stream %v", c.Request.Method, uri)
 
 	s, err := h.player.ResolveStream(uri)
-	addBreadcrumb(r, "sdk", fmt.Sprintf("resolve %v", uri))
+	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
 		metrics.ResolveFailures.Inc()
-		processStreamError("resolve", uri, w, r, err)
+		processStreamError("resolve", uri, c.Writer, c.Request, err)
 		return
 	}
 
 	err = h.player.VerifyAccess(s, token)
 	if err != nil {
-		processStreamError("access", uri, w, r, err)
+		processStreamError("access", uri, c.Writer, c.Request, err)
 		return
 	}
 
-	if r.URL.Query().Get(paramDownload) != "" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
-	} else if fitForTranscoder(r, s) && h.player.tclient != nil {
+	if c.Query(paramDownload) != "" {
+		//TODO: understand why this is also done further down below
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
+	} else if fitForTranscoder(c, s) && h.player.tclient != nil {
 		path := h.player.tclient.GetPlaybackPath(uri, s.hash)
 		if path != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			redirectToPlaylistURL(w, r, path)
+			redirectToPlaylistURL(c, path)
 			return
 		}
 	}
 
-	if r.Header.Get("range") == "" {
+	if c.GetHeader("range") == "" {
 		metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
 	}
 
 	err = s.PrepareForReading()
-	addBreadcrumb(r, "sdk", fmt.Sprintf("retrieve %v", uri))
+	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("retrieve %v", uri))
 	if err != nil {
-		processStreamError("retrieval", uri, w, r, err)
+		processStreamError("retrieval", uri, c.Writer, c.Request, err)
 		return
 	}
 
-	writeHeaders(w, r, s)
+	writeHeaders(c, s)
 
-	conn, err := app.GetConnection(r)
+	conn, err := app.GetConnection(c.Request)
 	if err != nil {
 		Logger.Warn("can't set write timeout: ", err)
 	} else {
@@ -122,43 +123,42 @@ func (h *RequestHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	switch r.Method {
+	switch c.Request.Method {
 	case http.MethodHead:
-		w.WriteHeader(http.StatusOK)
+		c.Status(http.StatusOK)
 	case http.MethodGet:
-		addBreadcrumb(r, "player", fmt.Sprintf("play %v", uri))
-		err = h.player.Play(s, w, r)
+		addBreadcrumb(c.Request, "player", fmt.Sprintf("play %v", uri))
+		err = h.player.Play(s, c)
 		if err != nil {
-			processStreamError("playback", uri, w, r, err)
+			processStreamError("playback", uri, c.Writer, c.Request, err)
 			return
 		}
 	}
 }
 
-func (h *RequestHandler) HandleTranscodedFragment(w http.ResponseWriter, r *http.Request) {
-	v := mux.Vars(r)
-	uri := fmt.Sprintf("%s#%s", v["claim_name"], v["claim_id"])
-	addCSPHeaders(w)
-	addPoweredByHeaders(w)
+func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
+	uri := fmt.Sprintf("%s#%s", c.Param("claim_name"), c.Param("claim_id"))
+	addCSPHeaders(c)
+	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-	err := h.player.tclient.PlayFragment(uri, v["sd_hash"], v["fragment"], w, r)
+	err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request) //todo change transcoder to accept Gin Context
 	if err != nil {
-		writeErrorResponse(w, http.StatusNotFound, err.Error())
+		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
 	}
 }
 
-func writeHeaders(w http.ResponseWriter, r *http.Request, s *Stream) {
-	header := w.Header()
-	header.Set("Content-Length", fmt.Sprintf("%v", s.Size))
-	header.Set("Content-Type", s.ContentType)
-	header.Set("Cache-Control", "public, max-age=31536000")
-	header.Set("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
-	addCSPHeaders(w)
-	addPoweredByHeaders(w)
-	if r.URL.Query().Get(paramDownload) != "" {
+func writeHeaders(c *gin.Context, s *Stream) {
+	c.Header("Content-Length", fmt.Sprintf("%v", s.Size))
+	c.Header("Content-Type", s.ContentType)
+	c.Header("Cache-Control", "public, max-age=31536000")
+	c.Header("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
+	addCSPHeaders(c)
+	addPoweredByHeaders(c)
+
+	if c.Query(paramDownload) != "" {
 		filename := regexp.MustCompile(`[^\p{L}\d\-\._ ]+`).ReplaceAllString(s.Filename(), "")
-		header.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename)))
+		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename)))
 	}
 }
 
@@ -216,22 +216,21 @@ func addBreadcrumb(r *http.Request, category, message string) {
 	}
 }
 
-func addPoweredByHeaders(w http.ResponseWriter) {
-	w.Header().Set("X-Powered-By", playerName)
-	w.Header().Set("Access-Control-Expose-Headers", "X-Powered-By")
+func addPoweredByHeaders(c *gin.Context) {
+	c.Header("X-Powered-By", playerName)
+	c.Header("Access-Control-Expose-Headers", "X-Powered-By")
 }
 
-func addCSPHeaders(w http.ResponseWriter) {
-	w.Header().Set("Report-To", `{"group":"default","max_age":31536000,"endpoints":[{"url":"https://6fd448c230d0731192f779791c8e45c3.report-uri.com/a/d/g"}],"include_subdomains":true}`)
-	w.Header().Set("Content-Security-Policy", "script-src 'none'; report-uri https://6fd448c230d0731192f779791c8e45c3.report-uri.com/r/d/csp/enforce; report-to default")
+func addCSPHeaders(c *gin.Context) {
+	c.Header("Report-To", `{"group":"default","max_age":31536000,"endpoints":[{"url":"https://6fd448c230d0731192f779791c8e45c3.report-uri.com/a/d/g"}],"include_subdomains":true}`)
+	c.Header("Content-Security-Policy", "script-src 'none'; report-uri https://6fd448c230d0731192f779791c8e45c3.report-uri.com/r/d/csp/enforce; report-to default")
 }
 
-func redirectToPlaylistURL(w http.ResponseWriter, r *http.Request, path string) {
-	http.Redirect(w, r, fmt.Sprintf("/api/v4/streams/tc/%v", path), http.StatusPermanentRedirect)
+func redirectToPlaylistURL(c *gin.Context, path string) {
+	c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("/api/v4/streams/tc/%v", path))
 }
 
-func fitForTranscoder(r *http.Request, s *Stream) bool {
-	return strings.HasPrefix(r.URL.Path, "/api/v4/") &&
-		strings.HasPrefix(s.ContentType, "video/") &&
-		r.Header.Get("range") == ""
+func fitForTranscoder(c *gin.Context, s *Stream) bool {
+	return strings.HasPrefix(c.FullPath(), "/api/v4/") &&
+		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aybabtme/iocontrol"
+	"github.com/gin-gonic/gin"
 )
 
 var ThrottleScale float64 = 1.5
@@ -33,7 +34,7 @@ var errNoOverlap = errors.New("invalid range: failed to overlap")
 // ServeStream uses it to handle requests using If-Match, If-None-Match, or If-Range.
 //
 // content must be seeked to the beginning of the file.
-func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
+func ServeStream(c *gin.Context, content *Stream) {
 	code := http.StatusOK
 	size := int64(content.Size)
 
@@ -41,12 +42,12 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 	sendSize := size
 	var sendContent io.Reader = content
 	if size >= 0 {
-		ranges, err := parseRange(r.Header.Get("Range"), size)
+		ranges, err := parseRange(c.GetHeader("Range"), size)
 		if err != nil {
 			if err == errNoOverlap {
-				w.Header().Set("Content-Range", fmt.Sprintf("bytes */%d", size))
+				c.Header("Content-Range", fmt.Sprintf("bytes */%d", size))
 			}
-			Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
+			Error(c, err.Error(), http.StatusRequestedRangeNotSatisfiable)
 			return
 		}
 
@@ -72,37 +73,37 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 			// multipart responses."
 			ra := ranges[0]
 			if _, err := content.Seek(ra.start, io.SeekStart); err != nil {
-				Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
+				Error(c, err.Error(), http.StatusRequestedRangeNotSatisfiable)
 				return
 			}
 
-			if r.Method != http.MethodHead {
+			if c.Request.Method != http.MethodHead {
 				_, err = content.GetChunk(int(getRange(ra.start, 1).FirstChunkIdx))
 				if err != nil {
-					Error(w, err.Error(), http.StatusRequestedRangeNotSatisfiable)
+					Error(c, err.Error(), http.StatusRequestedRangeNotSatisfiable)
 					return
 				}
 			}
 
 			sendSize = ra.length
 			code = http.StatusPartialContent
-			w.Header().Set("Content-Range", ra.contentRange(size))
+			c.Header("Content-Range", ra.contentRange(size))
 		}
 
-		w.Header().Set("Accept-Ranges", "bytes")
-		if w.Header().Get("Content-Encoding") == "" {
-			w.Header().Set("Content-Length", strconv.FormatInt(sendSize, 10))
+		c.Header("Accept-Ranges", "bytes")
+		if c.GetHeader("Content-Encoding") == "" {
+			c.Header("Content-Length", strconv.FormatInt(sendSize, 10))
 		}
 	}
 
-	w.WriteHeader(code)
+	c.Status(code)
 
-	if r.Method != http.MethodHead {
+	if c.Request.Method != http.MethodHead {
 		if ThrottleSwitch {
-			throttledW := iocontrol.ThrottledWriter(w, int(ThrottleScale*iocontrol.MiB), 1*time.Second)
+			throttledW := iocontrol.ThrottledWriter(c.Writer, int(ThrottleScale*iocontrol.MiB), 1*time.Second)
 			io.CopyN(throttledW, sendContent, sendSize)
 		} else {
-			io.CopyN(w, sendContent, sendSize)
+			io.CopyN(c.Writer, sendContent, sendSize)
 		}
 	}
 }
@@ -111,11 +112,11 @@ func ServeStream(w http.ResponseWriter, r *http.Request, content *Stream) {
 // It does not otherwise end the request; the caller should ensure no further
 // writes are done to w.
 // The error message should be plain text.
-func Error(w http.ResponseWriter, error string, code int) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(code)
-	fmt.Fprintln(w, error)
+func Error(c *gin.Context, error string, code int) {
+	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Status(code)
+	fmt.Fprintln(c.Writer, error)
 }
 
 // parseRange parses a Range header string as per RFC 7233.

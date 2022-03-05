@@ -17,7 +17,8 @@ import (
 	"github.com/lbryio/reflector.go/server/peer"
 	"github.com/lbryio/reflector.go/store"
 
-	"github.com/gorilla/mux"
+	nice "github.com/ekyoung/gin-nice-recovery"
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -34,7 +35,7 @@ type contextKey struct {
 // App holds entities that can be used to control the web server
 type App struct {
 	DefaultHeaders map[string]string
-	Router         *mux.Router
+	Router         *gin.Engine
 	Address        string
 	BlobStore      store.BlobStore
 
@@ -60,7 +61,7 @@ func New(opts Opts) *App {
 		stopChan: make(chan os.Signal),
 		DefaultHeaders: map[string]string{
 			"Access-Control-Allow-Origin": "*",
-			"Server":                      "lbrytv media player",
+			"Server":                      "Odysee media player",
 		},
 		Address:   opts.Address,
 		BlobStore: opts.BlobStore,
@@ -98,20 +99,30 @@ func (a *App) newServer() *http.Server {
 	}
 }
 
-func (a *App) newRouter() *mux.Router {
-	r := mux.NewRouter()
-	r.Use(a.defaultHeadersMiddleware)
-	r.Use(logger.SentryHandler.Handle)
+func (a *App) newRouter() *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Logger())
+	// Install nice.Recovery, passing the handler to call after recovery
+	r.Use(nice.Recovery(func(c *gin.Context, err interface{}) {
+		c.JSON(500, gin.H{
+			"title": "Error",
+			"err":   err,
+		})
+	}))
+
+	r.Use(a.defaultHeadersMiddleware())
+	r.Use(logger.SentryHandler)
 	return r
 }
 
-func (a *App) defaultHeadersMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (a *App) defaultHeadersMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		for k, v := range a.DefaultHeaders {
-			w.Header().Set(k, v)
+			c.Header(k, v)
 		}
-		next.ServeHTTP(w, r)
-	})
+		c.Next()
+	}
 }
 
 // Start starts a HTTP server and returns immediately.

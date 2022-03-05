@@ -3,14 +3,18 @@ package metrics
 import (
 	"fmt"
 
-	"github.com/gorilla/mux"
+	"github.com/chenjiandongx/ginprom"
+	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func InstallRoute(r *mux.Router) {
-	r.Handle("/metrics", promhttp.Handler())
+func InstallRoute(r *gin.Engine) {
+	r.Use(ginprom.PromMiddleware(nil))
+
+	// register the `/metrics` route.
+	r.GET("/metrics", ginprom.PromHandler(promhttp.Handler()))
 }
 
 const (

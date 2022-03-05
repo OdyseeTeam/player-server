@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	sentryhttp "github.com/getsentry/sentry-go/http"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 )
 
 var IgnoredExceptions = []string{}
-var SentryHandler = sentryhttp.New(sentryhttp.Options{
+var SentryHandler = sentrygin.New(sentrygin.Options{
 	Repanic:         true,
 	WaitForDelivery: true,
 })

@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"math/rand"
-	"net/http"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	tclient "github.com/lbryio/transcoder/client"
 
 	"github.com/bluele/gcache"
+	"github.com/gin-gonic/gin"
 )
 
 var Logger = logger.GetLogger()
@@ -55,10 +55,10 @@ func (p *Player) AddTranscoderClient(c *tclient.Client, path string) {
 }
 
 // Play delivers requested URI onto the supplied http.ResponseWriter.
-func (p *Player) Play(s *Stream, w http.ResponseWriter, r *http.Request) error {
+func (p *Player) Play(s *Stream, c *gin.Context) error {
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamOriginal).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamOriginal).Dec()
-	ServeStream(w, r, s)
+	ServeStream(c, s)
 	return nil
 }
 
