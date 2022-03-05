@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/lbryio/lbrytv-player/cmd"
+	"github.com/OdyseeTeam/player-server/cmd"
 )
 
 func main() {

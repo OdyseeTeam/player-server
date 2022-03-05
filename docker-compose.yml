@@ -1,7 +1,7 @@
 version: "3.2"
 services:
   lbrynet:
-    image: 'lbry/lbrynet-tv:latest'
+    image: 'lbry/lbrynet-tv:0.101.2'
     restart: always
     labels:
       com.centurylinklabs.watchtower.enable: 1

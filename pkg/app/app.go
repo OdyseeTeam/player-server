@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/OdyseeTeam/player-server/pkg/logger"
 
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	reflectorHttp "github.com/lbryio/reflector.go/server/http"

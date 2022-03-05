@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/internal/metrics"
-	"github.com/lbryio/lbrytv-player/pkg/app"
+	"github.com/OdyseeTeam/player-server/internal/metrics"
+	"github.com/OdyseeTeam/player-server/pkg/app"
 
 	tclient "github.com/lbryio/transcoder/client"
 

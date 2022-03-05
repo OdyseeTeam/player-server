@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/OdyseeTeam/player-server/pkg/logger"
 
 	"github.com/golang-jwt/jwt"
 )

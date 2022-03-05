@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lbryio/lbrytv-player/pkg/paid"
+	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
