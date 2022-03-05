@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/lbryio/lbrytv-player/player"
+	"github.com/OdyseeTeam/player-server/player"
 
 	"github.com/gin-gonic/gin"
 )

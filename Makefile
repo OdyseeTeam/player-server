@@ -14,10 +14,10 @@ test_ci:
 	gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
 linux:
-	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbrytv_player -ldflags "-s -w -X github.com/lbryio/lbrytv-player/internal/version.version=$(version)"
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbrytv_player -ldflags "-s -w -X github.com/OdyseeTeam/player-server/internal/version.version=$(version)"
 
 macos:
-	CGO_ENABLED=0 GOARCH=amd64 GOOS=darwin go build -o dist/darwin_amd64/lbrytv_player -ldflags "-s -w -X github.com/lbryio/lbrytv-player/internal/version.version=$(version)"
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=darwin go build -o dist/darwin_amd64/lbrytv_player -ldflags "-s -w -X github.com/OdyseeTeam/player-server/internal/version.version=$(version)"
 
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: image

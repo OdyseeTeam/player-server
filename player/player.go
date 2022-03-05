@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lbryio/lbrytv-player/internal/metrics"
-	"github.com/lbryio/lbrytv-player/pkg/logger"
-	"github.com/lbryio/lbrytv-player/pkg/paid"
+	"github.com/OdyseeTeam/player-server/internal/metrics"
+	"github.com/OdyseeTeam/player-server/pkg/logger"
+	"github.com/OdyseeTeam/player-server/pkg/paid"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	tclient "github.com/lbryio/transcoder/client"
@@ -91,7 +91,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 			}
 
 			claimID := hex.EncodeToString(rev(repost.ClaimHash))
-			resp, err := p.lbrynetClient.ClaimSearch(nil, &claimID, nil, nil, 1, 1)
+			resp, err := p.lbrynetClient.ClaimSearch(ljsonrpc.ClaimSearchArgs{ClaimID: &claimID, Page: 1, PageSize: 1})
 			if err != nil {
 				return nil, err
 			}

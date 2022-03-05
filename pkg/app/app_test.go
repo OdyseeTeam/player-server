@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/lbryio/lbrytv-player/pkg/logger"
+	"github.com/OdyseeTeam/player-server/pkg/logger"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"

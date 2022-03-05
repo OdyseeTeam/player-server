@@ -6,8 +6,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/lbrytv-player/internal/metrics"
 
 	"github.com/lbryio/reflector.go/shared"
 	"github.com/lbryio/reflector.go/store"

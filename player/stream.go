@@ -7,9 +7,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/internal/metrics"
+	"github.com/OdyseeTeam/player-server/pkg/mime"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/lbryio/lbrytv-player/internal/metrics"
-	"github.com/lbryio/lbrytv-player/pkg/mime"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/lbry.go/v2/stream"
