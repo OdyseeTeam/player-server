@@ -1,16 +1,11 @@
 package player
 
 import (
-	"errors"
-	"strings"
 	"time"
 	"unsafe"
 
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/lbryio/lbry.go/v2/stream"
-
-	"github.com/lbryio/reflector.go/shared"
-	"github.com/lbryio/reflector.go/store"
 
 	"github.com/bluele/gcache"
 	"golang.org/x/sync/singleflight"
@@ -21,12 +16,12 @@ const longTTL = 365 * 24 * time.Hour
 // HotCache is basically an in-memory BlobStore but it stores the blobs decrypted
 // You have to know which blobs you expect to be sd blobs when using HotCache
 type HotCache struct {
-	origin store.BlobStore
+	origin DecryptedCache
 	cache  gcache.Cache
 	sf     *singleflight.Group
 }
 
-func NewHotCache(origin store.BlobStore, maxSizeInBytes int64) *HotCache {
+func NewHotCache(origin DecryptedCache, maxSizeInBytes int64) *HotCache {
 	h := &HotCache{
 		origin: origin,
 		cache: gcache.New(int(maxSizeInBytes / stream.MaxBlobSize)).ARC().EvictedFunc(func(key interface{}, value interface{}) {
@@ -62,22 +57,13 @@ func (h *HotCache) GetSDBlob(hash string) (*stream.SDBlob, error) {
 // getSDFromOrigin gets the blob from the origin, caches it, and returns it
 func (h *HotCache) getSDFromOrigin(hash string) (*stream.SDBlob, error) {
 	blob, err, _ := h.sf.Do(hash, func() (interface{}, error) {
-		blob, _, err := h.origin.Get(hash)
+		sd, err := h.origin.GetSDBlob(hash)
 		if err != nil {
 			return nil, err
 		}
-		//we'll use blobdownloader to trace for now. this line is left in here commented so that we remember how to use the trace
-		//it's a bad idea to run it like this in production because even though the line doesn't get printed, the trace.String() function gets evaluated
-		//Logger.Debugf("trace for %s:\n%s", hash, trace.String())
-		var sd stream.SDBlob
-		err = sd.FromBlob(blob)
-		if err != nil {
-			return nil, err
-		}
+		_ = h.cache.Set(hash, sizedSD{sd})
 
-		_ = h.cache.Set(hash, sizedSD{&sd})
-
-		return &sd, nil
+		return sd, nil
 	})
 
 	if err != nil || blob == nil {
@@ -100,36 +86,17 @@ func (h *HotCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, error) 
 	return h.getChunkFromOrigin(hash, key, iv)
 }
 
-// clearChunkFromCache will remove the chunk from the hotcache and from its origin.
-func (h *HotCache) clearChunkFromCache(hash string) error {
-	h.cache.Remove(hash)
-	err := h.origin.Delete(hash)
-	if !errors.Is(err, shared.ErrNotImplemented) && !strings.Contains(err.Error(), shared.ErrNotImplemented.Error()) {
-		return err
-	}
-	return nil
-}
-
 // getChunkFromOrigin gets the chunk from the origin, decrypts it, caches it, and returns it
 func (h *HotCache) getChunkFromOrigin(hash string, key, iv []byte) (ReadableChunk, error) {
 	chunk, err, _ := h.sf.Do(hash, func() (interface{}, error) {
-		blob, _, err := h.origin.Get(hash)
+		chunk, err := h.origin.GetChunk(hash, key, iv)
 		if err != nil {
 			return nil, err
 		}
-		//we'll use blobdownloader to trace for now. this line is left in here commented so that we remember how to use the trace
-		//it's a bad idea to run it like this in production because even though the line doesn't get printed, the trace.String() function gets evaluated
-		//Logger.Debugf("trace for %s:\n%s", hash, trace.String())
-		metrics.InBytes.Add(float64(len(blob)))
-
-		chunk, err := stream.DecryptBlob(blob, key, iv)
-		if err != nil {
-			return nil, err
-		}
-
+		metrics.InBytes.Add(float64(len(chunk)))
 		_ = h.cache.Set(hash, sizedSlice(chunk))
 
-		return ReadableChunk(chunk), nil
+		return chunk, nil
 	})
 
 	if err != nil || chunk == nil {

@@ -158,8 +158,8 @@ func initHotCache(origin store.BlobStore) *player.HotCache {
 	}
 
 	metrics.PlayerCacheInfo(hotCacheBytes.Bytes())
-
-	return player.NewHotCache(origin, int64(hotCacheBytes.Bytes()))
+	unencryptedCache := player.NewDecryptedCache(origin, 999999999)
+	return player.NewHotCache(*unencryptedCache, int64(hotCacheBytes.Bytes()))
 }
 
 func getBlobSource() store.BlobStore {

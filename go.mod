@@ -2,7 +2,10 @@ module github.com/OdyseeTeam/player-server
 
 go 1.17
 
+replace github.com/OdyseeTeam/gody-cdn => /home/niko/work/repositories/gody-cdn/
+
 require (
+	github.com/OdyseeTeam/gody-cdn v1.0.1-0.20220304172338-0f11373ec1c8
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
@@ -41,6 +44,7 @@ require (
 	github.com/fasthttp/router v1.3.3 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-ini/ini v1.48.0 // indirect
@@ -96,6 +100,7 @@ require (
 	github.com/spf13/viper v1.10.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/tidwall/gjson v1.9.4 // indirect
+	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.17.0 // indirect
