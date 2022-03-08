@@ -2,10 +2,10 @@ module github.com/OdyseeTeam/player-server
 
 go 1.17
 
-replace github.com/OdyseeTeam/gody-cdn => /home/niko/work/repositories/gody-cdn/
+//replace github.com/OdyseeTeam/gody-cdn => /home/niko/work/repositories/gody-cdn/
 
 require (
-	github.com/OdyseeTeam/gody-cdn v1.0.1-0.20220304172338-0f11373ec1c8
+	github.com/OdyseeTeam/gody-cdn v1.0.1-0.20220307161246-1c6ff8b07911
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
