@@ -28,7 +28,7 @@ services:
       - "/tmp/reflector_cache:/tmp/player_cache"
       - "/tmp/reflector_cache:/tmp/transcoded_cache"
     entrypoint: >
-      ./lbrytv_player
+      ./odysee_player
       --disk-cache-dir="/tmp/player_cache"
       --disk-cache-size=1GB
       --lbrynet=http://lbrynet:5279

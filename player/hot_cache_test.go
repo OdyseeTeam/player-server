@@ -14,7 +14,8 @@ import (
 
 func TestHotCache_BlobNotFound(t *testing.T) {
 	origin := store.NewMemStore()
-	hc := NewHotCache(origin, 100000000)
+	ds := NewDecryptedCache(origin)
+	hc := NewHotCache(*ds, 100000000)
 	assert.NotNil(t, hc)
 
 	_, err := hc.GetSDBlob("test")
@@ -23,6 +24,7 @@ func TestHotCache_BlobNotFound(t *testing.T) {
 
 func TestHotCache_Stream(t *testing.T) {
 	origin := store.NewMemStore()
+	ds := NewDecryptedCache(origin)
 
 	data := randomString(MaxChunkSize * 3)
 	s, err := stream.New(bytes.NewReader([]byte(data)))
@@ -33,7 +35,7 @@ func TestHotCache_Stream(t *testing.T) {
 		origin.Put(b.HashHex(), b)
 	}
 
-	hc := NewHotCache(origin, 100000000)
+	hc := NewHotCache(*ds, 100000000)
 
 	var streamSDBlob stream.SDBlob
 	err = streamSDBlob.FromBlob(s[0])

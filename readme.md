@@ -7,33 +7,40 @@
 
 Player only requires a working instance of [lbrynet](https://github.com/lbryio/lbry) running nearby.
 
-Run `lbrytv_player -h` to see flags and options.
+Run `odysee_player -h` to see flags and options.
 ```
+media server for odysee.com
+
 Usage:
-  lbrytv_player [flags]
+  odysee_player [flags]
 
 Flags:
-      --bind string                    address to bind HTTP server to (default "0.0.0.0:8080")
-      --cloudfront-endpoint string     CloudFront edge endpoint for standard HTTP retrieval
-      --config-password string         Password to access the config endpoint with (default "lbry")
-      --config-username string         Username to access the config endpoint with (default "lbry")
-      --disk-cache-dir string          enable disk cache, storing blobs in dir
-      --disk-cache-size string         max size of disk cache: 16GB, 500MB, etc. (default "100MB")
-  -h, --help                           help for lbrytv_player
-      --hot-cache-size string          max size for in-memory cache: 16GB, 500MB, etc (default "50MB")
-      --lbrynet string                 lbrynet server URL (default "http://localhost:5279/")
-      --paid_pubkey string             pubkey for playing paid content (default "https://api.lbry.tv/api/v1/paid/pubkey")
-      --prefetch                       enable prefetch for blobs
-      --prefetch-count uint            how many blobs to retrieve from origin in advance (default 2)
-      --profile                        enable profiling server at /superdebug/pprof
-      --throttle-enabled               Enables throttling (default true)
-      --throttle-scale float           Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s (default 1.5)
-      --transcoder-addr string         transcoder API address
-      --transcoder-video-path string   path to store transcoded videos
-      --transcoder-video-size string   max size of transcoder video storage (default "200GB")
-      --upstream-reflector string      host:port of a reflector server where blobs are fetched from
-      --verbose                        enable verbose logging
-      --version                        version for lbrytv_player
+      --bind string                       address to bind HTTP server to (default "0.0.0.0:8080")
+      --cloudfront-endpoint string        CloudFront edge endpoint for standard HTTP retrieval
+      --config-password string            Password to access the config endpoint with (default "lbry")
+      --config-username string            Username to access the config endpoint with (default "lbry")
+      --disk-cache-dir string             enable disk cache, storing blobs in dir
+      --disk-cache-size string            max size of disk cache: 16GB, 500MB, etc. (default "100MB")
+  -h, --help                              help for odysee_player
+      --hot-cache-size string             max size for in-memory cache: 16GB, 500MB, etc (default "50MB")
+      --http-read-timeout uint            read timeout for http requests (seconds) (default 10)
+      --http-stream-write-timeout uint    write timeout for stream http requests (seconds) (default 86400)
+      --http-write-timeout uint           write timeout for http requests (seconds) (default 15)
+      --lbrynet string                    lbrynet server URL (default "http://localhost:5279/")
+      --paid_pubkey string                pubkey for playing paid content (default "https://api.na-backend.odysee.com/api/v1/paid/pubkey")
+      --prefetch                          enable prefetch for blobs
+      --prefetch-count uint               how many blobs to retrieve from origin in advance (default 2)
+      --profile                           enable profiling server at /superdebug/pprof
+      --throttle-enabled                  Enables throttling (default true)
+      --throttle-scale float              Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s (default 1.5)
+      --transcoder-addr string            transcoder API address
+      --transcoder-remote-server string   remote transcoder storage server URL
+      --transcoder-video-path string      path to store transcoded videos
+      --transcoder-video-size string      max size of transcoder video storage (default "200GB")
+      --upstream-protocol string          protocol used to fetch blobs from another upstream reflector server (tcp/http3/http) (default "http")
+      --upstream-reflector string         host:port of a reflector server where blobs are fetched from
+      --verbose                           enable verbose logging
+  -v, --version                           version for odysee_player
 ```
 
 ### flags in details

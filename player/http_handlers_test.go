@@ -179,7 +179,7 @@ func TestUTF8Filename(t *testing.T) {
 }
 
 func TestHandleHeadStreamsV2(t *testing.T) {
-	r, err := http.Get("https://api.lbry.tv/api/v1/paid/pubkey")
+	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
 	rawKey, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)
@@ -209,7 +209,7 @@ func TestHandleHeadStreamsV2(t *testing.T) {
 }
 
 func TestHandleHeadStreamsV3(t *testing.T) {
-	r, err := http.Get("https://api.lbry.tv/api/v1/paid/pubkey")
+	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
 	rawKey, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)

@@ -7,6 +7,7 @@ import (
 	"github.com/OdyseeTeam/gody-cdn/cleanup"
 	"github.com/OdyseeTeam/gody-cdn/configs"
 	objectStore "github.com/OdyseeTeam/gody-cdn/store"
+	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/extras/stop"
 	"github.com/lbryio/lbry.go/v2/stream"
@@ -20,14 +21,16 @@ import (
 
 // DecryptedCache Stores and retrieves unencrypted blobs on disk.
 type DecryptedCache struct {
-	cache *objectStore.CachingStore
-	sf    *singleflight.Group
+	cache   *objectStore.CachingStore
+	sf      *singleflight.Group
+	stopper *stop.Group
 }
+
 type decryptionData struct {
 	key, iv []byte
 }
 
-func NewDecryptedCache(origin store.BlobStore, maxSizeInBytes int64) *DecryptedCache {
+func NewDecryptedCache(origin store.BlobStore) *DecryptedCache {
 	stopper := stop.New()
 	err := configs.Init("config.json")
 	if err != nil {
@@ -41,12 +44,12 @@ func NewDecryptedCache(origin store.BlobStore, maxSizeInBytes int64) *DecryptedC
 	localDB := configs.Configuration.LocalDB
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
 	dbs := objectStore.NewDBBackedStore(ds, localDsn)
-	configs.Configuration.DiskCache.Size = fmt.Sprintf("%dB", maxSizeInBytes)
 	go cleanup.SelfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache)
 
 	baseFuncs := objectStore.BaseFuncs{
 		GetFunc: func(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {
 			//add miss metric logic here
+			metrics.DecryptedCacheRequestCount.WithLabelValues("object", "miss").Inc()
 			data, stack, err := origin.Get(hash)
 			if extra != nil {
 				dd := extra.(*decryptionData)
@@ -63,17 +66,11 @@ func NewDecryptedCache(origin store.BlobStore, maxSizeInBytes int64) *DecryptedC
 		DelFunc: origin.Delete,
 	}
 	finalStore := objectStore.NewCachingStoreV2("nvme-db-store", baseFuncs, dbs)
-	//defer finalStore.Shutdown()
-	//
-	//interruptChan := make(chan os.Signal, 1)
-	//signal.Notify(interruptChan, os.Interrupt, syscall.SIGTERM)
-	//<-interruptChan
-	//// deferred shutdowns happen now
-	//stopper.StopAndWait()
 
 	h := &DecryptedCache{
-		cache: finalStore,
-		sf:    new(singleflight.Group),
+		cache:   finalStore,
+		sf:      new(singleflight.Group),
+		stopper: stopper,
 	}
 
 	return h
@@ -82,6 +79,7 @@ func NewDecryptedCache(origin store.BlobStore, maxSizeInBytes int64) *DecryptedC
 // GetSDBlob gets an sd blob. If it's not in the cache, it is fetched from the origin and cached.
 // store.ErrBlobNotFound is returned if blob is not found.
 func (h *DecryptedCache) GetSDBlob(hash string) (*stream.SDBlob, error) {
+	metrics.DecryptedCacheRequestCount.WithLabelValues("sdblob", "total").Inc()
 	cached, _, err := h.cache.Get(hash, nil)
 	if err != nil {
 		return nil, err
@@ -99,6 +97,7 @@ func (h *DecryptedCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, e
 		key: key,
 		iv:  iv,
 	}
+	metrics.DecryptedCacheRequestCount.WithLabelValues("blob", "total").Inc()
 	item, _, err := h.cache.Get(hash, &dd)
 	return item, err
 }
@@ -106,4 +105,9 @@ func (h *DecryptedCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, e
 func (h *DecryptedCache) IsCached(hash string) bool {
 	has, _ := h.cache.Has(hash)
 	return has
+}
+
+func (h *DecryptedCache) Shutdown() {
+	h.cache.Shutdown()
+	h.stopper.StopAndWait()
 }

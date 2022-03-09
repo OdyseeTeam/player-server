@@ -50,8 +50,8 @@ var (
 	transcoderRemoteServer string
 
 	rootCmd = &cobra.Command{
-		Use:     "lbrytv_player",
-		Short:   "media server for lbrytv",
+		Use:     "odysee_player",
+		Short:   "media server for odysee.com",
 		Version: version.FullName(),
 		Run:     run,
 	}
@@ -60,7 +60,7 @@ var (
 func init() {
 	rootCmd.Flags().StringVar(&bindAddress, "bind", "0.0.0.0:8080", "address to bind HTTP server to")
 	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
-	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.lbry.tv/api/v1/paid/pubkey", "pubkey for playing paid content")
+	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.na-backend.odysee.com/api/v1/paid/pubkey", "pubkey for playing paid content")
 
 	rootCmd.Flags().UintVar(&player.StreamWriteTimeout, "http-stream-write-timeout", player.StreamWriteTimeout, "write timeout for stream http requests (seconds)")
 	rootCmd.Flags().UintVar(&app.WriteTimeout, "http-write-timeout", app.WriteTimeout, "write timeout for http requests (seconds)")
@@ -158,7 +158,7 @@ func initHotCache(origin store.BlobStore) *player.HotCache {
 	}
 
 	metrics.PlayerCacheInfo(hotCacheBytes.Bytes())
-	unencryptedCache := player.NewDecryptedCache(origin, 999999999)
+	unencryptedCache := player.NewDecryptedCache(origin)
 	return player.NewHotCache(*unencryptedCache, int64(hotCacheBytes.Bytes()))
 }
 

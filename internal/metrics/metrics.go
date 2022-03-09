@@ -68,6 +68,12 @@ var (
 		Name:      "request_total",
 		Help:      "Total number of blobs requested from hot cache",
 	}, []string{"blob_type", "result"})
+	DecryptedCacheRequestCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "decryptedcache",
+		Name:      "request_total",
+		Help:      "Total number of objects requested from decrypted cache",
+	}, []string{"object_type", "result"})
 	HotCacheEvictions = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: ns,
 		Subsystem: "hotcache",
