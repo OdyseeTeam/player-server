@@ -1,5 +1,18 @@
 version: "3.2"
 services:
+  mysql:
+    image: percona:ps-8.0
+    ports:
+      - "3306:3306"
+    volumes:
+      - /tmp/godycdn_db/mysql:/var/lib/mysql
+      # get the script from the gody-cdn repo
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - MYSQL_USER=godycdn
+      - MYSQL_PASSWORD=godycdn
+      - MYSQL_DATABASE=godycdn
+      - MYSQL_ROOT_PASSWORD=godycdnrootpw
   lbrynet:
     image: 'lbry/lbrynet-tv:0.101.2'
     restart: always
@@ -27,10 +40,10 @@ services:
     volumes:
       - "/tmp/reflector_cache:/tmp/player_cache"
       - "/tmp/reflector_cache:/tmp/transcoded_cache"
+      - "/tmp/objects_cache:/tmp/objects"
+      - "./config.json:/app/config.json"
     entrypoint: >
       ./odysee_player
-      --disk-cache-dir="/tmp/player_cache"
-      --disk-cache-size=1GB
       --lbrynet=http://lbrynet:5279
       --upstream-reflector=reflector.lbry.com:5569
       --upstream-protocol=http
@@ -43,12 +56,15 @@ services:
       --throttle-scale=3.0
       --throttle-enabled=false
       --transcoder-video-path=/tmp/transcoded_cache
-
+#      --disk-cache-dir="/tmp/player_cache"
+#      --disk-cache-size=1GB
     environment:
+      - SPACE_USE_DB=true
       - PLAYER_NAME=test-player
       - GOGC=60
     depends_on:
       - lbrynet
+      - mysql
   watchtower:
     image: 'containrrr/watchtower'
     restart: always
