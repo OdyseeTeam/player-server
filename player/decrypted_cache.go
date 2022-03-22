@@ -59,11 +59,15 @@ func NewDecryptedCache(origin store.BlobStore) *DecryptedCache {
 
 			return data, stack, err
 		},
-		HasFunc: origin.Has,
-		PutFunc: func(hash string, object []byte) error {
+		HasFunc: func(hash string, extra interface{}) (bool, error) {
+			return origin.Has(hash)
+		},
+		PutFunc: func(hash string, object []byte, extra interface{}) error {
 			return errors.Err("not implemented")
 		},
-		DelFunc: origin.Delete,
+		DelFunc: func(hash string, extra interface{}) error {
+			return origin.Delete(hash)
+		},
 	}
 	finalStore := objectStore.NewCachingStoreV2("nvme-db-store", baseFuncs, dbs)
 
@@ -103,7 +107,7 @@ func (h *DecryptedCache) GetChunk(hash string, key, iv []byte) (ReadableChunk, e
 }
 
 func (h *DecryptedCache) IsCached(hash string) bool {
-	has, _ := h.cache.Has(hash)
+	has, _ := h.cache.Has(hash, nil)
 	return has
 }
 
