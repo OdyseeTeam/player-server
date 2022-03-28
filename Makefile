@@ -22,7 +22,7 @@ macos:
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: image
 image:
-	docker build -t odyseeteam/player-server:$(version) -t odyseeteam/player-server:latest .
+	docker buildx build -t odyseeteam/player-server:$(version) -t odyseeteam/player-server:latest  --platform linux/amd64 .
 
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: publish_image
