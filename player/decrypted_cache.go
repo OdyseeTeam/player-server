@@ -40,7 +40,10 @@ func NewDecryptedCache(origin store.BlobStore) *DecryptedCache {
 	if err != nil {
 		logrus.Fatal(errors.FullTrace(err))
 	}
-	ds := objectStore.NewDiskStore(configs.Configuration.DiskCache.Path, 2)
+	ds, err := objectStore.NewDiskStore(configs.Configuration.DiskCache.Path, 2)
+	if err != nil {
+		logrus.Fatal(errors.FullTrace(err))
+	}
 	localDB := configs.Configuration.LocalDB
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
 	dbs := objectStore.NewDBBackedStore(ds, localDsn)
