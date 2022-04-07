@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,13 +47,15 @@ func init() {
 	}
 }
 
-// NewRequestHandler initializes a HTTP request handler with the provided Player instance.
+// NewRequestHandler initializes an HTTP request handler with the provided Player instance.
 func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
 
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(c *gin.Context) {
+	addCSPHeaders(c)
+	addPoweredByHeaders(c)
 	var uri, token string
 
 	// Speech stuff
@@ -73,6 +76,11 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	// Speech stuff over
 
 	Logger.Infof("%s stream %v", c.Request.Method, uri)
+	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
+	if isDownload && !h.player.downloadsEnabled {
+		c.String(http.StatusForbidden, "downloads are currently disabled")
+		return
+	}
 
 	s, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
@@ -88,10 +96,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	if c.Query(paramDownload) != "" {
-		//TODO: understand why this is also done further down below
-		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
-	} else if fitForTranscoder(c, s) && h.player.tclient != nil {
+	if !isDownload && fitForTranscoder(c, s) && h.player.tclient != nil {
 		path := h.player.tclient.GetPlaybackPath(uri, s.hash)
 		if path != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
@@ -153,10 +158,10 @@ func writeHeaders(c *gin.Context, s *Stream) {
 	c.Header("Content-Type", s.ContentType)
 	c.Header("Cache-Control", "public, max-age=31536000")
 	c.Header("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
-	addCSPHeaders(c)
-	addPoweredByHeaders(c)
 
-	if c.Query(paramDownload) != "" {
+	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
+	if isDownload {
+
 		filename := regexp.MustCompile(`[^\p{L}\d\-\._ ]+`).ReplaceAllString(s.Filename(), "")
 		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename)))
 	}

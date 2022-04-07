@@ -33,6 +33,7 @@ var (
 	enablePrefetch bool
 	enableProfile  bool
 	verboseOutput  bool
+	allowDownloads bool
 	lbrynetAddress string
 	paidPubKey     string
 
@@ -69,6 +70,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&enablePrefetch, "prefetch", false, "enable prefetch for blobs")
 	rootCmd.Flags().BoolVar(&enableProfile, "profile", false, fmt.Sprintf("enable profiling server at %v", player.ProfileRoutePath))
 	rootCmd.Flags().BoolVar(&verboseOutput, "verbose", false, "enable verbose logging")
+	rootCmd.Flags().BoolVar(&allowDownloads, "allow-downloads", true, "enable stream downloads")
 
 	rootCmd.Flags().StringVar(&upstreamReflector, "upstream-reflector", "", "host:port of a reflector server where blobs are fetched from")
 	rootCmd.Flags().StringVar(&upstreamProtocol, "upstream-protocol", "http", "protocol used to fetch blobs from another upstream reflector server (tcp/http3/http)")
@@ -98,7 +100,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	blobSource := getBlobSource()
 
-	p := player.NewPlayer(initHotCache(blobSource), lbrynetAddress)
+	p := player.NewPlayer(initHotCache(blobSource), lbrynetAddress, allowDownloads)
 	p.SetPrefetch(enablePrefetch)
 
 	var tcsize datasize.ByteSize

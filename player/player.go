@@ -22,16 +22,17 @@ var Logger = logger.GetLogger()
 
 // Player is an entry-point object to the new player package.
 type Player struct {
-	lbrynetClient *ljsonrpc.Client
-	blobSource    *HotCache
-	prefetch      bool
-	resolveCache  gcache.Cache
-	tclient       *tclient.Client
-	TCVideoPath   string
+	lbrynetClient    *ljsonrpc.Client
+	blobSource       *HotCache
+	prefetch         bool
+	resolveCache     gcache.Cache
+	tclient          *tclient.Client
+	TCVideoPath      string
+	downloadsEnabled bool
 }
 
 // NewPlayer initializes an instance with optional BlobStore.
-func NewPlayer(hotCache *HotCache, lbrynetAddress string) *Player {
+func NewPlayer(hotCache *HotCache, lbrynetAddress string, allowDownloads bool) *Player {
 	if lbrynetAddress == "" {
 		lbrynetAddress = "http://localhost:5279"
 	}
@@ -39,9 +40,10 @@ func NewPlayer(hotCache *HotCache, lbrynetAddress string) *Player {
 	lbrynetClient := ljsonrpc.NewClient(lbrynetAddress)
 	lbrynetClient.SetRPCTimeout(10 * time.Second)
 	return &Player{
-		lbrynetClient: lbrynetClient,
-		blobSource:    hotCache,
-		resolveCache:  gcache.New(10000).ARC().Build(),
+		lbrynetClient:    lbrynetClient,
+		blobSource:       hotCache,
+		resolveCache:     gcache.New(10000).ARC().Build(),
+		downloadsEnabled: allowDownloads,
 	}
 }
 
