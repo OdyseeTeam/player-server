@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/internal/iapi"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/app"
 
@@ -75,6 +76,13 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	}
 	// Speech stuff over
 
+	blocked, err := iapi.GetBlockedContent()
+	if err == nil {
+		if blocked[c.Param("claim_id")] {
+			c.String(http.StatusForbidden, "this content cannot be accessed")
+			return
+		}
+	}
 	Logger.Infof("%s stream %v", c.Request.Method, uri)
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 	if isDownload && !h.player.downloadsEnabled {
