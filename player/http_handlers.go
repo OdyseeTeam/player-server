@@ -96,7 +96,11 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		processStreamError("resolve", uri, c.Writer, c.Request, err)
 		return
 	}
-
+	hasValidChannel := s.claim.SigningChannel != nil && s.claim.SigningChannel.ClaimID != ""
+	if hasValidChannel && blocked != nil && blocked[s.claim.SigningChannel.ClaimID] {
+		c.String(http.StatusForbidden, "this content cannot be accessed")
+		return
+	}
 	err = h.player.VerifyAccess(s, token)
 	if err != nil {
 		processStreamError("access", uri, c.Writer, c.Request, err)
