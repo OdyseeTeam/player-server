@@ -83,7 +83,6 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 			return
 		}
 	}
-	Logger.Infof("%s stream %v", c.Request.Method, uri)
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 	if isDownload && !h.player.downloadsEnabled {
 		c.String(http.StatusForbidden, "downloads are currently disabled")

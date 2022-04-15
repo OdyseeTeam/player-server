@@ -8,7 +8,6 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
-	"github.com/sirupsen/logrus"
 )
 
 type BlockedContent struct {
@@ -21,10 +20,8 @@ var blockedCache = gcache.New(10).Expiration(15 * time.Minute).Build()
 func GetBlockedContent() (map[string]bool, error) {
 	cachedVal, err := blockedCache.Get("blocked")
 	if err == nil && cachedVal != nil {
-		logrus.Infof("hit")
 		return cachedVal.(map[string]bool), nil
 	}
-	logrus.Infof("miss")
 
 	url := "https://api.odysee.com/file/list_blocked?with_claim_id=true"
 	method := "GET"
