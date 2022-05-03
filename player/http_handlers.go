@@ -57,6 +57,9 @@ func NewRequestHandler(p *Player) *RequestHandler {
 func (h *RequestHandler) Handle(c *gin.Context) {
 	addCSPHeaders(c)
 	addPoweredByHeaders(c)
+	if c.Request.Method == http.MethodHead {
+		c.Header("Cache-Control", "no-store, No-cache")
+	}
 	var uri, token string
 
 	// Speech stuff
@@ -167,12 +170,13 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 func writeHeaders(c *gin.Context, s *Stream) {
 	c.Header("Content-Length", fmt.Sprintf("%v", s.Size))
 	c.Header("Content-Type", s.ContentType)
-	c.Header("Cache-Control", "public, max-age=31536000")
 	c.Header("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
+	if c.Request.Method != http.MethodHead {
+		c.Header("Cache-Control", "public, max-age=31536000")
+	}
 
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 	if isDownload {
-
 		filename := regexp.MustCompile(`[^\p{L}\d\-\._ ]+`).ReplaceAllString(s.Filename(), "")
 		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename)))
 	}
