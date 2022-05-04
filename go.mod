@@ -3,7 +3,7 @@ module github.com/OdyseeTeam/player-server
 go 1.17
 
 require (
-	github.com/OdyseeTeam/gody-cdn v1.0.1
+	github.com/OdyseeTeam/gody-cdn v1.0.3
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
@@ -13,7 +13,7 @@ require (
 	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220321182539-d0aeb0c22b22
+	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
 	github.com/lbryio/reflector.go v1.1.3-0.20220502213236-c211f83ba732
 	github.com/lbryio/transcoder v0.15.0
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
@@ -60,7 +60,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/karlseguin/ccache/v2 v2.0.8 // indirect
-	github.com/karrick/godirwalk v1.16.1 // indirect
+	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/lbryio/chainquery v1.9.0 // indirect
 	github.com/lbryio/lbry.go v1.1.2 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
@@ -73,8 +73,8 @@ require (
 	github.com/marten-seemann/qtls-go1-17 v0.1.1 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.1 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
-	github.com/mitchellh/mapstructure v1.1.2 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nikooo777/lbry-blobs-downloader v1.0.9 // indirect
@@ -82,12 +82,12 @@ require (
 	github.com/onsi/ginkgo v1.16.4 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rubenv/sql-migrate v0.0.0-20211023115951-9f02b1e13857 // indirect
-	github.com/shopspring/decimal v0.0.0-20191009025716-f1972eb1d1f5 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/afero v1.4.1 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
@@ -102,10 +102,10 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.5.0 // indirect
 	go.uber.org/zap v1.16.0 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
+	golang.org/x/net v0.0.0-20220421235706-1d1ef9303861 // indirect
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.6-0.20210908190839-cf92b39a962c // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
