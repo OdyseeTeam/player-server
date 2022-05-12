@@ -53,6 +53,12 @@ func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
 
+var bannedIPs = map[string]bool{
+	"96.76.237.222": true,
+	"45.47.236.87":  true,
+	"154.53.32.121": true,
+}
+
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(c *gin.Context) {
 	addCSPHeaders(c)
@@ -78,6 +84,19 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		token = c.Param("token")
 	}
 	// Speech stuff over
+	//this is here temporarily due to abuse. a better solution will be found
+	forwardedFor := c.GetHeader("X-Forwarded-For")
+	if forwardedFor != "" {
+		if bannedIPs[strings.TrimSpace(strings.Split(forwardedFor, ",")[0])] {
+			c.AbortWithStatus(http.StatusTooManyRequests)
+			return
+		}
+	}
+	if strings.Contains(c.Request.URL.String(), "Katmovie18") {
+		c.String(http.StatusForbidden, "this content cannot be accessed")
+		return
+	}
+	//end of abuse block
 
 	blocked, err := iapi.GetBlockedContent()
 	if err == nil {
@@ -161,10 +180,11 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-	err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request) //todo change transcoder to accept Gin Context
+	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request) //todo change transcoder to accept Gin Context
 	if err != nil {
 		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
 	}
+	metrics.TcOutBytes.Add(float64(size))
 }
 
 func writeHeaders(c *gin.Context, s *Stream) {

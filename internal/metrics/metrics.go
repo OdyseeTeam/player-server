@@ -3,18 +3,19 @@ package metrics
 import (
 	"fmt"
 
-	"github.com/chenjiandongx/ginprom"
+	"github.com/Depado/ginprom"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func InstallRoute(r *gin.Engine) {
-	r.Use(ginprom.PromMiddleware(nil))
-
-	// register the `/metrics` route.
-	r.GET("/metrics", ginprom.PromHandler(promhttp.Handler()))
+	p := ginprom.New(
+		ginprom.Engine(r),
+		ginprom.Subsystem("gin"),
+		ginprom.Path("/metrics"),
+	)
+	r.Use(p.Instrument())
 }
 
 const (
@@ -49,7 +50,11 @@ var (
 		Name:      "out_bytes",
 		Help:      "Total number of bytes streamed out",
 	})
-
+	TcOutBytes = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "tc_out_bytes",
+		Help:      "Total number of bytes streamed out via transcoded content",
+	})
 	HotCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: ns,
 		Subsystem: "hotcache",

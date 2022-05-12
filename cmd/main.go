@@ -126,6 +126,7 @@ func run(cmd *cobra.Command, args []string) {
 			tCfg = tCfg.RemoteServer(transcoderRemoteServer)
 		}
 		c := tclient.New(tCfg)
+		//TODO: this can probably be in a separate go routine so that startup isn't blocked
 		n, err := c.RestoreCache()
 		if err != nil {
 			Logger.Error(err)
@@ -138,8 +139,8 @@ func run(cmd *cobra.Command, args []string) {
 
 	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource})
 
-	player.InstallPlayerRoutes(a.Router, p)
 	metrics.InstallRoute(a.Router)
+	player.InstallPlayerRoutes(a.Router, p)
 	config.InstallConfigRoute(a.Router)
 	if enableProfile {
 		player.InstallProfilingRoutes(a.Router)

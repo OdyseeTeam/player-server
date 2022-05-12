@@ -15,7 +15,7 @@ type BlockedContent struct {
 	Outpoint string `json:"outpoint"`
 }
 
-var blockedCache = gcache.New(10).Expiration(15 * time.Minute).Build()
+var blockedCache = gcache.New(10).Expiration(2 * time.Minute).Build()
 
 func GetBlockedContent() (map[string]bool, error) {
 	cachedVal, err := blockedCache.Get("blocked")

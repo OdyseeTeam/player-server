@@ -3,19 +3,19 @@ module github.com/OdyseeTeam/player-server
 go 1.17
 
 require (
+	github.com/Depado/ginprom v1.7.4
 	github.com/OdyseeTeam/gody-cdn v1.0.3
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
-	github.com/chenjiandongx/ginprom v0.0.0-20210617023641-6c809602c38a
 	github.com/ekyoung/gin-nice-recovery v0.0.0-20160510022553-1654dca486db
 	github.com/getsentry/sentry-go v0.12.0
 	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
-	github.com/lbryio/reflector.go v1.1.3-0.20220502213236-c211f83ba732
-	github.com/lbryio/transcoder v0.15.0
+	github.com/lbryio/reflector.go v1.1.3-0.20220504171420-4e80f91a57f5
+	github.com/lbryio/transcoder v0.15.1-0.20220511173705-eb3bf61b6f11
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
 	github.com/prometheus/client_golang v1.12.1
 	github.com/sirupsen/logrus v1.8.1
@@ -46,9 +46,9 @@ require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-ini/ini v1.48.0 // indirect
-	github.com/go-playground/locales v0.13.0 // indirect
-	github.com/go-playground/universal-translator v0.17.0 // indirect
-	github.com/go-playground/validator/v10 v10.4.1 // indirect
+	github.com/go-playground/locales v0.14.0 // indirect
+	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/go-playground/validator/v10 v10.10.1 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
@@ -63,7 +63,7 @@ require (
 	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/lbryio/chainquery v1.9.0 // indirect
 	github.com/lbryio/lbry.go v1.1.2 // indirect
-	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/lucas-clemente/quic-go v0.27.0 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5 // indirect
@@ -95,7 +95,7 @@ require (
 	github.com/spf13/viper v1.7.1 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/tkanos/gonfig v0.0.0-20210106201359-53e13348de2f // indirect
-	github.com/ugorji/go/codec v1.1.7 // indirect
+	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/volatiletech/inflect v0.0.0-20170731032912-e7201282ae8d // indirect
 	github.com/volatiletech/null v8.0.0+incompatible // indirect
 	github.com/volatiletech/sqlboiler v3.4.0+incompatible // indirect
@@ -126,4 +126,5 @@ replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1
 //replace github.com/OdyseeTeam/gody-cdn => /home/niko/work/repositories/gody-cdn/
 //replace github.com/lbryio/reflector.go => /home/niko/go/src/github.com/lbryio/reflector.go
 //replace github.com/lbryio/transcoder => /home/niko/work/repositories/transcoder
+
 //replace github.com/nikooo777/lbry-blobs-downloader => github.com/andybeletsky/lbry-blobs-downloader v1.0.4-fixed6
