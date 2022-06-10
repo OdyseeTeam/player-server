@@ -14,21 +14,22 @@ test_ci:
 	gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
 linux:
-	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/lbrytv_player -ldflags "-s -w -X github.com/OdyseeTeam/player-server/internal/version.version=$(version)"
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -o dist/linux_amd64/odysee_player -ldflags "-s -w -X github.com/OdyseeTeam/player-server/internal/version.version=$(version)"
 
 macos:
-	CGO_ENABLED=0 GOARCH=amd64 GOOS=darwin go build -o dist/darwin_amd64/lbrytv_player -ldflags "-s -w -X github.com/OdyseeTeam/player-server/internal/version.version=$(version)"
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=darwin go build -o dist/darwin_amd64/odysee_player -ldflags "-s -w -X github.com/OdyseeTeam/player-server/internal/version.version=$(version)"
 
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
+cur_branch := $(shell git rev-parse --abbrev-ref HEAD)
 .PHONY: image
 image:
-	docker build -t odyseeteam/player-server:$(version) -t odyseeteam/player-server:latest .
+	docker buildx build -t odyseeteam/player-server:$(version) -t odyseeteam/player-server:latest -t odyseeteam/player-server:$(cur_branch) --platform linux/amd64 .
 
 version := $(shell git describe --abbrev=0 --tags|sed 's/v//')
 .PHONY: publish_image
 publish_image:
 	docker push odyseeteam/player-server:$(version)
-	docker tag odyseeteam/player-server:$(version) odyseeteam/player-server:latest
+	docker tag odyseeteam/player-server:$(version) odyseeteam/player-server:latest odyseeteam/player-server:$(cur_branch)
 	docker push odyseeteam/player-server:latest
 
 tag := $(shell git describe --abbrev=0 --tags)

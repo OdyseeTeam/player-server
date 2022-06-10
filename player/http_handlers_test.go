@@ -179,7 +179,7 @@ func TestUTF8Filename(t *testing.T) {
 }
 
 func TestHandleHeadStreamsV2(t *testing.T) {
-	r, err := http.Get("https://api.lbry.tv/api/v1/paid/pubkey")
+	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
 	rawKey, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)
@@ -209,7 +209,7 @@ func TestHandleHeadStreamsV2(t *testing.T) {
 }
 
 func TestHandleHeadStreamsV3(t *testing.T) {
-	r, err := http.Get("https://api.lbry.tv/api/v1/paid/pubkey")
+	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
 	rawKey, err := ioutil.ReadAll(r.Body)
 	require.NoError(t, err)
@@ -238,19 +238,18 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 
-//i mean... this works. but i have no clue how to test it without shenanigans, and it's not worth my time
-//func Test_redirectToPlaylistURL(t *testing.T) {
-//	var url *url.URL
-//	playerName = "localhost:8000"
-//
-//	w := httptest.NewRecorder()
-//	c, _ := gin.CreateTestContext(w)
-//
-//	redirectToPlaylistURL(c, "abc/master.m3u8")
-//	url, _ = w.Result().Location()
-//	require.NotNil(t, url)
-//	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
-//}
+func Test_redirectToPlaylistURL(t *testing.T) {
+	var url *url.URL
+	playerName = "localhost:8000"
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
+	redirectToPlaylistURL(c, "abc/master.m3u8")
+	url, _ = w.Result().Location()
+	require.NotNil(t, url)
+	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
+}
 
 func Test_fitForTranscoder(t *testing.T) {
 	gin.SetMode(gin.TestMode)

@@ -5,6 +5,6 @@ EXPOSE 8080
 RUN apk add mailcap
 
 WORKDIR /app
-COPY dist/linux_amd64/lbrytv_player /app/
+COPY dist/linux_amd64/odysee_player /app/
 
-CMD ["./lbrytv_player"]
+CMD ["./odysee_player"]

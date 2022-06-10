@@ -3,18 +3,19 @@ package metrics
 import (
 	"fmt"
 
-	"github.com/chenjiandongx/ginprom"
+	"github.com/Depado/ginprom"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func InstallRoute(r *gin.Engine) {
-	r.Use(ginprom.PromMiddleware(nil))
-
-	// register the `/metrics` route.
-	r.GET("/metrics", ginprom.PromHandler(promhttp.Handler()))
+	p := ginprom.New(
+		ginprom.Engine(r),
+		ginprom.Subsystem("gin"),
+		ginprom.Path("/metrics"),
+	)
+	r.Use(p.Instrument())
 }
 
 const (
@@ -49,7 +50,11 @@ var (
 		Name:      "out_bytes",
 		Help:      "Total number of bytes streamed out",
 	})
-
+	TcOutBytes = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: ns,
+		Name:      "tc_out_bytes",
+		Help:      "Total number of bytes streamed out via transcoded content",
+	})
 	HotCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: ns,
 		Subsystem: "hotcache",
@@ -68,6 +73,12 @@ var (
 		Name:      "request_total",
 		Help:      "Total number of blobs requested from hot cache",
 	}, []string{"blob_type", "result"})
+	DecryptedCacheRequestCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "decryptedcache",
+		Name:      "request_total",
+		Help:      "Total number of objects requested from decrypted cache",
+	}, []string{"object_type", "result"})
 	HotCacheEvictions = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: ns,
 		Subsystem: "hotcache",

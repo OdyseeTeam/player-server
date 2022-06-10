@@ -7,9 +7,11 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/internal/iapi"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/app"
 
@@ -46,13 +48,24 @@ func init() {
 	}
 }
 
-// NewRequestHandler initializes a HTTP request handler with the provided Player instance.
+// NewRequestHandler initializes an HTTP request handler with the provided Player instance.
 func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
 
+var bannedIPs = map[string]bool{
+	"96.76.237.222": true,
+	"45.47.236.87":  true,
+	"154.53.32.121": true,
+}
+
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(c *gin.Context) {
+	addCSPHeaders(c)
+	addPoweredByHeaders(c)
+	if c.Request.Method == http.MethodHead {
+		c.Header("Cache-Control", "no-store, No-cache")
+	}
 	var uri, token string
 
 	// Speech stuff
@@ -71,8 +84,32 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		token = c.Param("token")
 	}
 	// Speech stuff over
+	//this is here temporarily due to abuse. a better solution will be found
+	forwardedFor := c.GetHeader("X-Forwarded-For")
+	if forwardedFor != "" {
+		if bannedIPs[strings.TrimSpace(strings.Split(forwardedFor, ",")[0])] {
+			c.AbortWithStatus(http.StatusTooManyRequests)
+			return
+		}
+	}
+	if strings.Contains(c.Request.URL.String(), "Katmovie18") {
+		c.String(http.StatusForbidden, "this content cannot be accessed")
+		return
+	}
+	//end of abuse block
 
-	Logger.Infof("%s stream %v", c.Request.Method, uri)
+	blocked, err := iapi.GetBlockedContent()
+	if err == nil {
+		if blocked[c.Param("claim_id")] {
+			c.String(http.StatusForbidden, "this content cannot be accessed")
+			return
+		}
+	}
+	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
+	if isDownload && !h.player.downloadsEnabled {
+		c.String(http.StatusForbidden, "downloads are currently disabled")
+		return
+	}
 
 	s, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
@@ -81,17 +118,18 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		processStreamError("resolve", uri, c.Writer, c.Request, err)
 		return
 	}
-
+	hasValidChannel := s.claim.SigningChannel != nil && s.claim.SigningChannel.ClaimID != ""
+	if hasValidChannel && blocked != nil && blocked[s.claim.SigningChannel.ClaimID] {
+		c.String(http.StatusForbidden, "this content cannot be accessed")
+		return
+	}
 	err = h.player.VerifyAccess(s, token)
 	if err != nil {
 		processStreamError("access", uri, c.Writer, c.Request, err)
 		return
 	}
 
-	if c.Query(paramDownload) != "" {
-		//TODO: understand why this is also done further down below
-		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%v", s.Filename()))
-	} else if fitForTranscoder(c, s) && h.player.tclient != nil {
+	if !isDownload && fitForTranscoder(c, s) && h.player.tclient != nil {
 		path := h.player.tclient.GetPlaybackPath(uri, s.hash)
 		if path != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
@@ -142,21 +180,23 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-	err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request) //todo change transcoder to accept Gin Context
+	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request) //todo change transcoder to accept Gin Context
 	if err != nil {
 		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
 	}
+	metrics.TcOutBytes.Add(float64(size))
 }
 
 func writeHeaders(c *gin.Context, s *Stream) {
 	c.Header("Content-Length", fmt.Sprintf("%v", s.Size))
 	c.Header("Content-Type", s.ContentType)
-	c.Header("Cache-Control", "public, max-age=31536000")
 	c.Header("Last-Modified", s.Timestamp().UTC().Format(http.TimeFormat))
-	addCSPHeaders(c)
-	addPoweredByHeaders(c)
+	if c.Request.Method != http.MethodHead {
+		c.Header("Cache-Control", "public, max-age=31536000")
+	}
 
-	if c.Query(paramDownload) != "" {
+	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
+	if isDownload {
 		filename := regexp.MustCompile(`[^\p{L}\d\-\._ ]+`).ReplaceAllString(s.Filename(), "")
 		c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, filename, url.PathEscape(filename)))
 	}
