@@ -8,10 +8,9 @@ import (
 	"math/rand"
 	"path/filepath"
 	"testing"
-	"time"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	"github.com/lbryio/reflector.go/server/http3"
+	"github.com/lbryio/reflector.go/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -45,12 +44,9 @@ func randomString(n int) string {
 }
 
 func getTestPlayer() *Player {
-	origin := http3.NewStore(http3.StoreOpts{
-		Address: "reflector.lbry.com:5568",
-		Timeout: 30 * time.Second,
-	})
+	origin := store.NewHttpStore("source.odycdn.com:5569")
 	ds := NewDecryptedCache(origin)
-	return NewPlayer(NewHotCache(*ds, 100000000), "")
+	return NewPlayer(NewHotCache(*ds, 100000000), "", true)
 }
 
 func loadResponseFixture(t *testing.T, f string) jsonrpc.RPCResponse {

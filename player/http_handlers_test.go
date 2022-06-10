@@ -238,19 +238,18 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 
-//i mean... this works. but i have no clue how to test it without shenanigans, and it's not worth my time
-//func Test_redirectToPlaylistURL(t *testing.T) {
-//	var url *url.URL
-//	playerName = "localhost:8000"
-//
-//	w := httptest.NewRecorder()
-//	c, _ := gin.CreateTestContext(w)
-//
-//	redirectToPlaylistURL(c, "abc/master.m3u8")
-//	url, _ = w.Result().Location()
-//	require.NotNil(t, url)
-//	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
-//}
+func Test_redirectToPlaylistURL(t *testing.T) {
+	var url *url.URL
+	playerName = "localhost:8000"
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
+	redirectToPlaylistURL(c, "abc/master.m3u8")
+	url, _ = w.Result().Location()
+	require.NotNil(t, url)
+	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
+}
 
 func Test_fitForTranscoder(t *testing.T) {
 	gin.SetMode(gin.TestMode)
