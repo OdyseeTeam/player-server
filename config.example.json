@@ -1,0 +1,13 @@
+{
+  "local_db": {
+    "host": "localhost",
+    "user": "godycdn",
+    "database": "godycdn",
+    "password": "godycdn"
+  },
+  "disk_cache": {
+    "path": "/tmp/objects/",
+    "size": "1GB"
+  },
+  "s3_origins": []
+}

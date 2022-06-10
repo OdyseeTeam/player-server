@@ -3,10 +3,11 @@ services:
   mysql:
     image: percona:ps-8.0
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
-      - /tmp/godycdn_db/mysql:/var/lib/mysql
-      # get the script from the gody-cdn repo
+      #uncomment line below to persist storage when downing and upping the container
+      #- /tmp/godycdn_db/mysql:/var/lib/mysql
+      # get the script from the gody-cdn repo https://raw.githubusercontent.com/OdyseeTeam/gody-cdn/master/db-init.sql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       - MYSQL_USER=godycdn
