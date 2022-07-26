@@ -123,9 +123,9 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 	var newOffset int64
 
 	if s.Size == 0 {
-		return 0, errStreamSizeZero
+		return 0, ErrStreamSizeZero
 	} else if uint64(math.Abs(float64(offset))) > s.Size {
-		return 0, errOutOfBounds
+		return 0, ErrSeekOutOfBounds
 	}
 
 	switch whence {
@@ -140,7 +140,7 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if newOffset < 0 {
-		return 0, errSeekingBeforeStart
+		return 0, ErrSeekBeforeStart
 	}
 
 	s.seekOffset = newOffset
@@ -223,7 +223,7 @@ func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 
 	chunkToPrefetch := chunkIdx + 1
 	prefetched := s.prefetchedChunks[chunkToPrefetch]
-	if s.player.prefetch && !prefetched {
+	if s.player.options.prefetch && !prefetched {
 		s.prefetchedChunks[chunkToPrefetch] = true
 		go s.prefetchChunk(chunkToPrefetch)
 	}

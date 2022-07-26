@@ -44,11 +44,12 @@ var (
 	diskCacheSize      string
 	hotCacheSize       string
 
-	transcoderVideoPath string
-	transcoderVideoSize string
-	transcoderAddr      string
-
+	transcoderVideoPath    string
+	transcoderVideoSize    string
+	transcoderAddr         string
 	transcoderRemoteServer string
+
+	edgeToken string
 
 	rootCmd = &cobra.Command{
 		Use:     "odysee_player",
@@ -90,6 +91,8 @@ func init() {
 	rootCmd.Flags().StringVar(&config.Password, "config-password", "lbry", "Password to access the config endpoint with")
 	rootCmd.Flags().Float64Var(&player.ThrottleScale, "throttle-scale", 1.5, "Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s")
 	rootCmd.Flags().BoolVar(&player.ThrottleSwitch, "throttle-enabled", true, "Enables throttling")
+
+	rootCmd.Flags().StringVar(&edgeToken, "edge-token", "", "Edge token for delivering purchased/rented streams")
 }
 
 func run(cmd *cobra.Command, args []string) {
@@ -100,8 +103,13 @@ func run(cmd *cobra.Command, args []string) {
 
 	blobSource := getBlobSource()
 
-	p := player.NewPlayer(initHotCache(blobSource), lbrynetAddress, allowDownloads)
-	p.SetPrefetch(enablePrefetch)
+	p := player.NewPlayer(
+		initHotCache(blobSource),
+		player.WithLbrynetServer(lbrynetAddress),
+		player.WithDownloads(allowDownloads),
+		player.WithPrefetch(enablePrefetch),
+		player.WithEdgeToken(edgeToken),
+	)
 
 	var tcsize datasize.ByteSize
 	err := tcsize.UnmarshalText([]byte(transcoderVideoSize))

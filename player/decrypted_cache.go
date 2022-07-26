@@ -32,7 +32,8 @@ type decryptionData struct {
 
 func NewDecryptedCache(origin store.BlobStore) *DecryptedCache {
 	stopper := stop.New()
-	err := configs.Init("config.json")
+
+	err := configs.Init("../config.json")
 	if err != nil {
 		logrus.Fatalln(errors.FullTrace(err))
 	}

@@ -5,10 +5,13 @@ import (
 )
 
 var (
-	errPaidStream         = errors.New("paid stream")
-	errSeekingBeforeStart = errors.New("seeking before the beginning of file")
-	errOutOfBounds        = errors.New("seeking out of bounds")
-	errMissingBlob        = errors.New("blob missing")
-	errStreamNotFound     = errors.New("could not resolve stream URI")
-	errStreamSizeZero     = errors.New("stream size is zero")
+	ErrPaidStream                      = errors.New("paid stream")
+	ErrEdgeAuthenticationMisconfigured = errors.New("edge authentication misconfigured")
+	ErrEdgeAuthenticationFailed        = errors.New("edge authentication failed")
+	ErrEdgeCredentialsMissing          = errors.New("edge credentials missing")
+	ErrStreamNotFound                  = errors.New("could not resolve stream URI")
+
+	ErrSeekBeforeStart = errors.New("seeking before the beginning of file")
+	ErrSeekOutOfBounds = errors.New("seeking out of bounds")
+	ErrStreamSizeZero  = errors.New("stream size is zero")
 )

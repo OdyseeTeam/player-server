@@ -46,7 +46,7 @@ func randomString(n int) string {
 func getTestPlayer() *Player {
 	origin := store.NewHttpStore("source.odycdn.com:5569")
 	ds := NewDecryptedCache(origin)
-	return NewPlayer(NewHotCache(*ds, 100000000), "", true)
+	return NewPlayer(NewHotCache(*ds, 100000000), WithDownloads(true))
 }
 
 func loadResponseFixture(t *testing.T, f string) jsonrpc.RPCResponse {
@@ -71,7 +71,7 @@ func TestPlayerResolveStream(t *testing.T) {
 func TestPlayerResolveStreamNotFound(t *testing.T) {
 	p := getTestPlayer()
 	s, err := p.ResolveStream(randomString(20))
-	assert.Equal(t, errStreamNotFound, err)
+	assert.Equal(t, ErrStreamNotFound, err)
 	assert.Nil(t, s)
 }
 
@@ -106,15 +106,15 @@ func TestStreamSeek(t *testing.T) {
 		s.Seek(0, io.SeekEnd)
 		n, err = s.Seek(-999999999, io.SeekEnd)
 		assert.EqualValues(t, 0, n)
-		assert.Equal(t, errOutOfBounds, err)
+		assert.Equal(t, ErrSeekOutOfBounds, err)
 
 		n, err = s.Seek(-99, io.SeekStart)
 		assert.EqualValues(t, 0, n)
-		assert.Equal(t, errSeekingBeforeStart, err)
+		assert.Equal(t, ErrSeekBeforeStart, err)
 
 		n, err = s.Seek(999999999, io.SeekStart)
 		assert.EqualValues(t, 0, n)
-		assert.Equal(t, errOutOfBounds, err)
+		assert.Equal(t, ErrSeekOutOfBounds, err)
 	}
 }
 

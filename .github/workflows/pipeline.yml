@@ -18,17 +18,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up containers
-        run: docker-compose up -d lbrynet
+      - name: Prepare test
+        run: make prepare_test
 
-      - name: Download db init
-        run: curl https://raw.githubusercontent.com/OdyseeTeam/gody-cdn/master/db-init.sql -o init.sql
-
-      - name: copy config inside the test folder
+      - name: Copy config inside the test folder
         run: cp config.example.json player/config.json
-
-      - name: Set up containers
-        run: docker-compose up -d mysql
 
       - name: Check running containers
         run: docker ps -a
