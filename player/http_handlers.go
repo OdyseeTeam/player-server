@@ -218,7 +218,7 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 
 	if errors.Is(err, ErrPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
-	} else if errors.Is(err, ErrStreamNotFound) {
+	} else if errors.Is(err, ErrClaimNotFound) {
 		sendToSentry = false
 		writeErrorResponse(w, http.StatusNotFound, err.Error())
 	} else if strings.Contains(err.Error(), "blob not found") {

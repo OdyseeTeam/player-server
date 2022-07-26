@@ -17,10 +17,10 @@ import (
 )
 
 // An MP4 file, size: 158433824 bytes, blobs: 77
-const streamURL = "what#6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
+const claimID = "6769855a9aa43b67086f9ff3c1a5bacb5698a27a"
 
 // An MP4 file, size: 128791189 bytes, blobs: 63
-const knownSizeStreamURL = "known-size#0590f924bbee6627a2e79f7f2ff7dfb50bf2877c"
+const knownSizeClaimID = "0590f924bbee6627a2e79f7f2ff7dfb50bf2877c"
 
 type knownStream struct {
 	uri      string
@@ -29,8 +29,8 @@ type knownStream struct {
 }
 
 var knownStreams = []knownStream{
-	{uri: streamURL, size: 158433824, blobsNum: 77},
-	{uri: knownSizeStreamURL, size: 128791189, blobsNum: 63},
+	{uri: claimID, size: 158433824, blobsNum: 77},
+	{uri: knownSizeClaimID, size: 128791189, blobsNum: 63},
 }
 
 func randomString(n int) string {
@@ -62,7 +62,7 @@ func loadResponseFixture(t *testing.T, f string) jsonrpc.RPCResponse {
 
 func TestPlayerResolveStream(t *testing.T) {
 	p := getTestPlayer()
-	s, err := p.ResolveStream("bolivians-flood-streets-protest-military-coup#389ba57c9f76b859c2763c4b9a419bd78b1a8dd0")
+	s, err := p.ResolveStream("389ba57c9f76b859c2763c4b9a419bd78b1a8dd0")
 	require.NoError(t, err)
 	err = s.PrepareForReading()
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestPlayerResolveStream(t *testing.T) {
 func TestPlayerResolveStreamNotFound(t *testing.T) {
 	p := getTestPlayer()
 	s, err := p.ResolveStream(randomString(20))
-	assert.Equal(t, ErrStreamNotFound, err)
+	assert.Equal(t, ErrClaimNotFound, err)
 	assert.Nil(t, s)
 }
 
@@ -120,7 +120,7 @@ func TestStreamSeek(t *testing.T) {
 
 func TestStreamRead(t *testing.T) {
 	p := getTestPlayer()
-	s, err := p.ResolveStream(streamURL)
+	s, err := p.ResolveStream(claimID)
 	require.NoError(t, err)
 
 	err = s.PrepareForReading()
@@ -166,7 +166,7 @@ func TestStreamFilenameNew(t *testing.T) {
 func TestStreamReadHotCache(t *testing.T) {
 	p := getTestPlayer()
 
-	s1, err := p.ResolveStream(streamURL)
+	s1, err := p.ResolveStream(claimID)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, 0, p.blobSource.cache.Len(false))
@@ -190,7 +190,7 @@ func TestStreamReadHotCache(t *testing.T) {
 
 	// Re-get the stream
 
-	s2, err := p.ResolveStream(streamURL)
+	s2, err := p.ResolveStream(claimID)
 	require.NoError(t, err)
 
 	err = s2.PrepareForReading()
@@ -234,7 +234,7 @@ func TestStreamReadHotCache(t *testing.T) {
 
 func TestStreamReadOutOfBounds(t *testing.T) {
 	p := getTestPlayer()
-	s, err := p.ResolveStream(streamURL)
+	s, err := p.ResolveStream(claimID)
 	require.NoError(t, err)
 
 	err = s.PrepareForReading()
