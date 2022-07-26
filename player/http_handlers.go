@@ -221,6 +221,9 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 	} else if errors.Is(err, ErrClaimNotFound) {
 		sendToSentry = false
 		writeErrorResponse(w, http.StatusNotFound, err.Error())
+	} else if errors.Is(err, ErrEdgeCredentialsMissing) {
+		sendToSentry = false
+		writeErrorResponse(w, http.StatusUnauthorized, err.Error())
 	} else if strings.Contains(err.Error(), "blob not found") {
 		sendToSentry = false
 		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
@@ -233,7 +236,6 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 	} else if strings.Contains(err.Error(), "token is expired") {
 		writeErrorResponse(w, http.StatusGone, err.Error())
 	} else {
-		// logger.CaptureException(err, map[string]string{"uri": uri})
 		writeErrorResponse(w, http.StatusInternalServerError, err.Error())
 	}
 
@@ -271,6 +273,7 @@ func redirectToPlaylistURL(c *gin.Context, path string) {
 }
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
-	return strings.HasPrefix(c.FullPath(), "/api/v4/") &&
+	return (strings.HasPrefix(c.FullPath(), "/api/v4/") ||
+		strings.HasPrefix(c.FullPath(), "/api/v5/start/")) &&
 		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
 }

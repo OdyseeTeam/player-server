@@ -290,4 +290,18 @@ func Test_fitForTranscoder(t *testing.T) {
 	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
 	require.NoError(t, err)
 	assert.False(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v5/streams/original/claimid/sdhash", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.False(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v5/streams/start/claimid/sdhash", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.True(t, fitForTranscoder(c, s))
 }

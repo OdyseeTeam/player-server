@@ -30,12 +30,21 @@ func InstallPlayerRoutes(r *gin.Engine, p *Player) {
 	v4Router.GET("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
 	v4Router.HEAD("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
 
+	v5Router := r.Group("/api/v5")
+	v5Router.GET("/streams/start/:claim_id/:sd_hash", playerHandler.Handle)
+	v5Router.HEAD("/streams/start/:claim_id/:sd_hash", playerHandler.Handle)
+	v5Router.GET("/streams/original/:claim_id/:sd_hash", playerHandler.Handle)
+	v5Router.HEAD("/streams/original/:claim_id/:sd_hash", playerHandler.Handle)
+
 	r.GET(SpeechPrefix+"*whatever", playerHandler.Handle)
 	r.HEAD(SpeechPrefix+"*whatever", playerHandler.Handle)
 
 	if p.TCVideoPath != "" {
 		v4Router.GET("/streams/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
 		v4Router.HEAD("/streams/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+
+		v5Router.GET("/streams/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+		v5Router.HEAD("/streams/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
 	}
 }
 
