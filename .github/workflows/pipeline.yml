@@ -21,9 +21,6 @@ jobs:
       - name: Prepare test
         run: make prepare_test
 
-      - name: Copy config inside the test folder
-        run: cp config.example.json player/config.json
-
       - name: Check running containers
         run: docker ps -a
 

@@ -33,9 +33,13 @@ type decryptionData struct {
 func NewDecryptedCache(origin store.BlobStore) *DecryptedCache {
 	stopper := stop.New()
 
-	err := configs.Init("../config.json")
+	// TODO: Improve config file discovery.
+	err := configs.Init("config.json")
 	if err != nil {
-		logrus.Fatalln(errors.FullTrace(err))
+		err := configs.Init("../config.json")
+		if err != nil {
+			logrus.Fatalln(errors.FullTrace(err))
+		}
 	}
 	err = os.MkdirAll(configs.Configuration.DiskCache.Path, os.ModePerm)
 	if err != nil {
