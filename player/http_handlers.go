@@ -82,6 +82,10 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		// Speech stuff over
 	} else {
 		uri = c.Param("claim_id")
+		if len(uri) != 40 {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
 	}
 
 	//this is here temporarily due to abuse. a better solution will be found
