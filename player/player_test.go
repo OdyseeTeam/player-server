@@ -149,7 +149,7 @@ func TestStreamFilenameOldMime(t *testing.T) {
 	ljsonrpc.Decode(r.Result, res)
 	uri := "lbry://@Deterrence-Dispensed#2/Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed#1"
 	claim := (*res)[uri]
-	s := NewStream(&Player{}, uri, &claim)
+	s := NewStream(&Player{}, &claim)
 	assert.Equal(t, "ivans100diy30rdar-15magazinev10-deterrencedispensed.zip", s.Filename())
 }
 
@@ -159,7 +159,7 @@ func TestStreamFilenameNew(t *testing.T) {
 	ljsonrpc.Decode(r.Result, res)
 	uri := "what"
 	claim := (*res)[uri]
-	s := NewStream(&Player{}, uri, &claim)
+	s := NewStream(&Player{}, &claim)
 	assert.Equal(t, "1 dog and chicken.mp4", s.Filename())
 }
 

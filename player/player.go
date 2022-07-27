@@ -149,7 +149,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 		return nil, errors.New("stream has no source")
 	}
 
-	return NewStream(p, uri, claim), nil
+	return NewStream(p, claim), nil
 }
 
 // resolve the claim
@@ -191,7 +191,7 @@ func (p *Player) VerifyAccess(stream *Stream, ctx *gin.Context) error {
 	if token == "" {
 		return ErrPaidStream
 	}
-	if err := paid.VerifyStreamAccess(strings.Replace(stream.URI, "#", "/", 1), token); err != nil {
+	if err := paid.VerifyStreamAccess(strings.Replace(stream.URI(), "#", "/", 1), token); err != nil {
 		return err
 	}
 	return nil
