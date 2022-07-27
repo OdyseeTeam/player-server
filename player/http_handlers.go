@@ -137,7 +137,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		path := h.player.tclient.GetPlaybackPath(uri, stream.hash)
 		if path != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			redirectToPlaylistURL(c, path)
+			redirectToPlaylistURL(c, stream.URL+"/"+path)
 			return
 		}
 	}
