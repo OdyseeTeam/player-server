@@ -278,6 +278,6 @@ func redirectToPlaylistURL(c *gin.Context, path string) {
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
 	return (strings.HasPrefix(c.FullPath(), "/api/v4/") ||
-		strings.HasPrefix(c.FullPath(), "/api/v5/start/")) &&
+		strings.HasPrefix(c.FullPath(), "/api/v5/streams/start/")) &&
 		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
 }
