@@ -32,8 +32,8 @@ go run .\
       --throttle-enabled=false\
       --transcoder-video-path=/tmp/transcoded_cache\
       --transcoder-video-size=800GB\
-      --transcoder-addr=http://localhost:8080\
-      --transcoder-remote-server=http://localhost:9000/t-na
+      --transcoder-addr=https://root.transcoder.odysee.com \
+      --transcoder-remote-server=https://cache-us.transcoder.odysee.com/t-na
 ```
 
 Run `odysee_player -h` to see the full list of flags and options.

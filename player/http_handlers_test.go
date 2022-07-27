@@ -244,7 +244,7 @@ func Test_redirectToPlaylistURL(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/", nil)
+	c.Request, _ = http.NewRequest("GET", "/api/v4/streams/start/sdhash/aaabbb", nil)
 	redirectToPlaylistURL(c, "abc/master.m3u8")
 	url, _ = w.Result().Location()
 	require.NotNil(t, url)

@@ -179,12 +179,12 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 }
 
 func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
-	uri := fmt.Sprintf("%s#%s", c.Param("claim_name"), c.Param("claim_id"))
+	uri := c.Param("claim_id")
 	addCSPHeaders(c)
 	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request) //todo change transcoder to accept Gin Context
+	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
 		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
 	}
@@ -273,6 +273,10 @@ func addCSPHeaders(c *gin.Context) {
 }
 
 func redirectToPlaylistURL(c *gin.Context, path string) {
+	if strings.HasPrefix(c.FullPath(), "/api/v5/streams/start/") {
+		c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("/api/v5/streams/hls/%v", path))
+		return
+	}
 	c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("/api/v4/streams/tc/%v", path))
 }
 
