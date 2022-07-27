@@ -61,7 +61,7 @@ var (
 
 func init() {
 	rootCmd.Flags().StringVar(&bindAddress, "bind", "0.0.0.0:8080", "address to bind HTTP server to")
-	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
+	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "https://api.na-backend.odysee.com/api/v1/proxy", "lbrynet server URL")
 	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.na-backend.odysee.com/api/v1/paid/pubkey", "pubkey for playing paid content")
 
 	rootCmd.Flags().UintVar(&player.StreamWriteTimeout, "http-stream-write-timeout", player.StreamWriteTimeout, "write timeout for stream http requests (seconds)")
