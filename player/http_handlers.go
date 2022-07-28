@@ -285,6 +285,6 @@ func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *St
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
 	return (strings.HasPrefix(c.FullPath(), "/api/v4/") ||
-		strings.HasPrefix(c.FullPath(), "/api/v5/streams/start/")) &&
+		(strings.HasPrefix(c.FullPath(), "/v5/streams/start/") && c.Request.Method == http.MethodHead)) &&
 		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
 }

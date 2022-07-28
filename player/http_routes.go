@@ -31,6 +31,7 @@ func InstallPlayerRoutes(r *gin.Engine, p *Player) {
 	v4Router.HEAD("/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
 
 	v5Router := r.Group("/v5/streams")
+	// HEAD will redirect to the transcoded version, if available; GET request will send a binary stream regardless
 	v5Router.GET("/start/:claim_id/:sd_hash", playerHandler.Handle)
 	v5Router.HEAD("/start/:claim_id/:sd_hash", playerHandler.Handle)
 	v5Router.GET("/original/:claim_id/:sd_hash", playerHandler.Handle)

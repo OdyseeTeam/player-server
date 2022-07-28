@@ -70,7 +70,7 @@ func (s *apiV5Suite) TestMissingEdgeToken() {
 	}).Run(s.router, s.T())
 	(&httpTest{
 		Method:      http.MethodGet,
-		URL:         "/api/v5/streams/original/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
+		URL:         "/v5/streams/original/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
 		Code:        http.StatusUnauthorized,
 		ResContains: "edge credentials missing",
 	}).Run(s.router, s.T())
@@ -79,7 +79,7 @@ func (s *apiV5Suite) TestMissingEdgeToken() {
 func (s *apiV5Suite) TestValidEdgeToken() {
 	(&httpTest{
 		Method: http.MethodGet,
-		URL:    "/api/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
+		URL:    "/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
 		Code:   http.StatusOK,
 		ReqHeader: map[string]string{
 			"Authorization": "Token " + testEdgeToken,
@@ -87,7 +87,7 @@ func (s *apiV5Suite) TestValidEdgeToken() {
 	}).Run(s.router, s.T())
 	(&httpTest{
 		Method: http.MethodGet,
-		URL:    "/api/v5/streams/original/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
+		URL:    "/v5/streams/original/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
 		Code:   http.StatusOK,
 		ReqHeader: map[string]string{
 			"Authorization": "Token " + testEdgeToken,
