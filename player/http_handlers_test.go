@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/OdyseeTeam/player-server/pkg/paid"
+	"github.com/Pallinder/go-randomdata"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -238,17 +239,34 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 
-func Test_redirectToPlaylistURL(t *testing.T) {
-	var url *url.URL
-	playerName = "localhost:8000"
+func Test_getPlaylistURL(t *testing.T) {
+	stream := &Stream{URL: "lbryStreamURL"}
+	// This is the pattern transcoder client should return.
+	tcURL := "claimID/SDhash/master.m3u8"
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request, _ = http.NewRequest("GET", "/api/v4/streams/start/sdhash/aaabbb", nil)
-	redirectToPlaylistURL(c, "abc/master.m3u8")
-	url, _ = w.Result().Location()
-	require.NotNil(t, url)
-	assert.Equal(t, "/api/v4/streams/tc/abc/master.m3u8", url.String())
+	t.Run("v4", func(t *testing.T) {
+		assert.Equal(t,
+			"/api/v4/streams/tc/lbryStreamURL/claimID/SDhash/master.m3u8",
+			getPlaylistURL("/api/v4/streams/free/lbryStreamURL/claimID/SDhash/", url.Values{}, tcURL, stream),
+		)
+	})
+	t.Run("v5", func(t *testing.T) {
+		assert.Equal(t,
+			"/v5/streams/hls/claimID/SDhash/master.m3u8",
+			getPlaylistURL("/v5/streams/start/claimID/SDhash/", url.Values{}, tcURL, stream),
+		)
+	})
+	t.Run("v5 signed", func(t *testing.T) {
+		q := url.Values{}
+		h := randomdata.Alphanumeric(32)
+		ip := randomdata.IpV4Address()
+		q.Add("hls-hash", h)
+		q.Add("ip", ip)
+		assert.Equal(t,
+			fmt.Sprintf("/v5/streams/hls/claimID/SDhash/master.m3u8?ip=%s&hash=%s", ip, h),
+			getPlaylistURL("/v5/streams/start/claimID/SDhash/", q, tcURL, stream),
+		)
+	})
 }
 
 func Test_fitForTranscoder(t *testing.T) {

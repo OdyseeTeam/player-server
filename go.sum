@@ -76,8 +76,8 @@ github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go
 github.com/Masterminds/goutils v1.1.0/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy863GQaJW2MFNU=
 github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
 github.com/Masterminds/sprig v2.22.0+incompatible/go.mod h1:y6hNFY5UBTIWBxnzTeuNhlNS5hqE0NB0E6fgfo2Br3o=
-github.com/OdyseeTeam/gody-cdn v1.0.3 h1:hVkiDu1UnPdxenl0PLdsgXIbSJJR8oAAwJLv3p0SCnU=
-github.com/OdyseeTeam/gody-cdn v1.0.3/go.mod h1:c4hzKnl6YtR2tnFFbjiL8en4gs6iUG7W4mA6SS4UU4w=
+github.com/OdyseeTeam/gody-cdn v1.0.5 h1:O+l64EgcDMWpbxPigwGrmqkZYxH12WIn7fL1lddGof8=
+github.com/OdyseeTeam/gody-cdn v1.0.5/go.mod h1:c4hzKnl6YtR2tnFFbjiL8en4gs6iUG7W4mA6SS4UU4w=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Pallinder/go-randomdata v1.2.0 h1:DZ41wBchNRb/0GfsePLiSwb0PHZmT67XY00lCDlaYPg=
 github.com/Pallinder/go-randomdata v1.2.0/go.mod h1:yHmJgulpD2Nfrm0cR9tI/+oAgRqCQQixsA8HyRZfV9Y=

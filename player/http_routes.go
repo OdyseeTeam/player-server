@@ -14,37 +14,36 @@ func InstallPlayerRoutes(r *gin.Engine, p *Player) {
 	v1Router.GET("", playerHandler.Handle)
 	v1Router.HEAD("", playerHandler.Handle)
 
-	v2Router := r.Group("/api/v2")
-	v2Router.GET("/streams/free/:claim_name/:claim_id", playerHandler.Handle)
-	v2Router.HEAD("/streams/free/:claim_name/:claim_id", playerHandler.Handle)
-	v2Router.GET("/streams/paid/:claim_name/:claim_id/:token", playerHandler.Handle)
-	v2Router.HEAD("/streams/paid/:claim_name/:claim_id/:token", playerHandler.Handle)
+	v2Router := r.Group("/api/v2/streams")
+	v2Router.GET("/free/:claim_name/:claim_id", playerHandler.Handle)
+	v2Router.HEAD("/free/:claim_name/:claim_id", playerHandler.Handle)
+	v2Router.GET("/paid/:claim_name/:claim_id/:token", playerHandler.Handle)
+	v2Router.HEAD("/paid/:claim_name/:claim_id/:token", playerHandler.Handle)
 
-	v3Router := r.Group("/api/v3")
-	v3Router.GET("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
-	v3Router.HEAD("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
-	v3Router.GET("/streams/paid/:claim_name/:claim_id/:sd_hash/:token", playerHandler.Handle)
-	v3Router.HEAD("/streams/paid/:claim_name/:claim_id/:sd_hash/:token", playerHandler.Handle)
+	v3Router := r.Group("/api/v3/streams")
+	v3Router.GET("/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
+	v3Router.HEAD("/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
+	v3Router.GET("/paid/:claim_name/:claim_id/:sd_hash/:token", playerHandler.Handle)
+	v3Router.HEAD("/paid/:claim_name/:claim_id/:sd_hash/:token", playerHandler.Handle)
 
-	v4Router := r.Group("/api/v4")
-	v4Router.GET("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
-	v4Router.HEAD("/streams/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
+	v4Router := r.Group("/api/v4/streams")
+	v4Router.GET("/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
+	v4Router.HEAD("/free/:claim_name/:claim_id/:sd_hash", playerHandler.Handle)
 
-	v5Router := r.Group("/api/v5")
-	v5Router.GET("/streams/start/:claim_id/:sd_hash", playerHandler.Handle)
-	v5Router.HEAD("/streams/start/:claim_id/:sd_hash", playerHandler.Handle)
-	v5Router.GET("/streams/original/:claim_id/:sd_hash", playerHandler.Handle)
-	v5Router.HEAD("/streams/original/:claim_id/:sd_hash", playerHandler.Handle)
+	v5Router := r.Group("/v5/streams")
+	v5Router.GET("/start/:claim_id/:sd_hash", playerHandler.Handle)
+	v5Router.HEAD("/start/:claim_id/:sd_hash", playerHandler.Handle)
+	v5Router.GET("/original/:claim_id/:sd_hash", playerHandler.Handle)
 
 	r.GET(SpeechPrefix+"*whatever", playerHandler.Handle)
 	r.HEAD(SpeechPrefix+"*whatever", playerHandler.Handle)
 
 	if p.TCVideoPath != "" {
-		v4Router.GET("/streams/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
-		v4Router.HEAD("/streams/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+		v4Router.GET("/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+		v4Router.HEAD("/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
 
-		v5Router.GET("/streams/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
-		v5Router.HEAD("/streams/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+		v5Router.GET("/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+		v5Router.HEAD("/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
 	}
 }
 

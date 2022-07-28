@@ -4,7 +4,8 @@ go 1.17
 
 require (
 	github.com/Depado/ginprom v1.7.4
-	github.com/OdyseeTeam/gody-cdn v1.0.3
+	github.com/OdyseeTeam/gody-cdn v1.0.5
+	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
@@ -26,7 +27,6 @@ require (
 )
 
 require (
-	github.com/Pallinder/go-randomdata v1.2.0 // indirect
 	github.com/aws/aws-sdk-go v1.44.5 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

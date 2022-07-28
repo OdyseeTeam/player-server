@@ -109,7 +109,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 			return
 		}
 	}
-	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
+	isDownload := c.GetBool(paramDownload)
 	if isDownload && !h.player.options.downloadsEnabled {
 		c.String(http.StatusForbidden, "downloads are currently disabled")
 		return
@@ -134,10 +134,10 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	}
 
 	if !isDownload && fitForTranscoder(c, stream) && h.player.tclient != nil {
-		path := h.player.tclient.GetPlaybackPath(uri, stream.hash)
-		if path != "" {
+		tcPath := h.player.tclient.GetPlaybackPath(uri, stream.hash)
+		if tcPath != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			redirectToPlaylistURL(c, stream.URL+"/"+path)
+			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.FullPath(), c.Request.URL.Query(), tcPath, stream))
 			return
 		}
 	}
@@ -272,12 +272,15 @@ func addCSPHeaders(c *gin.Context) {
 	c.Header("Content-Security-Policy", "script-src 'none'; report-uri https://6fd448c230d0731192f779791c8e45c3.report-uri.com/r/d/csp/enforce; report-to default")
 }
 
-func redirectToPlaylistURL(c *gin.Context, path string) {
-	if strings.HasPrefix(c.FullPath(), "/api/v5/streams/start/") {
-		c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("/api/v5/streams/hls/%v", path))
-		return
+func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *Stream) string {
+	if strings.HasPrefix(fullPath, "/v5/streams/start/") {
+		qs := ""
+		if query.Get("hls-hash") != "" {
+			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get("ip"), query.Get("hls-hash"))
+		}
+		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
 	}
-	c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("/api/v4/streams/tc/%v", path))
+	return fmt.Sprintf("/api/v4/streams/tc/%s/%s", stream.URL, tcPath)
 }
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
