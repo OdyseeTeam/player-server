@@ -18,37 +18,74 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	edgeTokenHeader = "Authorization"
+	edgeTokenPrefix = "Token "
+)
+
 var Logger = logger.GetLogger()
+
+type PlayerOptions struct {
+	edgeToken        string
+	lbrynetAddress   string
+	downloadsEnabled bool
+	prefetch         bool
+}
 
 // Player is an entry-point object to the new player package.
 type Player struct {
-	lbrynetClient    *ljsonrpc.Client
-	blobSource       *HotCache
-	prefetch         bool
-	resolveCache     gcache.Cache
-	tclient          *tclient.Client
-	TCVideoPath      string
-	downloadsEnabled bool
+	lbrynetClient *ljsonrpc.Client
+	blobSource    *HotCache
+	resolveCache  gcache.Cache
+	tclient       *tclient.Client
+	TCVideoPath   string
+
+	options PlayerOptions
+}
+
+func WithEdgeToken(token string) func(options *PlayerOptions) {
+	return func(options *PlayerOptions) {
+		options.edgeToken = token
+	}
+}
+
+func WithLbrynetServer(address string) func(options *PlayerOptions) {
+	return func(options *PlayerOptions) {
+		options.lbrynetAddress = address
+	}
+}
+
+func WithDownloads(allow bool) func(options *PlayerOptions) {
+	return func(options *PlayerOptions) {
+		options.downloadsEnabled = allow
+	}
+}
+
+func WithPrefetch(enabled bool) func(options *PlayerOptions) {
+	return func(options *PlayerOptions) {
+		options.prefetch = enabled
+	}
 }
 
 // NewPlayer initializes an instance with optional BlobStore.
-func NewPlayer(hotCache *HotCache, lbrynetAddress string, allowDownloads bool) *Player {
-	if lbrynetAddress == "" {
-		lbrynetAddress = "http://localhost:5279"
+func NewPlayer(hotCache *HotCache, optionFuncs ...func(*PlayerOptions)) *Player {
+	options := &PlayerOptions{
+		lbrynetAddress:   "http://localhost:5279",
+		downloadsEnabled: true,
 	}
 
-	lbrynetClient := ljsonrpc.NewClient(lbrynetAddress)
+	for _, optionFunc := range optionFuncs {
+		optionFunc(options)
+	}
+
+	lbrynetClient := ljsonrpc.NewClient(options.lbrynetAddress)
 	lbrynetClient.SetRPCTimeout(10 * time.Second)
 	return &Player{
-		lbrynetClient:    lbrynetClient,
-		blobSource:       hotCache,
-		resolveCache:     gcache.New(10000).ARC().Build(),
-		downloadsEnabled: allowDownloads,
+		lbrynetClient: lbrynetClient,
+		blobSource:    hotCache,
+		resolveCache:  gcache.New(10000).ARC().Build(),
+		options:       *options,
 	}
-}
-
-func (p *Player) SetPrefetch(enabled bool) {
-	p.prefetch = enabled
 }
 
 func (p *Player) AddTranscoderClient(c *tclient.Client, path string) {
@@ -93,15 +130,13 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 			}
 
 			claimID := hex.EncodeToString(rev(repost.ClaimHash))
-			resp, err := p.lbrynetClient.ClaimSearch(ljsonrpc.ClaimSearchArgs{ClaimID: &claimID, Page: 1, PageSize: 1})
+			_, err := p.resolve(claimID)
 			if err != nil {
+				if errors.Is(err, ErrClaimNotFound) {
+					return nil, errors.New("reposted claim not found")
+				}
 				return nil, err
 			}
-			if len(resp.Claims) == 0 {
-				return nil, errors.New("reposted claim not found")
-			}
-
-			claim = &resp.Claims[0]
 		}
 		metrics.ResolveSuccesses.Inc()
 		_ = p.resolveCache.SetWithExpire(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
@@ -114,35 +149,49 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 		return nil, errors.New("stream has no source")
 	}
 
-	return NewStream(p, uri, claim), nil
+	return NewStream(p, claim), nil
 }
 
-// resolve the uri
-func (p *Player) resolve(uri string) (*ljsonrpc.Claim, error) {
-	resolved, err := p.lbrynetClient.Resolve(uri)
+// resolve the claim
+func (p *Player) resolve(claimID string) (*ljsonrpc.Claim, error) {
+	resp, err := p.lbrynetClient.ClaimSearch(ljsonrpc.ClaimSearchArgs{ClaimID: &claimID, PageSize: 1, Page: 1})
 	if err != nil {
 		return nil, err
 	}
-
-	claim := (*resolved)[uri]
-	if claim.CanonicalURL == "" {
-		return nil, errStreamNotFound
+	if len(resp.Claims) == 0 {
+		return nil, ErrClaimNotFound
 	}
-
-	return &claim, nil
+	return &resp.Claims[0], nil
 }
 
 // VerifyAccess checks if the stream is paid and the token supplied matched the stream
-func (p *Player) VerifyAccess(s *Stream, token string) error {
-	if s.resolvedStream.Fee == nil || s.resolvedStream.Fee.Amount <= 0 {
+func (p *Player) VerifyAccess(stream *Stream, ctx *gin.Context) error {
+	for _, t := range stream.claim.Value.Tags {
+		if strings.HasPrefix(t, "purchase:") || strings.HasPrefix(t, "rental:") {
+			th := ctx.Request.Header.Get(edgeTokenHeader)
+			if th == "" {
+				return ErrEdgeCredentialsMissing
+			}
+			if p.options.edgeToken == "" {
+				return ErrEdgeAuthenticationMisconfigured
+			}
+			if strings.TrimPrefix(th, edgeTokenPrefix) != p.options.edgeToken {
+				return ErrEdgeAuthenticationFailed
+			}
+			return nil
+		}
+	}
+
+	token := ctx.Param("token")
+	if stream.resolvedStream.Fee == nil || stream.resolvedStream.Fee.Amount <= 0 {
 		return nil
 	}
 
-	Logger.WithField("uri", s.URI).Info("paid stream requested")
+	Logger.WithField("uri", stream.URI).Info("paid stream requested")
 	if token == "" {
-		return errPaidStream
+		return ErrPaidStream
 	}
-	if err := paid.VerifyStreamAccess(strings.Replace(s.URI, "#", "/", 1), token); err != nil {
+	if err := paid.VerifyStreamAccess(strings.Replace(stream.URI(), "#", "/", 1), token); err != nil {
 		return err
 	}
 	return nil

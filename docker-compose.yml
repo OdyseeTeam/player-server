@@ -2,6 +2,7 @@ version: "3.2"
 services:
   mysql:
     image: percona:ps-8.0
+    platform: linux/amd64
     ports:
       - "127.0.0.1:3306:3306"
     volumes:
@@ -16,14 +17,12 @@ services:
       - MYSQL_ROOT_PASSWORD=godycdnrootpw
   lbrynet:
     image: 'lbry/lbrynet-tv:0.101.2'
-    restart: always
     labels:
       com.centurylinklabs.watchtower.enable: 1
     ports:
       - "5279:5279"
   player:
     image: 'odyseeteam/player-server:latest'
-    restart: always
     logging:
       driver: "json-file"
       options:
@@ -68,7 +67,6 @@ services:
       - mysql
   watchtower:
     image: 'containrrr/watchtower'
-    restart: always
     command: "--interval 30 --cleanup --label-enable"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"

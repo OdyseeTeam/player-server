@@ -4,7 +4,8 @@ go 1.17
 
 require (
 	github.com/Depado/ginprom v1.7.4
-	github.com/OdyseeTeam/gody-cdn v1.0.3
+	github.com/OdyseeTeam/gody-cdn v1.0.5
+	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20200825124411-48ed595a09d2
@@ -14,7 +15,7 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
-	github.com/lbryio/reflector.go v1.1.3-0.20220512140100-a1c2e92ca368
+	github.com/lbryio/reflector.go v1.1.3-0.20220729034050-0177dd4ce0bc
 	github.com/lbryio/transcoder v0.15.1-0.20220511173705-eb3bf61b6f11
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
 	github.com/prometheus/client_golang v1.12.1
@@ -26,7 +27,6 @@ require (
 )
 
 require (
-	github.com/Pallinder/go-randomdata v1.2.0 // indirect
 	github.com/aws/aws-sdk-go v1.44.5 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -77,7 +77,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/nikooo777/lbry-blobs-downloader v1.0.9 // indirect
+	github.com/nikooo777/lbry-blobs-downloader v1.0.10 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.4 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect

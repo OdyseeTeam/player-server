@@ -66,10 +66,10 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	if c.Request.Method == http.MethodHead {
 		c.Header("Cache-Control", "no-store, No-cache")
 	}
-	var uri, token string
+	var uri string
 
-	// Speech stuff
 	if strings.HasPrefix(c.Request.URL.String(), SpeechPrefix) {
+		// Speech stuff
 		uri = c.Request.URL.String()[len(SpeechPrefix):]
 		extStart := strings.LastIndex(uri, ".")
 		if extStart >= 0 {
@@ -79,11 +79,15 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
+		// Speech stuff over
 	} else {
-		uri = fmt.Sprintf("%s#%s", c.Param("claim_name"), c.Param("claim_id"))
-		token = c.Param("token")
+		uri = c.Param("claim_id")
+		if len(uri) != 40 {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
 	}
-	// Speech stuff over
+
 	//this is here temporarily due to abuse. a better solution will be found
 	forwardedFor := c.GetHeader("X-Forwarded-For")
 	if forwardedFor != "" {
@@ -106,34 +110,34 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		}
 	}
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
-	if isDownload && !h.player.downloadsEnabled {
+	if isDownload && !h.player.options.downloadsEnabled {
 		c.String(http.StatusForbidden, "downloads are currently disabled")
 		return
 	}
 
-	s, err := h.player.ResolveStream(uri)
+	stream, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
 		metrics.ResolveFailures.Inc()
 		processStreamError("resolve", uri, c.Writer, c.Request, err)
 		return
 	}
-	hasValidChannel := s.claim.SigningChannel != nil && s.claim.SigningChannel.ClaimID != ""
-	if hasValidChannel && blocked != nil && blocked[s.claim.SigningChannel.ClaimID] {
+	hasValidChannel := stream.claim.SigningChannel != nil && stream.claim.SigningChannel.ClaimID != ""
+	if hasValidChannel && blocked != nil && blocked[stream.claim.SigningChannel.ClaimID] {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return
 	}
-	err = h.player.VerifyAccess(s, token)
+	err = h.player.VerifyAccess(stream, c)
 	if err != nil {
 		processStreamError("access", uri, c.Writer, c.Request, err)
 		return
 	}
 
-	if !isDownload && fitForTranscoder(c, s) && h.player.tclient != nil {
-		path := h.player.tclient.GetPlaybackPath(uri, s.hash)
-		if path != "" {
+	if !isDownload && fitForTranscoder(c, stream) && h.player.tclient != nil {
+		tcPath := h.player.tclient.GetPlaybackPath(uri, stream.hash)
+		if tcPath != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			redirectToPlaylistURL(c, path)
+			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.FullPath(), c.Request.URL.Query(), tcPath, stream))
 			return
 		}
 	}
@@ -142,14 +146,14 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
 	}
 
-	err = s.PrepareForReading()
+	err = stream.PrepareForReading()
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("retrieve %v", uri))
 	if err != nil {
 		processStreamError("retrieval", uri, c.Writer, c.Request, err)
 		return
 	}
 
-	writeHeaders(c, s)
+	writeHeaders(c, stream)
 
 	conn, err := app.GetConnection(c.Request)
 	if err != nil {
@@ -166,7 +170,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		c.Status(http.StatusOK)
 	case http.MethodGet:
 		addBreadcrumb(c.Request, "player", fmt.Sprintf("play %v", uri))
-		err = h.player.Play(s, c)
+		err = h.player.Play(stream, c)
 		if err != nil {
 			processStreamError("playback", uri, c.Writer, c.Request, err)
 			return
@@ -175,12 +179,12 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 }
 
 func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
-	uri := fmt.Sprintf("%s#%s", c.Param("claim_name"), c.Param("claim_id"))
+	uri := c.Param("claim_id")
 	addCSPHeaders(c)
 	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request) //todo change transcoder to accept Gin Context
+	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
 		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
 	}
@@ -216,11 +220,14 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 
 	Logger.Errorf("%s stream %v - %s error: %v", r.Method, uri, errorType, err)
 
-	if errors.Is(err, errPaidStream) {
+	if errors.Is(err, ErrPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
-	} else if errors.Is(err, errStreamNotFound) {
+	} else if errors.Is(err, ErrClaimNotFound) {
 		sendToSentry = false
 		writeErrorResponse(w, http.StatusNotFound, err.Error())
+	} else if errors.Is(err, ErrEdgeCredentialsMissing) {
+		sendToSentry = false
+		writeErrorResponse(w, http.StatusUnauthorized, err.Error())
 	} else if strings.Contains(err.Error(), "blob not found") {
 		sendToSentry = false
 		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
@@ -233,7 +240,6 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 	} else if strings.Contains(err.Error(), "token is expired") {
 		writeErrorResponse(w, http.StatusGone, err.Error())
 	} else {
-		// logger.CaptureException(err, map[string]string{"uri": uri})
 		writeErrorResponse(w, http.StatusInternalServerError, err.Error())
 	}
 
@@ -266,11 +272,19 @@ func addCSPHeaders(c *gin.Context) {
 	c.Header("Content-Security-Policy", "script-src 'none'; report-uri https://6fd448c230d0731192f779791c8e45c3.report-uri.com/r/d/csp/enforce; report-to default")
 }
 
-func redirectToPlaylistURL(c *gin.Context, path string) {
-	c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("/api/v4/streams/tc/%v", path))
+func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *Stream) string {
+	if strings.HasPrefix(fullPath, "/v5/streams/start/") {
+		qs := ""
+		if query.Get("hash-hls") != "" {
+			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get("ip"), query.Get("hash-hls"))
+		}
+		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
+	}
+	return fmt.Sprintf("/api/v4/streams/tc/%s/%s", stream.URL, tcPath)
 }
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
-	return strings.HasPrefix(c.FullPath(), "/api/v4/") &&
+	return (strings.HasPrefix(c.FullPath(), "/api/v4/") ||
+		(strings.HasPrefix(c.FullPath(), "/v5/streams/start/") && c.Request.Method == http.MethodHead)) &&
 		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
 }

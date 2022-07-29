@@ -53,6 +53,7 @@ type Opts struct {
 	StopWaitSeconds int
 	Listener        *http.Server
 	BlobStore       store.BlobStore
+	EdgeToken       string
 }
 
 // New returns a new App HTTP server initialized with settings from supplied Opts.
@@ -78,7 +79,7 @@ func New(opts Opts) *App {
 	if a.BlobStore != nil {
 		a.peerServer = peer.NewServer(a.BlobStore)
 		a.http3Server = http3.NewServer(a.BlobStore, 200)
-		a.httpServer = reflectorHttp.NewServer(a.BlobStore, 200)
+		a.httpServer = reflectorHttp.NewServer(a.BlobStore, 200, opts.EdgeToken)
 	}
 
 	return a

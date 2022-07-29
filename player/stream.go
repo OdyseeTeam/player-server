@@ -19,7 +19,8 @@ import (
 // Stream provides an io.ReadSeeker interface to a stream of blobs to be used by standard http library for range requests,
 // as well as some stream metadata.
 type Stream struct {
-	URI              string
+	// URI              string
+	URL, ClaimID     string
 	Size             uint64
 	ContentType      string
 	hash             string
@@ -36,11 +37,12 @@ type Stream struct {
 	currentChunk     *ReadableChunk
 }
 
-func NewStream(p *Player, uri string, claim *ljsonrpc.Claim) *Stream {
+func NewStream(p *Player, claim *ljsonrpc.Claim) *Stream {
 	stream := claim.Value.GetStream()
 	source := stream.GetSource()
 	return &Stream{
-		URI:         uri,
+		URL:         claim.Name,
+		ClaimID:     claim.ClaimID,
 		ContentType: patchMediaType(source.MediaType),
 		Size:        source.GetSize(),
 
@@ -51,6 +53,10 @@ func NewStream(p *Player, uri string, claim *ljsonrpc.Claim) *Stream {
 		hash:             hex.EncodeToString(source.SdHash),
 		prefetchedChunks: make(map[int]bool, 50),
 	}
+}
+
+func (s *Stream) URI() string {
+	return s.URL + "#" + s.ClaimID
 }
 
 // Filename detects name of the original file, suitable for saving under on the filesystem.
@@ -99,7 +105,7 @@ func (s *Stream) setSize() {
 		return
 	}
 
-	Logger.Infof("couldn't figure out stream %v size from last chunk: %v", s.URI, err)
+	Logger.Infof("couldn't figure out stream %v size from last chunk: %v", s.URI(), err)
 	for _, blob := range s.sdBlob.BlobInfos {
 		if blob.Length == stream.MaxBlobSize {
 			size += MaxChunkSize
@@ -123,9 +129,9 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 	var newOffset int64
 
 	if s.Size == 0 {
-		return 0, errStreamSizeZero
+		return 0, ErrStreamSizeZero
 	} else if uint64(math.Abs(float64(offset))) > s.Size {
-		return 0, errOutOfBounds
+		return 0, ErrSeekOutOfBounds
 	}
 
 	switch whence {
@@ -140,7 +146,7 @@ func (s *Stream) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	if newOffset < 0 {
-		return 0, errSeekingBeforeStart
+		return 0, ErrSeekBeforeStart
 	}
 
 	s.seekOffset = newOffset
@@ -156,12 +162,12 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	metrics.OutBytes.Add(float64(n))
 
 	if err != nil {
-		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, errors.FullTrace(err))
+		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI(), s.seekOffset, errors.FullTrace(err))
 	}
 
 	if n == 0 && err == nil {
 		err = errors.Err("read 0 bytes triggering an endless loop, exiting stream")
-		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI, s.seekOffset, err)
+		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI(), s.seekOffset, err)
 	}
 
 	return n, err
@@ -176,7 +182,7 @@ func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 		return read, err
 	}
 	if read <= 0 {
-		Logger.Warnf("Read 0 bytes for %s at blob index %d/%d at offset %d", s.URI, int(index), len(s.sdBlob.BlobInfos), s.seekOffset)
+		Logger.Warnf("Read 0 bytes for %s at blob index %d/%d at offset %d", s.URI(), int(index), len(s.sdBlob.BlobInfos), s.seekOffset)
 	}
 
 	return read, nil
@@ -223,7 +229,7 @@ func (s *Stream) GetChunk(chunkIdx int) (ReadableChunk, error) {
 
 	chunkToPrefetch := chunkIdx + 1
 	prefetched := s.prefetchedChunks[chunkToPrefetch]
-	if s.player.prefetch && !prefetched {
+	if s.player.options.prefetch && !prefetched {
 		s.prefetchedChunks[chunkToPrefetch] = true
 		go s.prefetchChunk(chunkToPrefetch)
 	}

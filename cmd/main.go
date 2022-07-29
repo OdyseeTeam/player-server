@@ -44,11 +44,12 @@ var (
 	diskCacheSize      string
 	hotCacheSize       string
 
-	transcoderVideoPath string
-	transcoderVideoSize string
-	transcoderAddr      string
-
+	transcoderVideoPath    string
+	transcoderVideoSize    string
+	transcoderAddr         string
 	transcoderRemoteServer string
+
+	edgeToken string
 
 	rootCmd = &cobra.Command{
 		Use:     "odysee_player",
@@ -60,7 +61,7 @@ var (
 
 func init() {
 	rootCmd.Flags().StringVar(&bindAddress, "bind", "0.0.0.0:8080", "address to bind HTTP server to")
-	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "http://localhost:5279/", "lbrynet server URL")
+	rootCmd.Flags().StringVar(&lbrynetAddress, "lbrynet", "https://api.na-backend.odysee.com/api/v1/proxy", "lbrynet server URL")
 	rootCmd.Flags().StringVar(&paidPubKey, "paid_pubkey", "https://api.na-backend.odysee.com/api/v1/paid/pubkey", "pubkey for playing paid content")
 
 	rootCmd.Flags().UintVar(&player.StreamWriteTimeout, "http-stream-write-timeout", player.StreamWriteTimeout, "write timeout for stream http requests (seconds)")
@@ -90,6 +91,8 @@ func init() {
 	rootCmd.Flags().StringVar(&config.Password, "config-password", "lbry", "Password to access the config endpoint with")
 	rootCmd.Flags().Float64Var(&player.ThrottleScale, "throttle-scale", 1.5, "Throttle scale to rate limit in MB/s, only the 1.2 in 1.2MB/s")
 	rootCmd.Flags().BoolVar(&player.ThrottleSwitch, "throttle-enabled", true, "Enables throttling")
+
+	rootCmd.Flags().StringVar(&edgeToken, "edge-token", "", "Edge token for delivering purchased/rented streams")
 }
 
 func run(cmd *cobra.Command, args []string) {
@@ -100,8 +103,13 @@ func run(cmd *cobra.Command, args []string) {
 
 	blobSource := getBlobSource()
 
-	p := player.NewPlayer(initHotCache(blobSource), lbrynetAddress, allowDownloads)
-	p.SetPrefetch(enablePrefetch)
+	p := player.NewPlayer(
+		initHotCache(blobSource),
+		player.WithLbrynetServer(lbrynetAddress),
+		player.WithDownloads(allowDownloads),
+		player.WithPrefetch(enablePrefetch),
+		player.WithEdgeToken(edgeToken),
+	)
 
 	var tcsize datasize.ByteSize
 	err := tcsize.UnmarshalText([]byte(transcoderVideoSize))
@@ -137,7 +145,7 @@ func run(cmd *cobra.Command, args []string) {
 		p.AddTranscoderClient(&c, transcoderVideoPath)
 	}
 
-	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource})
+	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource, EdgeToken: edgeToken})
 
 	metrics.InstallRoute(a.Router)
 	player.InstallPlayerRoutes(a.Router, p)
@@ -181,7 +189,7 @@ func getBlobSource() store.BlobStore {
 				Timeout: 30 * time.Second,
 			})
 		case "http":
-			blobSource = store.NewHttpStore(upstreamReflector)
+			blobSource = store.NewHttpStore(upstreamReflector, edgeToken)
 		default:
 			Logger.Fatalf("protocol is not recognized: %s", upstreamProtocol)
 		}
