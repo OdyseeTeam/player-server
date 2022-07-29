@@ -109,7 +109,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 			return
 		}
 	}
-	isDownload := c.GetBool(paramDownload)
+	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 	if isDownload && !h.player.options.downloadsEnabled {
 		c.String(http.StatusForbidden, "downloads are currently disabled")
 		return
