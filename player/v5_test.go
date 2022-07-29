@@ -76,25 +76,24 @@ func (s *apiV5Suite) TestMissingEdgeToken() {
 	}).Run(s.router, s.T())
 }
 
-//TODO: re-enable this asap. I need the thing to pass right now.
-//func (s *apiV5Suite) TestValidEdgeToken() {
-//	(&httpTest{
-//		Method: http.MethodGet,
-//		URL:    "/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
-//		Code:   http.StatusOK,
-//		ReqHeader: map[string]string{
-//			"Authorization": "Token " + testEdgeToken,
-//		},
-//	}).Run(s.router, s.T())
-//	(&httpTest{
-//		Method: http.MethodGet,
-//		URL:    "/v5/streams/original/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
-//		Code:   http.StatusOK,
-//		ReqHeader: map[string]string{
-//			"Authorization": "Token " + testEdgeToken,
-//		},
-//	}).Run(s.router, s.T())
-//}
+func (s *apiV5Suite) TestValidEdgeToken() {
+	(&httpTest{
+		Method: http.MethodGet,
+		URL:    "/v5/streams/start/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
+		Code:   http.StatusOK,
+		ReqHeader: map[string]string{
+			"Authorization": "Token " + testEdgeToken,
+		},
+	}).Run(s.router, s.T())
+	(&httpTest{
+		Method: http.MethodGet,
+		URL:    "/v5/streams/original/2742f9e8eea0c4654ea8b51507dbb7f23f1f5235/abcdef",
+		Code:   http.StatusOK,
+		ReqHeader: map[string]string{
+			"Authorization": "Token " + testEdgeToken,
+		},
+	}).Run(s.router, s.T())
+}
 
 func (test *httpTest) Run(handler http.Handler, t *testing.T) *httptest.ResponseRecorder {
 	t.Helper()
