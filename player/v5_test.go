@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -45,7 +46,11 @@ type apiV5Suite struct {
 }
 
 func (s *apiV5Suite) SetupSuite() {
-	origin := store.NewHttpStore("source.odycdn.com:5569", "")
+	et, ok := os.LookupEnv("TEST_EDGE_TOKEN")
+	if !ok {
+		s.T().Skip("TEST_EDGE_TOKEN not set, skipping")
+	}
+	origin := store.NewHttpStore("source.odycdn.com:5569", et)
 	ds := NewDecryptedCache(origin)
 	p := NewPlayer(NewHotCache(*ds, 100000000), WithDownloads(true), WithEdgeToken(testEdgeToken))
 	s.player = p
