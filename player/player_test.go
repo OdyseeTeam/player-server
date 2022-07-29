@@ -44,7 +44,7 @@ func randomString(n int) string {
 }
 
 func getTestPlayer() *Player {
-	origin := store.NewHttpStore("source.odycdn.com:5569")
+	origin := store.NewHttpStore("source.odycdn.com:5569", "")
 	ds := NewDecryptedCache(origin)
 	return NewPlayer(NewHotCache(*ds, 100000000), WithDownloads(true))
 }

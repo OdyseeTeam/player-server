@@ -145,7 +145,7 @@ func run(cmd *cobra.Command, args []string) {
 		p.AddTranscoderClient(&c, transcoderVideoPath)
 	}
 
-	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource})
+	a := app.New(app.Opts{Address: bindAddress, BlobStore: blobSource, EdgeToken: edgeToken})
 
 	metrics.InstallRoute(a.Router)
 	player.InstallPlayerRoutes(a.Router, p)
@@ -189,7 +189,7 @@ func getBlobSource() store.BlobStore {
 				Timeout: 30 * time.Second,
 			})
 		case "http":
-			blobSource = store.NewHttpStore(upstreamReflector)
+			blobSource = store.NewHttpStore(upstreamReflector, edgeToken)
 		default:
 			Logger.Fatalf("protocol is not recognized: %s", upstreamProtocol)
 		}
