@@ -260,7 +260,7 @@ func Test_getPlaylistURL(t *testing.T) {
 		q := url.Values{}
 		h := randomdata.Alphanumeric(32)
 		ip := randomdata.IpV4Address()
-		q.Add("hls-hash", h)
+		q.Add("hash-hls", h)
 		q.Add("ip", ip)
 		assert.Equal(t,
 			fmt.Sprintf("/v5/streams/hls/claimID/SDhash/master.m3u8?ip=%s&hash=%s", ip, h),

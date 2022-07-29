@@ -275,8 +275,8 @@ func addCSPHeaders(c *gin.Context) {
 func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *Stream) string {
 	if strings.HasPrefix(fullPath, "/v5/streams/start/") {
 		qs := ""
-		if query.Get("hls-hash") != "" {
-			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get("ip"), query.Get("hls-hash"))
+		if query.Get("hash-hls") != "" {
+			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get("ip"), query.Get("hash-hls"))
 		}
 		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
 	}
