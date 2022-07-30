@@ -258,6 +258,12 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 
+func TestHandleSpeech(t *testing.T) {
+	r := makeRequest(t, nil, http.MethodGet, "/speech/8b2d4d78e9c8120e:f.jpg", nil)
+	assert.Equal(t, http.StatusOK, r.StatusCode)
+	assert.Equal(t, "image/jpeg", r.Header.Get("content-type"))
+}
+
 func Test_getPlaylistURL(t *testing.T) {
 	stream := &Stream{URL: "lbryStreamURL"}
 	// This is the pattern transcoder client should return.
