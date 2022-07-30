@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"math/rand"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,7 +24,10 @@ const (
 	edgeTokenPrefix = "Token "
 )
 
-var Logger = logger.GetLogger()
+var (
+	Logger  = logger.GetLogger()
+	reClaim = regexp.MustCompile("^[a-z0-9]{40}$")
+)
 
 type PlayerOptions struct {
 	edgeToken        string
@@ -154,6 +158,19 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 
 // resolve the claim
 func (p *Player) resolve(claimID string) (*ljsonrpc.Claim, error) {
+	// TODO: Get rid of the resolve call when ClaimSearchArgs acquires URI param
+	if !reClaim.MatchString(claimID) {
+		resolved, err := p.lbrynetClient.Resolve(claimID)
+		if err != nil {
+			return nil, err
+		}
+
+		claim := (*resolved)[claimID]
+		if claim.CanonicalURL == "" {
+			return nil, ErrClaimNotFound
+		}
+		return &claim, nil
+	}
 	resp, err := p.lbrynetClient.ClaimSearch(ljsonrpc.ClaimSearchArgs{ClaimID: &claimID, PageSize: 1, Page: 1})
 	if err != nil {
 		return nil, err
