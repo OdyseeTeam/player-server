@@ -14,7 +14,7 @@ require (
 	github.com/gin-contrib/pprof v1.3.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220504162735-e5ab0f883edf
+	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220815204100-2adb8af5b68c
 	github.com/lbryio/reflector.go v1.1.3-0.20220729034050-0177dd4ce0bc
 	github.com/lbryio/transcoder v0.15.1-0.20220511173705-eb3bf61b6f11
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
