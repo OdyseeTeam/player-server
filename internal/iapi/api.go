@@ -11,8 +11,8 @@ import (
 )
 
 type BlockedContent struct {
-	ClaimID  string `json:"claim_id"`
-	Outpoint string `json:"outpoint"`
+	ClaimID string `json:"claim_id"`
+	//Outpoint string `json:"outpoint"`
 }
 
 var blockedCache = gcache.New(10).Expiration(2 * time.Minute).Build()
