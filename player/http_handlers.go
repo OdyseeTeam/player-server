@@ -136,7 +136,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	}
 
 	if !isDownload && fitForTranscoder(c, stream) && h.player.tclient != nil {
-		tcPath := h.player.tclient.GetPlaybackPath(uri, stream.hash)
+		tcPath := h.player.tclient.GetPlaybackPath(c.Param("claim_id"), stream.hash)
 		if tcPath != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
 			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.FullPath(), c.Request.URL.Query(), tcPath, stream))
