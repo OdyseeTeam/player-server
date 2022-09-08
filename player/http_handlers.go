@@ -80,6 +80,8 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 			return
 		}
 		// Speech stuff over
+	} else if c.Param("claim_name") != "" {
+		uri = c.Param("claim_name") + "#" + c.Param("claim_id")
 	} else {
 		uri = c.Param("claim_id")
 		if len(uri) != 40 {
