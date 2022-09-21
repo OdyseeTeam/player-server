@@ -282,7 +282,7 @@ func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *St
 		}
 		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
 	}
-	return fmt.Sprintf("/api/v4/streams/tc/%s/%s", stream.URL, tcPath)
+	return fmt.Sprintf("/api/v4/streams/tc/%s", tcPath)
 }
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
