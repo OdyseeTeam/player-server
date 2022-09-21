@@ -6,11 +6,15 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
 	"github.com/lbryio/reflector.go/store"
+
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/ybbus/jsonrpc"
@@ -46,7 +50,11 @@ func randomString(n int) string {
 func getTestPlayer() *Player {
 	origin := store.NewHttpStore("source.odycdn.com:5569", "")
 	ds := NewDecryptedCache(origin)
-	return NewPlayer(NewHotCache(*ds, 100000000), WithDownloads(true))
+	return NewPlayer(
+		NewHotCache(*ds, 100000000),
+		WithDownloads(true),
+		WithEdgeToken(testEdgeToken),
+	)
 }
 
 func loadResponseFixture(t *testing.T, f string) jsonrpc.RPCResponse {
@@ -255,4 +263,44 @@ func TestStreamReadOutOfBounds(t *testing.T) {
 			"A025C284EE37D8FEEA2EA84B76B9A22D3")
 	require.NoError(t, err)
 	assert.Equal(t, expectedData, readData)
+}
+
+func TestVerifyAccess(t *testing.T) {
+	restrictedUrls := []string{
+		"lbry://@gifprofile#7/rental1#8",
+		"lbry://@gifprofile#7/purchase1#2",
+		"lbry://@gifprofile#7/members-only#7",
+	}
+
+	gin.SetMode(gin.TestMode)
+	p := getTestPlayer()
+
+	for _, url := range restrictedUrls {
+		t.Run(url, func(t *testing.T) {
+			ctx, e := gin.CreateTestContext(httptest.NewRecorder())
+			req, _ := http.NewRequest(http.MethodGet, "", nil)
+			ctx.Request = req
+			e.HandleContext(ctx)
+
+			s, err := p.ResolveStream(url)
+			require.NoError(t, err)
+			err = p.VerifyAccess(s, ctx)
+			require.ErrorIs(t, err, ErrEdgeCredentialsMissing)
+		})
+	}
+
+	for _, url := range restrictedUrls {
+		t.Run(url, func(t *testing.T) {
+			ctx, e := gin.CreateTestContext(httptest.NewRecorder())
+			req, _ := http.NewRequest(http.MethodGet, "", nil)
+			req.Header.Set(edgeTokenHeader, testEdgeToken)
+			ctx.Request = req
+			e.HandleContext(ctx)
+
+			s, err := p.ResolveStream(url)
+			require.NoError(t, err)
+			err = p.VerifyAccess(s, ctx)
+			require.NoError(t, err)
+		})
+	}
 }
