@@ -139,7 +139,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		tcPath := h.player.tclient.GetPlaybackPath(uri, stream.hash)
 		if tcPath != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.FullPath(), c.Request.URL.Query(), tcPath, stream))
+			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.Request.URL.Path, c.Request.URL.Query(), tcPath, stream))
 			return
 		}
 	}
@@ -275,7 +275,9 @@ func addCSPHeaders(c *gin.Context) {
 }
 
 func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *Stream) string {
+	fmt.Printf("%s %+v %s %s\n", fullPath, query, tcPath, stream.URL)
 	if strings.HasPrefix(fullPath, "/v5/streams/start/") {
+		tcPath := regexp.MustCompile(`^.+?/`).ReplaceAllString(tcPath, "")
 		qs := ""
 		if query.Get("hash-hls") != "" {
 			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get("ip"), query.Get("hash-hls"))

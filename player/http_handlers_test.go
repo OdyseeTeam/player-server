@@ -267,7 +267,7 @@ func TestHandleSpeech(t *testing.T) {
 func Test_getPlaylistURL(t *testing.T) {
 	stream := &Stream{URL: "lbryStreamURL"}
 	// This is the pattern transcoder client should return.
-	tcURL := "claimID/SDhash/master.m3u8"
+	tcURL := "lbryStreamURL/claimID/SDhash/master.m3u8"
 
 	t.Run("v4", func(t *testing.T) {
 		assert.Equal(t,
