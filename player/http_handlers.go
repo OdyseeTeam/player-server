@@ -136,10 +136,10 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	}
 
 	if !isDownload && fitForTranscoder(c, stream) && h.player.tclient != nil {
-		tcPath := h.player.tclient.GetPlaybackPath(uri, stream.hash)
+		tcPath := h.player.tclient.GetPlaybackPath(c.Param("claim_id"), stream.hash)
 		if tcPath != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.FullPath(), c.Request.URL.Query(), tcPath, stream))
+			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.Request.URL.Path, c.Request.URL.Query(), tcPath, stream))
 			return
 		}
 	}
@@ -276,13 +276,14 @@ func addCSPHeaders(c *gin.Context) {
 
 func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *Stream) string {
 	if strings.HasPrefix(fullPath, "/v5/streams/start/") {
+		// tcPath := regexp.MustCompile(`^.+?/`).ReplaceAllString(tcPath, "")
 		qs := ""
 		if query.Get("hash-hls") != "" {
 			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get("ip"), query.Get("hash-hls"))
 		}
 		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
 	}
-	return fmt.Sprintf("/api/v4/streams/tc/%s", tcPath)
+	return fmt.Sprintf("/api/v4/streams/tc/%s/%s", stream.URL, tcPath)
 }
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
