@@ -129,10 +129,8 @@ require (
 
 replace github.com/btcsuite/btcd => github.com/lbryio/lbrycrd.go v0.0.0-20200203050410-e1076f12bf19
 
-replace github.com/floostack/transcoder => github.com/andybeletsky/transcoder v1.2.0
+replace github.com/floostack/transcoder => github.com/anbsky/transcoder v1.2.0
 
 //replace github.com/OdyseeTeam/gody-cdn => /home/niko/work/repositories/gody-cdn/
 //replace github.com/lbryio/reflector.go => /home/niko/go/src/github.com/lbryio/reflector.go
 //replace github.com/lbryio/transcoder => /home/niko/work/repositories/transcoder
-
-//replace github.com/nikooo777/lbry-blobs-downloader => github.com/andybeletsky/lbry-blobs-downloader v1.0.4-fixed6
