@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 type pubKeyManager struct {

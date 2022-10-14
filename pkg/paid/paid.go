@@ -14,7 +14,7 @@ import (
 
 	"github.com/OdyseeTeam/player-server/pkg/logger"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 var Logger = logger.GetLogger()

@@ -52,7 +52,7 @@ func NewDecryptedCache(origin store.BlobStore) *DecryptedCache {
 	localDB := configs.Configuration.LocalDB
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
 	dbs := objectStore.NewDBBackedStore(ds, localDsn)
-	go cleanup.SelfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache)
+	go cleanup.SelfCleanup(dbs, dbs, stopper, configs.Configuration.DiskCache, configs.Configuration.GetCleanupInterval())
 
 	baseFuncs := objectStore.BaseFuncs{
 		GetFunc: func(hash string, extra interface{}) ([]byte, shared.BlobTrace, error) {

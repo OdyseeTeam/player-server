@@ -9,5 +9,6 @@
     "path": "/tmp/objects/",
     "size": "1GB"
   },
-  "s3_origins": []
+  "s3_origins": [],
+  "cleanup_interval_seconds": 60
 }
