@@ -15,7 +15,7 @@ require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20220815204100-2adb8af5b68c
-	github.com/lbryio/reflector.go v1.1.3-0.20221014163008-0c8da4abe5d1
+	github.com/lbryio/reflector.go v1.1.3-0.20221014174540-b7abb77ea191
 	github.com/lbryio/transcoder v0.18.1
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
 	github.com/prometheus/client_golang v1.13.0
