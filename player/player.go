@@ -181,10 +181,11 @@ func (p *Player) resolve(claimID string) (*ljsonrpc.Claim, error) {
 	return &resp.Claims[0], nil
 }
 
-// VerifyAccess checks if the stream is paid and the token supplied matched the stream
+// VerifyAccess checks if the stream is protected and the token supplied matched the stream
 func (p *Player) VerifyAccess(stream *Stream, ctx *gin.Context) error {
 	for _, t := range stream.claim.Value.Tags {
-		if t == "c:members-only" || t == "c:rental" || t == "c:purchase" || strings.HasPrefix(t, "purchase:") || strings.HasPrefix(t, "rental:") {
+		if t == "c:members-only" || t == "c:rental" || t == "c:purchase" || t == "c:unlisted" || strings.HasPrefix(t, "purchase:") || strings.HasPrefix(t, "rental:") ||
+			((t == "c:scheduled:show" || t == "c:scheduled:hide") && stream.claim.Value.GetStream().ReleaseTime > time.Now().UnixMilli()) {
 			th := ctx.Request.Header.Get(edgeTokenHeader)
 			if th == "" {
 				return ErrEdgeCredentialsMissing
