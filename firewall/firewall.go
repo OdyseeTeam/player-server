@@ -7,21 +7,27 @@ import (
 	"github.com/modern-go/concurrent"
 )
 
-const WindowSize = 60 * time.Second
-const MaxStringsPerIp = 5
+const WindowSize = 120 * time.Second
+const MaxStringsPerIp = 6
 
-var meCache = gcache.New(1000).Simple().Build()
+var resourcesForIPCache = gcache.New(1000).Simple().Build()
+var whitelist = map[string]bool{
+	"51.210.0.171": true,
+}
 
-func IsIpAbusingResources(ip string, endpoint string) bool {
-	resources, err := meCache.Get(ip)
+func IsIpAbusingResources(ip string, endpoint string) (bool, int) {
+	if whitelist[ip] {
+		return false, 0
+	}
+	resources, err := resourcesForIPCache.Get(ip)
 	if err == gcache.KeyNotFoundError {
 		tokensMap := concurrent.NewMap()
 		tokensMap.Store(endpoint, time.Now())
-		err := meCache.SetWithExpire(ip, tokensMap, WindowSize)
+		err := resourcesForIPCache.SetWithExpire(ip, tokensMap, WindowSize*10)
 		if err != nil {
-			return false
+			return false, 1
 		}
-		return false
+		return false, 1
 	}
 	tokensForIP, _ := resources.(*concurrent.Map)
 	currentTime := time.Now()
@@ -34,11 +40,10 @@ func IsIpAbusingResources(ip string, endpoint string) bool {
 			return true
 		}
 		resourcesCount++
-		if resourcesCount > MaxStringsPerIp {
+		if !flagged && resourcesCount > MaxStringsPerIp {
 			flagged = true
-			return false
 		}
 		return true
 	})
-	return flagged
+	return flagged, resourcesCount
 }
