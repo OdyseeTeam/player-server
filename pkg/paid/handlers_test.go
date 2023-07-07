@@ -1,7 +1,7 @@
 package paid
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,7 +18,7 @@ func TestHandlePublicKeyRequest(t *testing.T) {
 	HandlePublicKeyRequest(rr, r)
 
 	response := rr.Result()
-	key, err := ioutil.ReadAll(response.Body)
+	key, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 	assert.NotZero(t, key)

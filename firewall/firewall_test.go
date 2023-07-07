@@ -32,5 +32,4 @@ func TestCheckIPAccess(t *testing.T) {
 	if result {
 		t.Errorf("Expected result to be false, got %v for endpoint %s", result, endpoint+"7")
 	}
-
 }

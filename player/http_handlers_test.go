@@ -30,6 +30,7 @@ func makeRequest(t *testing.T, router *gin.Engine, method, uri string, rng *rang
 
 	r, err := http.NewRequest(method, uri, nil)
 	require.NoError(t, err)
+	r.Header.Add("Referer", "https://odysee.com")
 	if rng != nil {
 		if rng.start == 0 {
 			r.Header.Add("Range", fmt.Sprintf("bytes=0-%v", rng.end))
@@ -312,6 +313,7 @@ func Test_getPlaylistURL(t *testing.T) {
 func Test_fitForTranscoder(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var r *http.Request
+	r.Header.Add("referer", "https://odysee.com/")
 	p := getTestPlayer()
 
 	w := httptest.NewRecorder()

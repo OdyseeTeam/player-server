@@ -2,7 +2,7 @@ package iapi
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -43,7 +43,7 @@ func GetBlockedContent() (map[string]bool, error) {
 	if res.StatusCode != 200 {
 		return nil, errors.Err("unexpected status code %d", res.StatusCode)
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, errors.Err(err)
 	}
