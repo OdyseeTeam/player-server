@@ -16,6 +16,9 @@ var whitelist = map[string]bool{
 }
 
 func IsIpAbusingResources(ip string, endpoint string) (bool, int) {
+	if ip == "" {
+		return false, 0
+	}
 	if whitelist[ip] {
 		return false, 0
 	}
