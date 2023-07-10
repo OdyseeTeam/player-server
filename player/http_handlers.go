@@ -316,6 +316,13 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
+	blocked, err := iapi.GetBlockedContent()
+	if err == nil {
+		if blocked[uri] {
+			c.String(http.StatusForbidden, "this content cannot be accessed")
+			return
+		}
+	}
 	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
 		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
