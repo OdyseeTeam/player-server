@@ -1,10 +1,11 @@
 package firewall
 
 import (
+	"errors"
+	"sync"
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/modern-go/concurrent"
 )
 
 const WindowSize = 120 * time.Second
@@ -23,8 +24,8 @@ func IsIpAbusingResources(ip string, endpoint string) (bool, int) {
 		return false, 0
 	}
 	resources, err := resourcesForIPCache.Get(ip)
-	if err == gcache.KeyNotFoundError {
-		tokensMap := concurrent.NewMap()
+	if errors.Is(err, gcache.KeyNotFoundError) {
+		tokensMap := &sync.Map{}
 		tokensMap.Store(endpoint, time.Now())
 		err := resourcesForIPCache.SetWithExpire(ip, tokensMap, WindowSize*10)
 		if err != nil {
@@ -32,7 +33,7 @@ func IsIpAbusingResources(ip string, endpoint string) (bool, int) {
 		}
 		return false, 1
 	}
-	tokensForIP, _ := resources.(*concurrent.Map)
+	tokensForIP, _ := resources.(*sync.Map)
 	currentTime := time.Now()
 	tokensForIP.Store(endpoint, currentTime)
 	resourcesCount := 0

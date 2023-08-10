@@ -1,6 +1,7 @@
 package player
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // SpeechPrefix is root level prefix for speech URLs.
@@ -85,9 +87,8 @@ var bannedIPs = map[string]bool{
 	"207.244.91.166":  true,
 	"198.98.52.25":    true,
 	"207.244.91.131":  true,
+	"175.182.108.229": true,
 }
-
-const LOG_FILE = "/tmp/player_cache/logrus.log"
 
 var allowedReferrers = map[string]bool{
 	"https://piped.kavin.rocks/": true,
@@ -229,6 +230,14 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	}
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 
+	if isDownload {
+		// log all headers for download requests
+		//encode headers in a json string
+		headers, err := json.MarshalIndent(c.Request.Header, "", "  ")
+		if err == nil {
+			logrus.Infof("download request for %s with IP %s and headers: %+v", uri, ip, string(headers))
+		}
+	}
 	//don't allow downloads if either flagged or disabled
 	if isDownload && (!h.player.options.downloadsEnabled || flagged) {
 		c.String(http.StatusForbidden, "downloads are currently disabled")
@@ -247,12 +256,17 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return
 	}
-	if abusive, count := firewall.IsIpAbusingResources(ip, stream.ClaimID); abusive {
-		Logger.Warnf("IP %s is abusing resources (count: %d): %s - %s", ip, count, stream.ClaimID, stream.claim.Name)
-		if count > 10 {
+	abusiveIP, abuseCount := firewall.IsIpAbusingResources(ip, stream.ClaimID)
+	if abusiveIP {
+		Logger.Warnf("IP %s is abusing resources (count: %d): %s - %s", ip, abuseCount, stream.ClaimID, stream.claim.Name)
+		if abuseCount > 10 {
 			c.String(http.StatusTooManyRequests, "Try again later")
 			return
 		}
+	}
+	if isDownload && abuseCount > 2 {
+		c.String(http.StatusTooManyRequests, "Try again later")
+		return
 	}
 
 	err = h.player.VerifyAccess(stream, c)
