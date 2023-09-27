@@ -285,11 +285,17 @@ func Test_getPlaylistURL(t *testing.T) {
 		q := url.Values{}
 		h := randomdata.Alphanumeric(32)
 		ip := randomdata.IpV4Address()
-		q.Add("hash-hls", h)
-		q.Add("ip", ip)
+		q.Add(paramHashHLS, h)
+		q.Add(paramClientIP, ip)
 		assert.Equal(t,
 			fmt.Sprintf("/v5/streams/hls/claimID/SDhash/master.m3u8?ip=%s&hash=%s", ip, h),
 			getPlaylistURL("/v5/streams/start/claimID/SDhash/", q, tcURL, stream),
+		)
+	})
+	t.Run("v6", func(t *testing.T) {
+		assert.Equal(t,
+			"/v6/streams/hls/claimID/SDhash/master.m3u8",
+			getPlaylistURL("/v6/streams/start/claimID/SDhash/", url.Values{}, tcURL, stream),
 		)
 	})
 }

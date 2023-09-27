@@ -21,10 +21,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const paramDownload = "download"
-
 // SpeechPrefix is root level prefix for speech URLs.
 const SpeechPrefix = "/speech/"
+
+const (
+	paramDownload = "download"
+	paramHashHLS  = "hash-hls" // Nested hash parameter for signed hls url to use with StackPath
+	paramClientIP = "ip"       // Nested client IP parameter for hls urls to use with StackPath
+)
 
 var (
 	playerName         = "unknown-player"
@@ -278,10 +282,12 @@ func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *St
 	if strings.HasPrefix(fullPath, "/v5/streams/start/") {
 		// tcPath := regexp.MustCompile(`^.+?/`).ReplaceAllString(tcPath, "")
 		qs := ""
-		if query.Get("hash-hls") != "" {
-			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get("ip"), query.Get("hash-hls"))
+		if query.Get(paramHashHLS) != "" {
+			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get(paramClientIP), query.Get(paramHashHLS))
 		}
 		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
+	} else if strings.HasPrefix(fullPath, "/v6/streams/start/") {
+		return fmt.Sprintf("/v6/streams/hls/%s", tcPath)
 	}
 	return fmt.Sprintf("/api/v4/streams/tc/%s/%s", stream.URL, tcPath)
 }
