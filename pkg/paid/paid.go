@@ -1,7 +1,7 @@
 package paid
 
 // Key files should be generated as follows:
-// $ openssl genrsa -out privateKey.pem 2048
+// $ openssl genrsa -traditional -out privateKey.pem 2048
 
 import (
 	"crypto/rand"
@@ -103,7 +103,7 @@ func (k *keyManager) loadFromBytes(b []byte) error {
 		return err
 	}
 	k.privKey = key
-	Logger.Infof("loaded a private RSA key (%v bytes)", key.Size())
+	Logger.Infof("loaded a private RSA key (%v bytes)", k.privKey.Size())
 
 	k.pubKeyMarshaled, err = k.marshalPublicKey()
 	if err != nil {

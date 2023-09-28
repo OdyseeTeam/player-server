@@ -19,9 +19,9 @@ var testTxID = "e5a6a9ef4433b8868cebb770d1d2244eed410eb7503a9ffa82dce40aa62bbae7
 
 func generateKeyFile() (string, error) {
 	keyFilename := fmt.Sprintf("test_private_key_%v.pem", time.Now().Unix())
-	cmd := fmt.Sprintf("openssl genrsa -out %s 2048", keyFilename)
-	if _, err := exec.Command("bash", "-c", cmd).Output(); err != nil {
-		return "", fmt.Errorf("command %v failed: %v", cmd, err)
+	cmd := fmt.Sprintf("openssl genrsa -out %s -traditional 2048", keyFilename)
+	if out, err := exec.Command("bash", "-c", cmd).Output(); err != nil {
+		return "", fmt.Errorf("command %s failed: %s: %s", cmd, err, string(out))
 	}
 	return keyFilename, nil
 }
