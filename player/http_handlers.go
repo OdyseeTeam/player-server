@@ -68,6 +68,7 @@ var bannedIPs = map[string]bool{
 func (h *RequestHandler) Handle(c *gin.Context) {
 	addCSPHeaders(c)
 	addPoweredByHeaders(c)
+	c.Header("player-request-method", c.Request.Method)
 	if c.Request.Method == http.MethodHead {
 		c.Header("Cache-Control", "no-store, No-cache")
 	}
