@@ -28,12 +28,14 @@ const (
 	paramDownload = "download"
 	paramHashHLS  = "hash-hls" // Nested hash parameter for signed hls url to use with StackPath
 	paramClientIP = "ip"       // Nested client IP parameter for hls urls to use with StackPath
+	paramHash77   = "hash77"   // Nested hash parameter for signed url to use with CDN77
 )
 
 var (
 	StreamWriteTimeout = uint(86400)
 	playerName         = "unknown-player"
-	reStartEndpoint    = regexp.MustCompile(`^/v[56]/streams/(start/)|(.+/start$)`)
+	reV5StartEndpoint  = regexp.MustCompile(`^/v5/streams/start/.+`)
+	reV6StartEndpoint  = regexp.MustCompile(`^/v6/streams/.+/start$`)
 )
 
 // RequestHandler is a HTTP request handler for player package.
@@ -282,20 +284,24 @@ func addCSPHeaders(c *gin.Context) {
 
 func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *Stream) string {
 	if strings.HasPrefix(fullPath, "/v5/streams/start/") {
-		// tcPath := regexp.MustCompile(`^.+?/`).ReplaceAllString(tcPath, "")
 		qs := ""
 		if query.Get(paramHashHLS) != "" {
 			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get(paramClientIP), query.Get(paramHashHLS))
 		}
 		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
 	} else if strings.HasPrefix(fullPath, "/v6/streams/") {
-		return fmt.Sprintf("/v6/streams/%s", tcPath)
+		path := fmt.Sprintf("/v6/streams/%s", tcPath)
+		h := query.Get(paramHash77)
+		if h != "" {
+			path = "/" + h + path
+		}
+		return path
 	}
 	return fmt.Sprintf("/api/v4/streams/tc/%s/%s", stream.URL, tcPath)
 }
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
 	return (strings.HasPrefix(c.FullPath(), "/api/v4/") ||
-		(reStartEndpoint.MatchString(c.FullPath()) && c.Request.Method == http.MethodHead)) &&
+		((reV5StartEndpoint.MatchString(c.FullPath()) || reV6StartEndpoint.MatchString(c.FullPath())) && c.Request.Method == http.MethodHead)) &&
 		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
 }

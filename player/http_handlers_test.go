@@ -298,6 +298,15 @@ func Test_getPlaylistURL(t *testing.T) {
 			getPlaylistURL("/v6/streams/claimID/SDhash/start", url.Values{}, tcURL, stream),
 		)
 	})
+	t.Run("v6 with hash", func(t *testing.T) {
+		q := url.Values{}
+		h := "abc,89898"
+		q.Add(paramHash77, h)
+		assert.Equal(t,
+			"/abc,89898/v6/streams/claimID/SDhash/master.m3u8",
+			getPlaylistURL("/v6/streams/claimID/SDhash/start", q, tcURL, stream),
+		)
+	})
 }
 
 func Test_fitForTranscoder(t *testing.T) {
