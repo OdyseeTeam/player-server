@@ -33,7 +33,7 @@ const (
 var (
 	StreamWriteTimeout = uint(86400)
 	playerName         = "unknown-player"
-	reStartEndpoint    = regexp.MustCompile(`^/v[56]/streams/start/`)
+	reStartEndpoint    = regexp.MustCompile(`^/v[56]/streams/(start/)|(.+/start$)`)
 )
 
 // RequestHandler is a HTTP request handler for player package.
@@ -288,8 +288,8 @@ func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *St
 			qs = fmt.Sprintf("?ip=%s&hash=%s", query.Get(paramClientIP), query.Get(paramHashHLS))
 		}
 		return fmt.Sprintf("/v5/streams/hls/%s%s", tcPath, qs)
-	} else if strings.HasPrefix(fullPath, "/v6/streams/start/") {
-		return fmt.Sprintf("/v6/streams/hls/%s", tcPath)
+	} else if strings.HasPrefix(fullPath, "/v6/streams/") {
+		return fmt.Sprintf("/v6/streams/%s", tcPath)
 	}
 	return fmt.Sprintf("/api/v4/streams/tc/%s/%s", stream.URL, tcPath)
 }

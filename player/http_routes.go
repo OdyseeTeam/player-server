@@ -38,9 +38,9 @@ func InstallPlayerRoutes(r *gin.Engine, p *Player) {
 
 	v6Router := r.Group("/v6/streams")
 	// HEAD will redirect to the transcoded version, if available; GET request will send a binary stream regardless
-	v6Router.HEAD("/start/:claim_id/:sd_hash", playerHandler.Handle)
-	v6Router.GET("/start/:claim_id/:sd_hash", playerHandler.Handle)
-	v6Router.GET("/original/:claim_id/:sd_hash", playerHandler.Handle)
+	v6Router.HEAD("/:claim_id/:sd_hash/start", playerHandler.Handle)
+	v6Router.GET("/:claim_id/:sd_hash/start", playerHandler.Handle)
+	v6Router.GET("/:claim_id/:sd_hash/original", playerHandler.Handle)
 
 	if p.TCVideoPath != "" {
 		v4Router.GET("/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
@@ -48,8 +48,9 @@ func InstallPlayerRoutes(r *gin.Engine, p *Player) {
 
 		v5Router.HEAD("/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
 		v5Router.GET("/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
-		v6Router.HEAD("/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
-		v6Router.GET("/hls/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+
+		v6Router.HEAD("/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
+		v6Router.GET("/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
 	}
 
 	r.HEAD(SpeechPrefix+"*whatever", playerHandler.Handle)
