@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -61,7 +61,7 @@ func loadResponseFixture(t *testing.T, f string) jsonrpc.RPCResponse {
 	var r jsonrpc.RPCResponse
 
 	absPath, _ := filepath.Abs(filepath.Join("./testdata", f))
-	rawJSON, err := ioutil.ReadFile(absPath)
+	rawJSON, err := os.ReadFile(absPath)
 	require.NoError(t, err)
 	err = json.Unmarshal(rawJSON, &r)
 	require.NoError(t, err)

@@ -3,7 +3,7 @@ package player
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -201,60 +201,60 @@ func TestUTF8Filename(t *testing.T) {
 func TestHandleHeadStreamsV2(t *testing.T) {
 	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
-	rawKey, err := ioutil.ReadAll(r.Body)
+	rawKey, err := io.ReadAll(r.Body)
 	require.NoError(t, err)
 	err = paid.InitPubKey(rawKey)
 	require.NoError(t, err)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusUnauthorized, r.StatusCode, string(body))
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
 	paid.GeneratePrivateKey()
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+expiredToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusGone, r.StatusCode, string(body))
 
 	validToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, paid.ExpTenSecPer100MB)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+validToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 
 func TestHandleHeadStreamsV3(t *testing.T) {
 	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
-	rawKey, err := ioutil.ReadAll(r.Body)
+	rawKey, err := io.ReadAll(r.Body)
 	require.NoError(t, err)
 	err = paid.InitPubKey(rawKey)
 	require.NoError(t, err)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusUnauthorized, r.StatusCode, string(body))
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef", nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
 	paid.GeneratePrivateKey()
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+expiredToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusGone, r.StatusCode, string(body))
 
 	validToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, paid.ExpTenSecPer100MB)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+validToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 

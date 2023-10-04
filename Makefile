@@ -5,9 +5,9 @@ version := $(shell git describe --tags)
 .PHONY: prepare_test
 prepare_test:
 	curl https://raw.githubusercontent.com/OdyseeTeam/gody-cdn/master/db-init.sql -o init.sql
-	docker-compose up -d mysql lbrynet
 	cp config.example.json config.json
-	rm init.sql
+	docker-compose up -d mysql lbrynet
+	# rm init.sql
 
 .PHONY: test
 test:

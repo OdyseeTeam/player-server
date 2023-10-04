@@ -41,6 +41,7 @@ func InstallPlayerRoutes(r *gin.Engine, p *Player) {
 	v6Router.HEAD("/:claim_id/:sd_hash/start", playerHandler.Handle)
 	v6Router.GET("/:claim_id/:sd_hash/start", playerHandler.Handle)
 	v6Router.GET("/:claim_id/:sd_hash/original", playerHandler.Handle)
+	v6Router.GET("/:claim_id/:sd_hash", playerHandler.Handle)
 
 	if p.TCVideoPath != "" {
 		v4Router.GET("/tc/:claim_name/:claim_id/:sd_hash/:fragment", playerHandler.HandleTranscodedFragment)
