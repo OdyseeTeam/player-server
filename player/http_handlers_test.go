@@ -370,21 +370,35 @@ func Test_fitForTranscoder(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, fitForTranscoder(c, s))
 
-	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc/start", nil)
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v5/streams/original/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc", nil)
 	c.Request = r
 	e.HandleContext(c)
 	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
 	require.NoError(t, err)
 	assert.False(t, fitForTranscoder(c, s))
 
-	r, _ = http.NewRequest(http.MethodHead, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc/start", nil)
+	r, _ = http.NewRequest(http.MethodHead, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc", nil)
 	c.Request = r
 	e.HandleContext(c)
 	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
 	require.NoError(t, err)
 	assert.True(t, fitForTranscoder(c, s))
 
-	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v5/streams/original/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc", nil)
+	r, _ = http.NewRequest(http.MethodHead, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc.mp4", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.True(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.False(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc.mp4", nil)
 	c.Request = r
 	e.HandleContext(c)
 	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")

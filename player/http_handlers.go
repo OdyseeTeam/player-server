@@ -35,7 +35,7 @@ var (
 	StreamWriteTimeout = uint(86400)
 	playerName         = "unknown-player"
 	reV5StartEndpoint  = regexp.MustCompile(`^/v5/streams/start/.+`)
-	reV6StartEndpoint  = regexp.MustCompile(`^/v6/streams/.+(/start)|(\.mp4)$`)
+	reV6StartEndpoint  = regexp.MustCompile(`^/v6/streams/.+(\.mp4)?$`)
 )
 
 // RequestHandler is a HTTP request handler for player package.
