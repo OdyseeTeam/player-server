@@ -301,7 +301,21 @@ func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *St
 }
 
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
-	return (strings.HasPrefix(c.FullPath(), "/api/v4/") ||
-		((reV5StartEndpoint.MatchString(c.FullPath()) || reV6StartEndpoint.MatchString(c.FullPath())) && c.Request.Method == http.MethodHead)) &&
-		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
+	// Check if path starts with "/api/v4/"
+	isAPIv4 := strings.HasPrefix(c.FullPath(), "/api/v4/")
+
+	// Check if path matches v5 or v6 start endpoint and request method is HEAD
+	matchesV5 := reV5StartEndpoint.MatchString(c.FullPath())
+	matchesV6 := reV6StartEndpoint.MatchString(c.Request.RequestURI)
+	isHeadMethod := c.Request.Method == http.MethodHead
+	isV5orV6Head := (matchesV5 || matchesV6) && isHeadMethod
+
+	// Check if content type starts with "video/"
+	isVideoContentType := strings.HasPrefix(s.ContentType, "video/")
+
+	// Check if range header is empty
+	isRangeHeaderEmpty := c.GetHeader("range") == ""
+
+	// Return the combined result
+	return (isAPIv4 || isV5orV6Head) && isVideoContentType && isRangeHeaderEmpty
 }
