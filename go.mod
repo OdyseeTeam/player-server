@@ -15,7 +15,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20230307181431-a01aa6dc0629
-	github.com/lbryio/reflector.go v1.1.3-0.20230309181259-456fe53e0174
+	github.com/lbryio/reflector.go v1.1.3-0.20231011190137-4d81a43a8fab
 	github.com/lbryio/transcoder v0.18.2
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
 	github.com/prometheus/client_golang v1.17.0
@@ -23,11 +23,11 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.4.0
 )
 
 require (
-	github.com/aws/aws-sdk-go v1.45.17 // indirect
+	github.com/aws/aws-sdk-go v1.45.24 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/brk0v/directio v0.0.0-20190225130936-69406e757cf7 // indirect
@@ -69,7 +69,7 @@ require (
 	github.com/karlseguin/ccache/v2 v2.0.8 // indirect
 	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
-	github.com/lbryio/chainquery v1.9.1-0.20230308044402-068c29e02865 // indirect
+	github.com/lbryio/chainquery v1.9.1-0.20230515181855-2fcba3115cfe // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/lyoshenka/bencode v0.0.0-20180323155644-b7abd7672df5 // indirect
