@@ -3,7 +3,7 @@ package player
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -201,60 +201,60 @@ func TestUTF8Filename(t *testing.T) {
 func TestHandleHeadStreamsV2(t *testing.T) {
 	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
-	rawKey, err := ioutil.ReadAll(r.Body)
+	rawKey, err := io.ReadAll(r.Body)
 	require.NoError(t, err)
 	err = paid.InitPubKey(rawKey)
 	require.NoError(t, err)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusUnauthorized, r.StatusCode, string(body))
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
 	paid.GeneratePrivateKey()
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+expiredToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusGone, r.StatusCode, string(body))
 
 	validToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, paid.ExpTenSecPer100MB)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v2/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/"+validToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 
 func TestHandleHeadStreamsV3(t *testing.T) {
 	r, err := http.Get("https://api.na-backend.odysee.com/api/v1/paid/pubkey")
 	require.NoError(t, err)
-	rawKey, err := ioutil.ReadAll(r.Body)
+	rawKey, err := io.ReadAll(r.Body)
 	require.NoError(t, err)
 	err = paid.InitPubKey(rawKey)
 	require.NoError(t, err)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9", nil)
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusUnauthorized, r.StatusCode, string(body))
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/free/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef", nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
 	paid.GeneratePrivateKey()
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+expiredToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusGone, r.StatusCode, string(body))
 
 	validToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, paid.ExpTenSecPer100MB)
 
 	r = makeRequest(t, nil, http.MethodHead, "/api/v3/streams/paid/iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6/abcdef/"+validToken, nil)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusOK, r.StatusCode, string(body))
 }
 
@@ -285,11 +285,26 @@ func Test_getPlaylistURL(t *testing.T) {
 		q := url.Values{}
 		h := randomdata.Alphanumeric(32)
 		ip := randomdata.IpV4Address()
-		q.Add("hash-hls", h)
-		q.Add("ip", ip)
+		q.Add(paramHashHLS, h)
+		q.Add(paramClientIP, ip)
 		assert.Equal(t,
 			fmt.Sprintf("/v5/streams/hls/claimID/SDhash/master.m3u8?ip=%s&hash=%s", ip, h),
 			getPlaylistURL("/v5/streams/start/claimID/SDhash/", q, tcURL, stream),
+		)
+	})
+	t.Run("v6", func(t *testing.T) {
+		assert.Equal(t,
+			"/v6/streams/claimID/SDhash/master.m3u8",
+			getPlaylistURL("/v6/streams/claimID/SDhash/start", url.Values{}, tcURL, stream),
+		)
+	})
+	t.Run("v6 with hash", func(t *testing.T) {
+		q := url.Values{}
+		h := "abc,89898"
+		q.Add(paramHash77, h)
+		assert.Equal(t,
+			"/abc,89898/v6/streams/claimID/SDhash/master.m3u8",
+			getPlaylistURL("/v6/streams/claimID/SDhash/start", q, tcURL, stream),
 		)
 	})
 }
@@ -356,6 +371,34 @@ func Test_fitForTranscoder(t *testing.T) {
 	assert.True(t, fitForTranscoder(c, s))
 
 	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v5/streams/original/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.False(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodHead, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.True(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodHead, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc.mp4", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.True(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc", nil)
+	c.Request = r
+	e.HandleContext(c)
+	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
+	require.NoError(t, err)
+	assert.False(t, fitForTranscoder(c, s))
+
+	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/v6/streams/6769855a9aa43b67086f9ff3c1a5bacb5698a27a/abcabc.mp4", nil)
 	c.Request = r
 	e.HandleContext(c)
 	s, err = p.ResolveStream("6769855a9aa43b67086f9ff3c1a5bacb5698a27a")
