@@ -88,6 +88,7 @@ var bannedIPs = map[string]bool{
 	"198.98.52.25":    true,
 	"207.244.91.131":  true,
 	"175.182.108.229": true,
+	"107.181.206.145": true,
 }
 
 var allowedReferrers = map[string]bool{
