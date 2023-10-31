@@ -1,6 +1,7 @@
 package player
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/firewall"
 	"github.com/OdyseeTeam/player-server/internal/iapi"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/app"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // SpeechPrefix is root level prefix for speech URLs.
@@ -61,10 +64,60 @@ func NewRequestHandler(p *Player) *RequestHandler {
 }
 
 var bannedIPs = map[string]bool{
-	"96.76.237.222": true,
-	"45.47.236.87":  true,
-	"154.53.32.121": true,
+	"96.76.237.222":   true,
+	"45.47.236.87":    true,
+	"154.53.32.121":   true,
+	"51.222.12.22":    true,
+	"65.108.133.222":  true,
+	"135.181.178.92":  true,
+	"65.21.95.58":     true,
+	"80.129.211.95":   true,
+	"5.161.101.49":    true,
+	"199.217.105.250": true,
+	"3.237.164.90":    true,
+	"3.237.210.152":   true,
+	"3.237.165.26":    true,
+	"3.237.221.248":   true,
+	"37.120.159.165":  true,
+	"199.217.105.243": true,
+	"79.137.105.150":  true,
+	"89.187.177.54":   true,
+	"5.161.108.85":    true,
+	"5.252.23.106":    true,
+	"207.244.91.166":  true,
+	"198.98.52.25":    true,
+	"207.244.91.131":  true,
+	"175.182.108.229": true,
+	"107.181.206.145": true,
 }
+
+var allowedReferrers = map[string]bool{
+	"https://piped.kavin.rocks/": true,
+	"https://piped.video/":       true,
+	"https://www.gstatic.com/":   true,
+	"http://localhost:9090/":     true,
+}
+var allowedTldReferrers = map[string]bool{
+	"odysee.com": true,
+	"odysee.tv":  true,
+}
+var allowedOrigins = map[string]bool{
+	"https://odysee.com":         true,
+	"https://neko.odysee.tv":     true,
+	"https://salt.odysee.tv":     true,
+	"https://kp.odysee.tv":       true,
+	"https://inf.odysee.tv":      true,
+	"https://stashu.odysee.tv":   true,
+	"https://www.gstatic.com":    true,
+	"https://odysee.ap.ngrok.io": true,
+}
+var allowedUserAgents = []string{
+	"LBRY/",
+	"Roku/",
+}
+var allowedSpecialHeaders = map[string]bool{"x-cf-lb-monitor": true}
+
+var allowedXRequestedWith = "com.odysee.app"
 
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(c *gin.Context) {
@@ -74,8 +127,9 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	if c.Request.Method == http.MethodHead {
 		c.Header("Cache-Control", "no-store, No-cache")
 	}
-	var uri string
 
+	var uri string
+	var isSpeech bool
 	if strings.HasPrefix(c.Request.URL.String(), SpeechPrefix) {
 		// Speech stuff
 		uri = c.Request.URL.String()[len(SpeechPrefix):]
@@ -87,6 +141,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
+		isSpeech = true
 		// Speech stuff over
 	} else if c.Param("claim_name") != "" {
 		uri = c.Param("claim_name") + "#" + c.Param("claim_id")
@@ -98,13 +153,68 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		}
 	}
 
-	//this is here temporarily due to abuse. a better solution will be found
-	forwardedFor := c.GetHeader("X-Forwarded-For")
-	if forwardedFor != "" {
-		if bannedIPs[strings.TrimSpace(strings.Split(forwardedFor, ",")[0])] {
-			c.AbortWithStatus(http.StatusTooManyRequests)
-			return
+	magicTimestamp, exists := c.GetQuery("magic")
+	magicPass := false
+	if exists && magicTimestamp != "" {
+		unixT, err := strconv.Atoi(magicTimestamp)
+		if err == nil {
+			genesisTime := time.Unix(int64(unixT), 0)
+			if time.Since(genesisTime) < 5*time.Minute {
+				magicPass = true
+			}
 		}
+	}
+
+	flagged := true
+	for header, v := range c.Request.Header {
+		hasHeaderToCheck := header != "User-Agent" && header != "Referer" && header != "Origin" && header != "X-Requested-With"
+		if hasHeaderToCheck && !allowedSpecialHeaders[strings.ToLower(header)] {
+			continue
+		}
+		if strings.ToLower(header) == "origin" && allowedOrigins[v[0]] {
+			flagged = false
+			break
+		}
+		if strings.ToLower(header) == "referer" {
+			if allowedReferrers[v[0]] {
+				flagged = false
+				break
+			}
+			//check if the referrer is from an allowed tld (weak check)
+			for tld := range allowedTldReferrers {
+				if strings.Contains(v[0], tld) {
+					flagged = false
+					break
+				}
+			}
+		}
+
+		if strings.ToLower(header) == "user-agent" {
+			for _, ua := range allowedUserAgents {
+				if strings.HasPrefix(v[0], ua) {
+					flagged = false
+					break
+				}
+			}
+		}
+		if allowedSpecialHeaders[strings.ToLower(header)] {
+			flagged = false
+			break
+		}
+		if strings.ToLower(header) == "x-requested-with" && v[0] == allowedXRequestedWith {
+			flagged = false
+			break
+		}
+	}
+	//if the request is flagged and the magic pass is not set then we will not serve the request
+	//with an exception for /v3/ endpoints for now
+	flagged = !magicPass && flagged && !strings.HasPrefix(c.Request.URL.String(), "/api/v3/")
+
+	//this is here temporarily due to abuse. a better solution will be found
+	ip := c.ClientIP()
+	if bannedIPs[ip] {
+		c.AbortWithStatus(http.StatusTooManyRequests)
+		return
 	}
 	if strings.Contains(c.Request.URL.String(), "Katmovie18") {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
@@ -120,7 +230,17 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		}
 	}
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
-	if isDownload && !h.player.options.downloadsEnabled {
+
+	if isDownload {
+		// log all headers for download requests
+		//encode headers in a json string
+		headers, err := json.MarshalIndent(c.Request.Header, "", "  ")
+		if err == nil {
+			logrus.Infof("download request for %s with IP %s and headers: %+v", uri, ip, string(headers))
+		}
+	}
+	//don't allow downloads if either flagged or disabled
+	if isDownload && (!h.player.options.downloadsEnabled || flagged) {
 		c.String(http.StatusForbidden, "downloads are currently disabled")
 		return
 	}
@@ -137,9 +257,26 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return
 	}
+	abusiveIP, abuseCount := firewall.CheckAndRateLimitIp(ip, stream.ClaimID)
+	if abusiveIP {
+		Logger.Warnf("IP %s is abusing resources (count: %d): %s - %s", ip, abuseCount, stream.ClaimID, stream.claim.Name)
+		if abuseCount > 10 {
+			c.String(http.StatusTooManyRequests, "Try again later")
+			return
+		}
+	}
+	if isDownload && abuseCount > 2 {
+		c.String(http.StatusTooManyRequests, "Try again later")
+		return
+	}
+
 	err = h.player.VerifyAccess(stream, c)
 	if err != nil {
 		processStreamError("access", uri, c.Writer, c.Request, err)
+		return
+	}
+	if flagged && !isSpeech {
+		c.String(http.StatusUnauthorized, "this content cannot be accessed at the moment")
 		return
 	}
 
@@ -194,6 +331,13 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
+	blocked, err := iapi.GetBlockedContent()
+	if err == nil {
+		if blocked[uri] {
+			c.String(http.StatusForbidden, "this content cannot be accessed")
+			return
+		}
+	}
 	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
 		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())

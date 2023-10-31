@@ -30,6 +30,7 @@ func makeRequest(t *testing.T, router *gin.Engine, method, uri string, rng *rang
 
 	r, err := http.NewRequest(method, uri, nil)
 	require.NoError(t, err)
+	r.Header.Add("Referer", "https://odysee.com")
 	if rng != nil {
 		if rng.start == 0 {
 			r.Header.Add("Range", fmt.Sprintf("bytes=0-%v", rng.end))
@@ -320,6 +321,7 @@ func Test_fitForTranscoder(t *testing.T) {
 	InstallPlayerRoutes(e, p)
 
 	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/free/claimname/abc/sdhash", nil)
+	r.Header.Add("referer", "https://odysee.com/")
 	c.Request = r
 	e.HandleContext(c)
 

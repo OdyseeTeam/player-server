@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -260,7 +260,7 @@ func initPubkey() {
 	if err != nil {
 		l.Fatal(err)
 	}
-	rawKey, err := ioutil.ReadAll(r.Body)
+	rawKey, err := io.ReadAll(r.Body)
 	if err != nil {
 		l.Fatal(err)
 	}
