@@ -167,8 +167,8 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	flagged := true
 	for header, v := range c.Request.Header {
-		//check if the header is not one we want to check, so we skip it
-		if header != "User-Agent" && header != "Referer" && header != "Origin" && header != "X-Requested-With" && !allowedSpecialHeaders[strings.ToLower(header)] {
+		hasHeaderToCheck := header != "User-Agent" && header != "Referer" && header != "Origin" && header != "X-Requested-With"
+		if hasHeaderToCheck && !allowedSpecialHeaders[strings.ToLower(header)] {
 			continue
 		}
 		if strings.ToLower(header) == "origin" && allowedOrigins[v[0]] {
@@ -257,7 +257,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return
 	}
-	abusiveIP, abuseCount := firewall.IsIpAbusingResources(ip, stream.ClaimID)
+	abusiveIP, abuseCount := firewall.CheckAndRateLimitIp(ip, stream.ClaimID)
 	if abusiveIP {
 		Logger.Warnf("IP %s is abusing resources (count: %d): %s - %s", ip, abuseCount, stream.ClaimID, stream.claim.Name)
 		if abuseCount > 10 {

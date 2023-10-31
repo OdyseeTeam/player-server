@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCheckIPAccess(t *testing.T) {
@@ -12,24 +14,18 @@ func TestCheckIPAccess(t *testing.T) {
 	WindowSize = 7 * time.Second
 	// Test the first five accesses for an IP don't exceed the limit
 	for i := 1; i <= 6; i++ {
-		result, _ := IsIpAbusingResources(ip, endpoint+strconv.Itoa(i))
-		if result {
-			t.Errorf("Expected result to be false, got %v for endpoint %s", result, endpoint+strconv.Itoa(i))
-		}
+		result, _ := CheckAndRateLimitIp(ip, endpoint+strconv.Itoa(i))
+		assert.False(t, result, "Expected result to be false, got %v for endpoint %s", result, endpoint+strconv.Itoa(i))
 	}
 
 	// Test the sixth access for an IP exceeds the limit
-	result, _ := IsIpAbusingResources(ip, endpoint+"7")
-	if !result {
-		t.Errorf("Expected result to be true, got %v for endpoint %s", result, endpoint+"6")
-	}
+	result, _ := CheckAndRateLimitIp(ip, endpoint+"7")
+	assert.True(t, result, "Expected result to be true, got %v for endpoint %s", result, endpoint+"7")
 
 	// Wait for the window size to elapse
 	time.Sleep(WindowSize)
 
 	// Test the access for an IP after the window size elapses doesn't exceed the limit
-	result, _ = IsIpAbusingResources(ip, endpoint+"7")
-	if result {
-		t.Errorf("Expected result to be false, got %v for endpoint %s", result, endpoint+"7")
-	}
+	result, _ = CheckAndRateLimitIp(ip, endpoint+"7")
+	assert.False(t, result, "Expected result to be false, got %v for endpoint %s", result, endpoint+"7")
 }

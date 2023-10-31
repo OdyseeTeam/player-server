@@ -17,7 +17,7 @@ var whitelist = map[string]bool{
 	"51.210.0.171": true,
 }
 
-func IsIpAbusingResources(ip string, endpoint string) (bool, int) {
+func CheckAndRateLimitIp(ip string, endpoint string) (bool, int) {
 	if ip == "" {
 		return false, 0
 	}
