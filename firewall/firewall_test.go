@@ -9,9 +9,9 @@ import (
 func TestCheckIPAccess(t *testing.T) {
 	ip := "192.168.0.1"
 	endpoint := "/api/v1/example"
-
+	WindowSize = 7 * time.Second
 	// Test the first five accesses for an IP don't exceed the limit
-	for i := 1; i <= 5; i++ {
+	for i := 1; i <= 6; i++ {
 		result, _ := IsIpAbusingResources(ip, endpoint+strconv.Itoa(i))
 		if result {
 			t.Errorf("Expected result to be false, got %v for endpoint %s", result, endpoint+strconv.Itoa(i))
@@ -19,7 +19,7 @@ func TestCheckIPAccess(t *testing.T) {
 	}
 
 	// Test the sixth access for an IP exceeds the limit
-	result, _ := IsIpAbusingResources(ip, endpoint+"6")
+	result, _ := IsIpAbusingResources(ip, endpoint+"7")
 	if !result {
 		t.Errorf("Expected result to be true, got %v for endpoint %s", result, endpoint+"6")
 	}

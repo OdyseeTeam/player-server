@@ -8,7 +8,8 @@ import (
 	"github.com/bluele/gcache"
 )
 
-const WindowSize = 120 * time.Second
+var WindowSize = 120 * time.Second
+
 const MaxStringsPerIp = 6
 
 var resourcesForIPCache = gcache.New(1000).Simple().Build()
