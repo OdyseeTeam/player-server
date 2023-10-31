@@ -313,7 +313,6 @@ func Test_getPlaylistURL(t *testing.T) {
 func Test_fitForTranscoder(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	var r *http.Request
-	r.Header.Add("referer", "https://odysee.com/")
 	p := getTestPlayer()
 
 	w := httptest.NewRecorder()
@@ -322,6 +321,7 @@ func Test_fitForTranscoder(t *testing.T) {
 	InstallPlayerRoutes(e, p)
 
 	r, _ = http.NewRequest(http.MethodGet, "https://cdn.lbryplayer.xyz/api/v4/streams/free/claimname/abc/sdhash", nil)
+	r.Header.Add("referer", "https://odysee.com/")
 	c.Request = r
 	e.HandleContext(c)
 
