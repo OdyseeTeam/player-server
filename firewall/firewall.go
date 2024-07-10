@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/internal/iapi"
+
 	"github.com/bluele/gcache"
 )
 
@@ -51,4 +53,18 @@ func CheckAndRateLimitIp(ip string, endpoint string) (bool, int) {
 		return true
 	})
 	return flagged, resourcesCount
+}
+
+func IsStreamBlocked(claimId string, channelClaimId *string) bool {
+	blocked, err := iapi.GetBlockedContent()
+	if err == nil {
+		if blocked[claimId] {
+			return true
+		}
+	}
+
+	if channelClaimId != nil && blocked[*channelClaimId] {
+		return true
+	}
+	return false
 }

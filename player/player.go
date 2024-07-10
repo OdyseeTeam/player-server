@@ -12,8 +12,8 @@ import (
 	"github.com/OdyseeTeam/player-server/pkg/logger"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 
+	tclient "github.com/OdyseeTeam/transcoder/client"
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
-	tclient "github.com/lbryio/transcoder/client"
 
 	"github.com/bluele/gcache"
 	"github.com/gin-gonic/gin"
@@ -106,19 +106,19 @@ func (p *Player) Play(s *Stream, c *gin.Context) error {
 }
 
 // ResolveStream resolves provided URI by calling the SDK.
-func (p *Player) ResolveStream(uri string) (*Stream, error) {
+func (p *Player) ResolveStream(claimId string) (*Stream, error) {
 	defer func(t time.Time) {
 		metrics.ResolveTimeMS.Observe(float64(time.Since(t).Milliseconds()))
 	}(time.Now())
 
 	var claim *ljsonrpc.Claim
 
-	cachedClaim, err := p.resolveCache.Get(uri)
+	cachedClaim, err := p.resolveCache.Get(claimId)
 	if err == nil {
 		claim = cachedClaim.(*ljsonrpc.Claim)
 	} else {
 		var err error
-		claim, err = p.resolve(uri)
+		claim, err = p.resolve(claimId)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +143,7 @@ func (p *Player) ResolveStream(uri string) (*Stream, error) {
 			}
 		}
 		metrics.ResolveSuccesses.Inc()
-		_ = p.resolveCache.SetWithExpire(uri, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
+		_ = p.resolveCache.SetWithExpire(claimId, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
 	}
 
 	if claim.Value.GetStream() == nil {
@@ -193,11 +193,11 @@ func (p *Player) VerifyAccess(stream *Stream, ctx *gin.Context) error {
 		"c:scheduled:show": true,
 		"c:scheduled:hide": true,
 	}
-	for _, t := range stream.claim.Value.Tags {
+	for _, t := range stream.Claim.Value.Tags {
 		if protectedMap[t] ||
 			strings.HasPrefix(t, "purchase:") ||
 			strings.HasPrefix(t, "rental:") ||
-			(protectedWithTimeMap[t] && stream.claim.Value.GetStream().ReleaseTime > time.Now().Unix()) {
+			(protectedWithTimeMap[t] && stream.Claim.Value.GetStream().ReleaseTime > time.Now().Unix()) {
 			th := ctx.Request.Header.Get(edgeTokenHeader)
 			if th == "" {
 				return ErrEdgeCredentialsMissing

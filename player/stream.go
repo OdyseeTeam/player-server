@@ -27,7 +27,7 @@ type Stream struct {
 	prefetchedChunks map[int]bool
 
 	player         *Player
-	claim          *ljsonrpc.Claim
+	Claim          *ljsonrpc.Claim
 	source         *pb.Source
 	resolvedStream *pb.Stream
 	sdBlob         *stream.SDBlob
@@ -47,7 +47,7 @@ func NewStream(p *Player, claim *ljsonrpc.Claim) *Stream {
 		Size:        source.GetSize(),
 
 		player:           p,
-		claim:            claim,
+		Claim:            claim,
 		source:           source,
 		resolvedStream:   stream,
 		hash:             hex.EncodeToString(source.SdHash),
@@ -65,7 +65,7 @@ func (s *Stream) Filename() string {
 	if name != "" {
 		return name
 	}
-	name = s.claim.NormalizedName
+	name = s.Claim.NormalizedName
 	// exts, err := mime.ExtensionsByType(s.ContentType)
 	ext := mime.GetExtensionByType(s.ContentType)
 	if ext == "" {
@@ -121,7 +121,7 @@ func (s *Stream) setSize() {
 
 // Timestamp returns stream creation timestamp, used in HTTP response header.
 func (s *Stream) Timestamp() time.Time {
-	return time.Unix(int64(s.claim.Timestamp), 0)
+	return time.Unix(int64(s.Claim.Timestamp), 0)
 }
 
 // Seek implements io.ReadSeeker interface and is meant to be called by http.ServeContent.
@@ -269,7 +269,7 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 
 // getStreamSizeFromLastChunkSize gets the exact size of a stream from the sd blob and the last chunk
 func (s *Stream) getStreamSizeFromLastBlobSize() (uint64, error) {
-	if s.claim.Value.GetStream() == nil {
+	if s.Claim.Value.GetStream() == nil {
 		return 0, errors.Err("claim is not a stream")
 	}
 

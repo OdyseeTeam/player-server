@@ -16,8 +16,7 @@ import (
 	"github.com/OdyseeTeam/player-server/internal/iapi"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/app"
-
-	tclient "github.com/lbryio/transcoder/client"
+	tclient "github.com/OdyseeTeam/transcoder/client"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"
@@ -252,14 +251,19 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		processStreamError("resolve", uri, c.Writer, c.Request, err)
 		return
 	}
-	hasValidChannel := stream.claim.SigningChannel != nil && stream.claim.SigningChannel.ClaimID != ""
-	if hasValidChannel && blocked != nil && blocked[stream.claim.SigningChannel.ClaimID] {
+	hasValidChannel := stream.Claim.SigningChannel != nil && stream.Claim.SigningChannel.ClaimID != ""
+	var channelClaimId *string
+	if hasValidChannel {
+		channelClaimId = &stream.Claim.SigningChannel.ClaimID
+	}
+	if firewall.IsStreamBlocked(uri, channelClaimId) {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return
 	}
+
 	abusiveIP, abuseCount := firewall.CheckAndRateLimitIp(ip, stream.ClaimID)
 	if abusiveIP {
-		Logger.Warnf("IP %s is abusing resources (count: %d): %s - %s", ip, abuseCount, stream.ClaimID, stream.claim.Name)
+		Logger.Warnf("IP %s is abusing resources (count: %d): %s - %s", ip, abuseCount, stream.ClaimID, stream.Claim.Name)
 		if abuseCount > 10 {
 			c.String(http.StatusTooManyRequests, "Try again later")
 			return
@@ -331,12 +335,27 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	addPoweredByHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
-	blocked, err := iapi.GetBlockedContent()
-	if err == nil {
-		if blocked[uri] {
-			c.String(http.StatusForbidden, "this content cannot be accessed")
-			return
-		}
+
+	stream, err := h.player.ResolveStream(uri)
+	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
+	if err != nil {
+		metrics.ResolveFailures.Inc()
+		processStreamError("resolve", uri, c.Writer, c.Request, err)
+		return
+	}
+	hasValidChannel := stream.Claim.SigningChannel != nil && stream.Claim.SigningChannel.ClaimID != ""
+	var channelClaimId *string
+	if hasValidChannel {
+		channelClaimId = &stream.Claim.SigningChannel.ClaimID
+	}
+	if firewall.IsStreamBlocked(uri, channelClaimId) {
+		c.String(http.StatusForbidden, "this content cannot be accessed")
+		return
+	}
+	err = h.player.VerifyAccess(stream, c)
+	if err != nil {
+		processStreamError("access", uri, c.Writer, c.Request, err)
+		return
 	}
 	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {

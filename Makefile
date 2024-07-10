@@ -1,7 +1,5 @@
 version := $(shell git describe --tags)
 
-
-
 .PHONY: prepare_test
 prepare_test:
 	curl https://raw.githubusercontent.com/OdyseeTeam/gody-cdn/master/db-init.sql -o init.sql

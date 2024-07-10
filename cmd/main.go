@@ -16,10 +16,10 @@ import (
 	"github.com/OdyseeTeam/player-server/player"
 	"github.com/lbryio/reflector.go/server/http3"
 
+	tclient "github.com/OdyseeTeam/transcoder/client"
 	"github.com/lbryio/lbry.go/v2/stream"
 	"github.com/lbryio/reflector.go/server/peer"
 	"github.com/lbryio/reflector.go/store"
-	tclient "github.com/lbryio/transcoder/client"
 
 	"github.com/c2h5oh/datasize"
 	"github.com/sirupsen/logrus"
