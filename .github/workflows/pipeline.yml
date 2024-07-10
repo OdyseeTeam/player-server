@@ -37,7 +37,7 @@ jobs:
       #   run: goveralls -coverprofile=coverage.out -service=circle-ci -repotoken ${{ secrets.COVERALLS_TOKEN }}
 
       - name: Submit coverage report
-        uses: coverallsapp/github-action@2.3.0
+        uses: coverallsapp/github-action@v2
         with:
           file: coverage.lcov
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -60,7 +60,7 @@ jobs:
 
       - name: Build docker image
         if: ${{ github.ref != 'refs/heads/master' }}
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           push: false
           tags: odyseeteam/player-server:${{ env.version }}
