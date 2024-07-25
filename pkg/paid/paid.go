@@ -135,7 +135,10 @@ func (k *keyManager) marshalPublicKey() ([]byte, error) {
 	return pubBytes, nil
 }
 
-// ExpTenSecPer100MB returns expiry date as calculated by 10 seconds times the stream size in MB
+// ExpTenSecPer100MB returns expiry date as calculated by 10 seconds times the stream size in MB.
+// Note: this does not actually accept entire uint64 range and will oveflow and return dates in the past
+// with multi-petabyte sizes.
 func ExpTenSecPer100MB(streamSize uint64) int64 {
-	return time.Now().UTC().Add(time.Duration(streamSize/1024^2*10) * time.Second).Unix()
+	expiresAt := time.Now().UTC().Add(time.Duration(streamSize/1024^2*10) * time.Second)
+	return expiresAt.Unix()
 }
