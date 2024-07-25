@@ -23,6 +23,14 @@ const (
 
 	StreamOriginal   = "original"
 	StreamTranscoded = "transcoded"
+
+	ResolveSource = "source"
+	ResolveKind   = "kind"
+
+	ResolveSourceCache          = "cache"
+	ResolveSourceOApi           = "oapi"
+	ResolveFailureGeneral       = "general"
+	ResolveFailureClaimNotFound = "claim_not_found"
 )
 
 var (
@@ -85,18 +93,33 @@ var (
 		Name:      "evictions_total",
 		Help:      "Total number of items evicted from the cache",
 	})
-	ResolveFailures = promauto.NewCounter(prometheus.CounterOpts{
+
+	ResolveFailures = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: ns,
 		Subsystem: "resolve",
 		Name:      "failures",
 		Help:      "Total number of failed SDK resolves",
-	})
-	ResolveSuccesses = promauto.NewCounter(prometheus.CounterOpts{
+	}, []string{ResolveSource, ResolveKind})
+	ResolveFailuresDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: ns,
+		Subsystem: "resolve",
+		Name:      "failures_duration",
+		Help:      "Failed resolves durations",
+	}, []string{ResolveSource, ResolveKind})
+
+	ResolveSuccesses = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: ns,
 		Subsystem: "resolve",
 		Name:      "successes",
-		Help:      "Total number of succeeded SDK resolves",
-	})
+		Help:      "Total number of succeeded resolves",
+	}, []string{ResolveSource})
+	ResolveSuccessesDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: ns,
+		Subsystem: "resolve",
+		Name:      "successes_duration",
+		Help:      "Successful resolves durations",
+	}, []string{ResolveSource})
+
 	ResolveTimeMS = promauto.NewHistogram(prometheus.HistogramOpts{
 		Namespace: ns,
 		Subsystem: "resolve",

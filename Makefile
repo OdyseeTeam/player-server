@@ -4,7 +4,7 @@ version := $(shell git describe --tags)
 prepare_test:
 	curl https://raw.githubusercontent.com/OdyseeTeam/gody-cdn/master/db-init.sql -o init.sql
 	cp config.example.json config.json
-	docker-compose up -d mysql lbrynet
+	docker-compose up -d mysql
 	# rm init.sql
 
 .PHONY: test
@@ -13,7 +13,6 @@ test:
 
 .PHONY: test_ci
 test_ci:
-	scripts/wait_for_wallet.sh
 	go install golang.org/x/tools/cmd/cover@latest
 	go install github.com/mattn/goveralls@latest
 	go install github.com/jandelgado/gcov2lcov@latest

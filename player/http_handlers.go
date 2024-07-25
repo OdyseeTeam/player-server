@@ -247,7 +247,6 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	stream, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
-		metrics.ResolveFailures.Inc()
 		processStreamError("resolve", uri, c.Writer, c.Request, err)
 		return
 	}
@@ -339,7 +338,6 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	stream, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
-		metrics.ResolveFailures.Inc()
 		processStreamError("resolve", uri, c.Writer, c.Request, err)
 		return
 	}

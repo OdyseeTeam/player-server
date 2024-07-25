@@ -3,7 +3,6 @@ package player
 import (
 	"encoding/hex"
 	"errors"
-	"math/rand"
 	"regexp"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/logger"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
+	"github.com/prometheus/client_golang/prometheus"
 
 	tclient "github.com/OdyseeTeam/transcoder/client"
 	ljsonrpc "github.com/lbryio/lbry.go/v2/extras/jsonrpc"
@@ -20,8 +20,10 @@ import (
 )
 
 const (
-	edgeTokenHeader = "Authorization"
-	edgeTokenPrefix = "Token "
+	edgeTokenHeader      = "Authorization"
+	edgeTokenPrefix      = "Token "
+	resolveCacheDuration = 5 * time.Minute
+	defaultSdkAddress    = "https://api.na-backend.odysee.com/api/v1/proxy"
 )
 
 var (
@@ -74,7 +76,7 @@ func WithPrefetch(enabled bool) func(options *PlayerOptions) {
 // NewPlayer initializes an instance with optional BlobStore.
 func NewPlayer(hotCache *HotCache, optionFuncs ...func(*PlayerOptions)) *Player {
 	options := &PlayerOptions{
-		lbrynetAddress:   "http://localhost:5279",
+		lbrynetAddress:   defaultSdkAddress,
 		downloadsEnabled: true,
 	}
 
@@ -107,16 +109,15 @@ func (p *Player) Play(s *Stream, c *gin.Context) error {
 
 // ResolveStream resolves provided URI by calling the SDK.
 func (p *Player) ResolveStream(claimId string) (*Stream, error) {
+	start := time.Now()
 	defer func(t time.Time) {
 		metrics.ResolveTimeMS.Observe(float64(time.Since(t).Milliseconds()))
-	}(time.Now())
+	}(start)
 
 	var claim *ljsonrpc.Claim
 
-	cachedClaim, err := p.resolveCache.Get(claimId)
-	if err == nil {
-		claim = cachedClaim.(*ljsonrpc.Claim)
-	} else {
+	cachedClaim, cErr := p.resolveCache.Get(claimId)
+	if cErr != nil {
 		var err error
 		claim, err = p.resolve(claimId)
 		if err != nil {
@@ -142,8 +143,12 @@ func (p *Player) ResolveStream(claimId string) (*Stream, error) {
 				return nil, err
 			}
 		}
-		metrics.ResolveSuccesses.Inc()
-		_ = p.resolveCache.SetWithExpire(claimId, claim, time.Duration(rand.Intn(5)+5)*time.Minute) // random time between 5 and 10 min, to spread load on wallet servers
+		metrics.ResolveSuccesses.WithLabelValues(metrics.ResolveSourceOApi).Inc()
+		_ = p.resolveCache.SetWithExpire(claimId, claim, resolveCacheDuration)
+	} else {
+		metrics.ResolveSuccessesDuration.WithLabelValues(metrics.ResolveSourceCache).Observe(float64(time.Since(start)))
+		metrics.ResolveSuccesses.WithLabelValues(metrics.ResolveSourceCache).Inc()
+		claim = cachedClaim.(*ljsonrpc.Claim)
 	}
 
 	if claim.Value.GetStream() == nil {
@@ -158,24 +163,55 @@ func (p *Player) ResolveStream(claimId string) (*Stream, error) {
 
 // resolve the claim
 func (p *Player) resolve(claimID string) (*ljsonrpc.Claim, error) {
+	generalFailureLabels := prometheus.Labels{
+		metrics.ResolveSource: metrics.ResolveSourceOApi,
+		metrics.ResolveKind:   metrics.ResolveFailureGeneral,
+	}
+	notFoundFailureLabels := prometheus.Labels{
+		metrics.ResolveSource: metrics.ResolveSourceOApi,
+		metrics.ResolveKind:   metrics.ResolveFailureClaimNotFound,
+	}
+
+	start := time.Now()
+
 	// TODO: Get rid of the resolve call when ClaimSearchArgs acquires URI param
 	if !reClaim.MatchString(claimID) {
 		resolved, err := p.lbrynetClient.Resolve(claimID)
 		if err != nil {
+			metrics.ResolveFailuresDuration.With(generalFailureLabels).Observe(float64(time.Since(start)))
+			metrics.ResolveFailures.With(generalFailureLabels).Inc()
 			return nil, err
 		}
 
 		claim := (*resolved)[claimID]
 		if claim.CanonicalURL == "" {
+			metrics.ResolveFailuresDuration.With(notFoundFailureLabels).Observe(float64(time.Since(start)))
+			metrics.ResolveFailures.With(notFoundFailureLabels).Inc()
 			return nil, ErrClaimNotFound
 		}
 		return &claim, nil
 	}
 	resp, err := p.lbrynetClient.ClaimSearch(ljsonrpc.ClaimSearchArgs{ClaimID: &claimID, PageSize: 1, Page: 1})
 	if err != nil {
+		metrics.ResolveFailuresDuration.With(prometheus.Labels{
+			metrics.ResolveSource: metrics.ResolveSourceOApi,
+			metrics.ResolveKind:   metrics.ResolveFailureGeneral,
+		}).Observe(float64(time.Since(start)))
+		metrics.ResolveFailures.With(prometheus.Labels{
+			metrics.ResolveSource: metrics.ResolveSourceOApi,
+			metrics.ResolveKind:   metrics.ResolveFailureGeneral,
+		}).Inc()
 		return nil, err
 	}
 	if len(resp.Claims) == 0 {
+		metrics.ResolveFailuresDuration.With(prometheus.Labels{
+			metrics.ResolveSource: metrics.ResolveSourceOApi,
+			metrics.ResolveKind:   metrics.ResolveFailureClaimNotFound,
+		}).Observe(float64(time.Since(start)))
+		metrics.ResolveFailures.With(prometheus.Labels{
+			metrics.ResolveSource: metrics.ResolveSourceOApi,
+			metrics.ResolveKind:   metrics.ResolveFailureClaimNotFound,
+		}).Inc()
 		return nil, ErrClaimNotFound
 	}
 	return &resp.Claims[0], nil
