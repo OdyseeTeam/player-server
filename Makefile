@@ -13,7 +13,6 @@ test:
 
 .PHONY: test_ci
 test_ci:
-	scripts/wait_for_wallet.sh
 	go install golang.org/x/tools/cmd/cover@latest
 	go install github.com/mattn/goveralls@latest
 	go install github.com/jandelgado/gcov2lcov@latest
