@@ -23,6 +23,7 @@ const (
 	edgeTokenHeader      = "Authorization"
 	edgeTokenPrefix      = "Token "
 	resolveCacheDuration = 5 * time.Minute
+	defaultSdkAddress    = "https://api.na-backend.odysee.com/api/v1/proxy"
 )
 
 var (
@@ -75,7 +76,7 @@ func WithPrefetch(enabled bool) func(options *PlayerOptions) {
 // NewPlayer initializes an instance with optional BlobStore.
 func NewPlayer(hotCache *HotCache, optionFuncs ...func(*PlayerOptions)) *Player {
 	options := &PlayerOptions{
-		lbrynetAddress:   "http://localhost:5279",
+		lbrynetAddress:   defaultSdkAddress,
 		downloadsEnabled: true,
 	}
 
