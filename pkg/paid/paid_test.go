@@ -3,7 +3,6 @@ package paid
 import (
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	mrand "math/rand"
 	"os"
 	"os/exec"
@@ -19,9 +18,9 @@ var testTxID = "e5a6a9ef4433b8868cebb770d1d2244eed410eb7503a9ffa82dce40aa62bbae7
 
 func generateKeyFile() (string, error) {
 	keyFilename := fmt.Sprintf("test_private_key_%v.pem", time.Now().Unix())
-	cmd := fmt.Sprintf("openssl genrsa -out %s -traditional 2048", keyFilename)
-	if out, err := exec.Command("bash", "-c", cmd).Output(); err != nil {
-		return "", fmt.Errorf("command %s failed: %s: %s", cmd, err, string(out))
+	cmd := fmt.Sprintf("openssl genrsa -out %s 2048", keyFilename)
+	if out, err := exec.Command("sh", "-c", cmd).Output(); err != nil {
+		return "", fmt.Errorf("command %s failed: %s (%s)", cmd, err, string(out))
 	}
 	return keyFilename, nil
 }
@@ -32,7 +31,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	rawKey, err := ioutil.ReadFile(keyFile)
+	rawKey, err := os.ReadFile(keyFile)
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +54,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateToken(t *testing.T) {
-	size := mrand.Uint64()
+	size := uint64(mrand.Int63n(1000_000_000))
 	token, err := CreateToken(testStreamID, testTxID, size, ExpTenSecPer100MB)
 	require.NoError(t, err)
 

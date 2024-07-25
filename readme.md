@@ -19,7 +19,6 @@ make test
 go run .\
       --disk-cache-dir=/tmp/player_cache\
       --disk-cache-size=800GB\
-      --lbrynet=http://localhost:5279\
       --upstream-reflector=eu-p2.lbryplayer.xyz:5569\
       --upstream-protocol=http\
       --bind=0.0.0.0:8081\
