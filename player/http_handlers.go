@@ -62,34 +62,6 @@ func NewRequestHandler(p *Player) *RequestHandler {
 	return &RequestHandler{p}
 }
 
-var bannedIPs = map[string]bool{
-	"96.76.237.222":   true,
-	"45.47.236.87":    true,
-	"154.53.32.121":   true,
-	"51.222.12.22":    true,
-	"65.108.133.222":  true,
-	"135.181.178.92":  true,
-	"65.21.95.58":     true,
-	"80.129.211.95":   true,
-	"5.161.101.49":    true,
-	"199.217.105.250": true,
-	"3.237.164.90":    true,
-	"3.237.210.152":   true,
-	"3.237.165.26":    true,
-	"3.237.221.248":   true,
-	"37.120.159.165":  true,
-	"199.217.105.243": true,
-	"79.137.105.150":  true,
-	"89.187.177.54":   true,
-	"5.161.108.85":    true,
-	"5.252.23.106":    true,
-	"207.244.91.166":  true,
-	"198.98.52.25":    true,
-	"207.244.91.131":  true,
-	"175.182.108.229": true,
-	"107.181.206.145": true,
-}
-
 var allowedReferrers = map[string]bool{
 	"https://piped.kavin.rocks/": true,
 	"https://piped.video/":       true,
@@ -211,10 +183,11 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	//this is here temporarily due to abuse. a better solution will be found
 	ip := c.ClientIP()
-	if bannedIPs[ip] {
+	if firewall.CheckBans(ip) {
 		c.AbortWithStatus(http.StatusTooManyRequests)
 		return
 	}
+
 	if strings.Contains(c.Request.URL.String(), "Katmovie18") {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return

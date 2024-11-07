@@ -18,7 +18,9 @@ require (
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20230307181431-a01aa6dc0629
 	github.com/lbryio/reflector.go v1.1.3-0.20240409180046-de736b068d75
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6
+	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/prometheus/client_golang v1.19.0
+	github.com/puzpuzpuz/xsync/v3 v3.4.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
@@ -116,7 +118,7 @@ require (
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect

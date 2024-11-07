@@ -2,3 +2,5 @@
 coverage.*
 
 config.json
+
+blacklist.json
