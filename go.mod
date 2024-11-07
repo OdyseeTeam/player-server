@@ -14,7 +14,7 @@ require (
 	github.com/getsentry/sentry-go v0.28.1
 	github.com/gin-contrib/pprof v1.5.0
 	github.com/gin-gonic/gin v1.10.0
-	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/lbryio/lbry.go/v2 v2.7.2-0.20230307181431-a01aa6dc0629
 	github.com/lbryio/reflector.go v1.1.3-0.20240409180046-de736b068d75
 	github.com/lbryio/types v0.0.0-20220224142228-73610f6654a6

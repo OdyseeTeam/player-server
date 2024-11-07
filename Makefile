@@ -4,7 +4,11 @@ version := $(shell git describe --tags)
 prepare_test:
 	curl https://raw.githubusercontent.com/OdyseeTeam/gody-cdn/master/db-init.sql -o init.sql
 	cp config.example.json config.json
-	docker-compose up -d mysql
+	@if command -v docker-compose >/dev/null 2>&1; then \
+		docker-compose up -d mysql; \
+	else \
+		docker compose up -d mysql; \
+	fi
 	# rm init.sql
 
 .PHONY: test
