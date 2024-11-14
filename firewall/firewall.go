@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,8 +15,8 @@ import (
 
 	"github.com/OdyseeTeam/player-server/internal/iapi"
 	"github.com/OdyseeTeam/player-server/pkg/logger"
-
 	"github.com/bluele/gcache"
+	"github.com/gaissmai/bart"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/puzpuzpuz/xsync/v3"
@@ -43,12 +44,17 @@ func ReloadBlacklist() {
 		return
 	}
 	blacklistedAsn.Clear()
-	bannedIPs.Clear()
+	bannedIPs = bart.Table[int]{}
 	for _, v := range bl.BlacklistedAsn {
 		blacklistedAsn.Store(v, true)
 	}
 	for _, v := range bl.BlacklistedIPs {
-		bannedIPs.Store(v, true)
+		parsedPrefix, err := netip.ParsePrefix(v)
+		if err != nil {
+			Logger.Warnf("Error parsing IP %s: %s", v, err)
+			continue
+		}
+		bannedIPs.Insert(parsedPrefix, 1)
 	}
 }
 
@@ -61,12 +67,19 @@ var whitelist = map[string]bool{
 	"51.210.0.171": true,
 }
 
-var bannedIPs = xsync.NewMapOf[string, bool]()
+var bannedIPs = bart.Table[int]{}
 var blacklistedAsn = xsync.NewMapOf[int, bool]()
 var Logger = logger.GetLogger()
 
 func CheckBans(ip string) bool {
-	if _, found := bannedIPs.Load(ip); found {
+	parsedIp, err := netip.ParseAddr(ip)
+	if err != nil {
+		Logger.Warnf("Error parsing IP %s: %s", ip, err)
+		return false
+	}
+	_, ok := bannedIPs.Lookup(parsedIp)
+	if ok {
+		Logger.Warnf("IP %s matches an entry in the banned list", ip)
 		return true
 	}
 	org, asn, err := GetProviderForIP(ip)

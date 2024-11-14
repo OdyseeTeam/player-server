@@ -45,3 +45,16 @@ func Test_initISPGeoIPDB(t *testing.T) {
 	assert.Equal(t, "CLOUDFLARENET", ASN)
 	assert.Equal(t, 13335, nr)
 }
+
+func Test_checkBannedIp(t *testing.T) {
+	if os.Getenv("MAXMIND_KEY") == "" {
+		t.Skip("Skipping test because MAXMIND_KEY is not set")
+	}
+	ip := "207.182.29.47"
+	ReloadBlacklist()
+	if !assert.True(t, CheckBans(ip)) {
+		return
+	}
+	ip = "1.1.1.1"
+	assert.False(t, CheckBans(ip))
+}

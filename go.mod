@@ -1,6 +1,8 @@
 module github.com/OdyseeTeam/player-server
 
-go 1.22
+go 1.22.0
+
+toolchain go1.23.3
 
 require (
 	github.com/Depado/ginprom v1.8.1
@@ -11,6 +13,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500
 	github.com/ekyoung/gin-nice-recovery v0.0.0-20160510022553-1654dca486db
+	github.com/gaissmai/bart v0.13.1
 	github.com/getsentry/sentry-go v0.28.1
 	github.com/gin-contrib/pprof v1.5.0
 	github.com/gin-gonic/gin v1.10.0
@@ -33,6 +36,7 @@ require (
 	github.com/aws/aws-sdk-go v1.51.19 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bits-and-blooms/bitset v1.14.3 // indirect
 	github.com/brk0v/directio v0.0.0-20190225130936-69406e757cf7 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
