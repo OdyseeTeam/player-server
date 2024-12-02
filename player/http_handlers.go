@@ -265,9 +265,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		}
 	}
 
-	if c.GetHeader("range") == "" {
-		metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
-	}
+	metrics.StreamsDelivered.WithLabelValues(metrics.StreamOriginal).Inc()
 
 	err = stream.PrepareForReading()
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("retrieve %v", uri))
@@ -437,5 +435,5 @@ func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *St
 func fitForTranscoder(c *gin.Context, s *Stream) bool {
 	return (strings.HasPrefix(c.FullPath(), "/api/v4/") ||
 		((reV5StartEndpoint.MatchString(c.FullPath()) || reV6StartEndpoint.MatchString(c.FullPath())) && c.Request.Method == http.MethodHead)) &&
-		strings.HasPrefix(s.ContentType, "video/") && c.GetHeader("range") == ""
+		strings.HasPrefix(s.ContentType, "video/")
 }
