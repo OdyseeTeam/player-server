@@ -260,7 +260,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		tcPath := h.player.tclient.GetPlaybackPath(c.Param("claim_id"), stream.hash)
 		if tcPath != "" {
 			metrics.StreamsDelivered.WithLabelValues(metrics.StreamTranscoded).Inc()
-			c.Redirect(http.StatusPermanentRedirect, getPlaylistURL(c.Request.URL.Path, c.Request.URL.Query(), tcPath, stream))
+			c.Redirect(http.StatusFound, getPlaylistURL(c.Request.URL.Path, c.Request.URL.Query(), tcPath, stream))
 			return
 		}
 	}

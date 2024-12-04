@@ -249,7 +249,7 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 		return
 	}
 
-	Logger.Debugf("prefetching %v chunks to local cache", prefetchLen)
+	Logger.Debugf("prefetching %d chunks to local cache", prefetchLen)
 	for _, bi := range s.sdBlob.BlobInfos[chunkIdx : chunkIdx+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 
@@ -258,10 +258,10 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 			continue
 		}
 
-		Logger.Debugf("prefetching chunk %v", hash)
+		Logger.Debugf("prefetching chunk %s", hash)
 		_, err := s.player.blobSource.GetChunk(hash, s.sdBlob.Key, bi.IV)
 		if err != nil {
-			Logger.Errorf("failed to prefetch chunk %v: %v", hash, errors.FullTrace(err))
+			Logger.Errorf("failed to prefetch chunk %s: %s", hash, err.Error())
 			return
 		}
 	}
