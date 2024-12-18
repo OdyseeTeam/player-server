@@ -1,4 +1,3 @@
-version: "3.2"
 services:
   mysql:
     image: percona:ps-8.0
@@ -15,12 +14,6 @@ services:
       - MYSQL_PASSWORD=godycdn
       - MYSQL_DATABASE=godycdn
       - MYSQL_ROOT_PASSWORD=godycdnrootpw
-  lbrynet:
-    image: 'lbry/lbrynet-tv:0.101.2'
-    labels:
-      com.centurylinklabs.watchtower.enable: 1
-    ports:
-      - "5279:5279"
   player:
     image: 'odyseeteam/player-server:latest'
     logging:
@@ -36,7 +29,6 @@ services:
       - "5569:5569"
       - "5568:5568/udp"
       - "5568:5568/tcp"
-    #mem_limit: 28597m
     volumes:
       - "/tmp/reflector_cache:/tmp/player_cache"
       - "/tmp/reflector_cache:/tmp/transcoded_cache"
@@ -44,7 +36,6 @@ services:
       - "./config.json:/app/config.json"
     entrypoint: >
       ./odysee_player
-      --lbrynet=http://lbrynet:5279
       --upstream-reflector=reflector.lbry.com:5569
       --upstream-protocol=http
       --bind=0.0.0.0:8080
@@ -63,10 +54,4 @@ services:
       - PLAYER_NAME=test-player
       - GOGC=60
     depends_on:
-      - lbrynet
       - mysql
-  watchtower:
-    image: 'containrrr/watchtower'
-    command: "--interval 30 --cleanup --label-enable"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
