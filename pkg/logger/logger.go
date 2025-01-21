@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"io/ioutil"
+	"io"
 
 	"github.com/sirupsen/logrus"
 )
@@ -37,5 +37,5 @@ func GetLogger() *logrus.Logger {
 // DisableLogger turns off logging output for this module logger
 func DisableLogger(l *logrus.Logger) {
 	l.SetLevel(logrus.PanicLevel)
-	l.SetOutput(ioutil.Discard)
+	l.SetOutput(io.Discard)
 }

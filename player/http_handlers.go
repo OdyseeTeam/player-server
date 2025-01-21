@@ -16,6 +16,7 @@ import (
 	"github.com/OdyseeTeam/player-server/internal/iapi"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/pkg/app"
+	"github.com/OdyseeTeam/player-server/pkg/logger"
 	tclient "github.com/OdyseeTeam/transcoder/client"
 
 	"github.com/getsentry/sentry-go"
@@ -92,8 +93,7 @@ var allowedXRequestedWith = "com.odysee.app"
 
 // Handle is responsible for all HTTP media delivery via player module.
 func (h *RequestHandler) Handle(c *gin.Context) {
-	addCSPHeaders(c)
-	addPoweredByHeaders(c)
+	addExtraResponseHeaders(c)
 	c.Header("player-request-method", c.Request.Method)
 	if c.Request.Method == http.MethodHead {
 		c.Header("Cache-Control", "no-store, No-cache")
@@ -304,8 +304,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	uri := c.Param("claim_id")
-	addCSPHeaders(c)
-	addPoweredByHeaders(c)
+	addExtraResponseHeaders(c)
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
 
@@ -331,6 +330,13 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	}
 	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
+		logger.SendToSentry(
+			err,
+			"uri", uri,
+			"sd_hash", c.Param("sd_hash"),
+			"fragment", c.Param("fragment"),
+			"url", c.Request.RequestURI,
+		)
 		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
 	}
 	metrics.TcOutBytes.Add(float64(size))
@@ -407,14 +413,11 @@ func addBreadcrumb(r *http.Request, category, message string) {
 	}
 }
 
-func addPoweredByHeaders(c *gin.Context) {
-	c.Header("X-Powered-By", playerName)
-	c.Header("Access-Control-Expose-Headers", "X-Powered-By")
-}
-
-func addCSPHeaders(c *gin.Context) {
+func addExtraResponseHeaders(c *gin.Context) {
 	c.Header("Report-To", `{"group":"default","max_age":31536000,"endpoints":[{"url":"https://6fd448c230d0731192f779791c8e45c3.report-uri.com/a/d/g"}],"include_subdomains":true}`)
 	c.Header("Content-Security-Policy", "script-src 'none'; report-uri https://6fd448c230d0731192f779791c8e45c3.report-uri.com/r/d/csp/enforce; report-to default")
+	c.Header("Access-Control-Expose-Headers", "X-Powered-By, X-77-Cache")
+	c.Header("X-Powered-By", playerName)
 }
 
 func getPlaylistURL(fullPath string, query url.Values, tcPath string, stream *Stream) string {

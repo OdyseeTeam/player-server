@@ -39,6 +39,26 @@ func ConfigureSentry(release, env string) {
 	}
 }
 
+// SendToSentry sends an error to Sentry with optional extra details.
+func SendToSentry(err error, details ...string) *sentry.EventID {
+	extra := map[string]string{}
+	var eventID *sentry.EventID
+	for i := 0; i < len(details); i += 2 {
+		if i+1 > len(details)-1 {
+			break
+		}
+		extra[details[i]] = details[i+1]
+	}
+
+	sentry.WithScope(func(scope *sentry.Scope) {
+		for k, v := range extra {
+			scope.SetExtra(k, v)
+		}
+		sentry.CaptureException(err)
+	})
+	return eventID
+}
+
 func filterEvent(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 	for _, exc := range event.Exception {
 		for _, ignored := range IgnoredExceptions {
