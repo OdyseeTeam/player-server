@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"net/http"
 	"os"
 	"time"
 
@@ -17,11 +18,13 @@ var SentryHandler = sentrygin.New(sentrygin.Options{
 func ConfigureSentry(release, env string) {
 	l := GetLogger()
 	dsn := os.Getenv("SENTRY_DSN")
+	playerName := os.Getenv("PLAYER_NAME")
 	opts := sentry.ClientOptions{
 		Dsn:              dsn,
 		Release:          release,
 		AttachStacktrace: true,
 		BeforeSend:       filterEvent,
+		ServerName:       playerName,
 	}
 
 	if env == EnvTest {
@@ -40,7 +43,7 @@ func ConfigureSentry(release, env string) {
 }
 
 // SendToSentry sends an error to Sentry with optional extra details.
-func SendToSentry(err error, details ...string) *sentry.EventID {
+func SendToSentry(err error, request *http.Request, details ...string) *sentry.EventID {
 	extra := map[string]string{}
 	var eventID *sentry.EventID
 	for i := 0; i < len(details); i += 2 {
@@ -54,6 +57,7 @@ func SendToSentry(err error, details ...string) *sentry.EventID {
 		for k, v := range extra {
 			scope.SetExtra(k, v)
 		}
+		scope.SetRequest(request)
 		sentry.CaptureException(err)
 	})
 	return eventID
