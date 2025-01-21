@@ -220,7 +220,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	stream, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
-		processStreamError("resolve", uri, c.Writer, c.Request, err)
+		processStreamError("resolve", c, uri, err)
 		return
 	}
 	hasValidChannel := stream.Claim.SigningChannel != nil && stream.Claim.SigningChannel.ClaimID != ""
@@ -248,7 +248,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	err = h.player.VerifyAccess(stream, c)
 	if err != nil {
-		processStreamError("access", uri, c.Writer, c.Request, err)
+		processStreamError("access", c, uri, err)
 		return
 	}
 	if flagged && !isSpeech {
@@ -273,7 +273,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	err = stream.PrepareForReading()
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("retrieve %v", uri))
 	if err != nil {
-		processStreamError("retrieval", uri, c.Writer, c.Request, err)
+		processStreamError("retrieval", c, uri, err)
 		return
 	}
 
@@ -296,7 +296,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		addBreadcrumb(c.Request, "player", fmt.Sprintf("play %v", uri))
 		err = h.player.Play(stream, c)
 		if err != nil {
-			processStreamError("playback", uri, c.Writer, c.Request, err)
+			processStreamError("playback", c, uri, err)
 			return
 		}
 	}
@@ -311,7 +311,7 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	stream, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
-		processStreamError("resolve", uri, c.Writer, c.Request, err)
+		processStreamError("resolve", c, uri, err)
 		return
 	}
 	hasValidChannel := stream.Claim.SigningChannel != nil && stream.Claim.SigningChannel.ClaimID != ""
@@ -325,19 +325,13 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	}
 	err = h.player.VerifyAccess(stream, c)
 	if err != nil {
-		processStreamError("access", uri, c.Writer, c.Request, err)
+		processStreamError("access", c, uri, err)
 		return
 	}
 	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
-		logger.SendToSentry(
-			err,
-			"uri", uri,
-			"sd_hash", c.Param("sd_hash"),
-			"fragment", c.Param("fragment"),
-			"url", c.Request.RequestURI,
-		)
-		writeErrorResponse(c.Writer, http.StatusNotFound, err.Error())
+		processStreamError("transcoder", c, uri, err, "sd_hash", c.Param("sd_hash"), "fragment", c.Param("fragment"))
+		return
 	}
 	metrics.TcOutBytes.Add(float64(size))
 }
@@ -357,9 +351,9 @@ func writeHeaders(c *gin.Context, s *Stream) {
 	}
 }
 
-func processStreamError(errorType string, uri string, w http.ResponseWriter, r *http.Request, err error) {
-	sendToSentry := true
-
+func processStreamError(errorType string, gctx *gin.Context, uri string, err error, extra ...string) {
+	req := gctx.Request
+	w := gctx.Writer
 	if err == tclient.ErrChannelNotEnabled {
 		return
 	}
@@ -369,33 +363,34 @@ func processStreamError(errorType string, uri string, w http.ResponseWriter, r *
 		return
 	}
 
-	Logger.Errorf("%s stream %v - %s error: %v", r.Method, uri, errorType, err)
+	Logger.Errorf("%s stream %v - %s error: %v", gctx.Request.Method, uri, errorType, err)
 
 	if errors.Is(err, ErrPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
 	} else if errors.Is(err, ErrClaimNotFound) {
-		sendToSentry = false
 		writeErrorResponse(w, http.StatusNotFound, err.Error())
 	} else if errors.Is(err, ErrEdgeCredentialsMissing) {
-		sendToSentry = false
 		writeErrorResponse(w, http.StatusUnauthorized, err.Error())
 	} else if strings.Contains(err.Error(), "blob not found") {
-		sendToSentry = false
 		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else if strings.Contains(err.Error(), "hash in response does not match") {
+		logger.SendToSentry(err, req, "error_type", errorType)
 		writeErrorResponse(w, http.StatusServiceUnavailable, err.Error())
 	} else if strings.Contains(err.Error(), "token contains an invalid number of segments") {
+		logger.SendToSentry(err, req, "error_type", errorType)
 		writeErrorResponse(w, http.StatusUnauthorized, err.Error())
 	} else if strings.Contains(err.Error(), "crypto/rsa: verification error") {
+		logger.SendToSentry(err, req, "error_type", errorType)
 		writeErrorResponse(w, http.StatusUnauthorized, err.Error())
 	} else if strings.Contains(err.Error(), "token is expired") {
+		logger.SendToSentry(err, req, "error_type", errorType)
 		writeErrorResponse(w, http.StatusGone, err.Error())
+	} else if errorType == "transcoder" {
+		logger.SendToSentry(err, req, extra...)
+		writeErrorResponse(w, http.StatusNotFound, err.Error())
 	} else {
+		logger.SendToSentry(err, req, "error_type", errorType)
 		writeErrorResponse(w, http.StatusInternalServerError, err.Error())
-	}
-
-	if hub := sentry.GetHubFromContext(r.Context()); hub != nil && sendToSentry && err != nil {
-		hub.CaptureException(err)
 	}
 }
 
