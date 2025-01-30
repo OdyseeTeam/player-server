@@ -60,7 +60,7 @@ func ReloadBlacklist() {
 
 var WindowSize = 120 * time.Second
 
-const MaxStringsPerIp = 6
+const MaxStringsPerIp = 3
 
 var resourcesForIPCache = gcache.New(1000).Simple().Build()
 var whitelist = map[string]bool{
