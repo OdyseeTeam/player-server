@@ -57,4 +57,5 @@ func Test_checkBannedIp(t *testing.T) {
 	}
 	ip = "1.1.1.1"
 	assert.False(t, CheckBans(ip))
+
 }

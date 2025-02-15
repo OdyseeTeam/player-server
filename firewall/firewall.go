@@ -41,10 +41,11 @@ func ReloadBlacklist() {
 	var bl blacklist
 	err = json.Unmarshal(f, &bl)
 	if err != nil {
+		Logger.Errorf("failed to unmarshal blacklist: %v", err)
 		return
 	}
 	blacklistedAsn.Clear()
-	bannedIPs = bart.Table[int]{}
+	bannedIPs = &bart.Table[int]{}
 	for _, v := range bl.BlacklistedAsn {
 		blacklistedAsn.Store(v, true)
 	}
@@ -60,14 +61,14 @@ func ReloadBlacklist() {
 
 var WindowSize = 120 * time.Second
 
-const MaxStringsPerIp = 3
+const MaxStringsPerIp = 4
 
 var resourcesForIPCache = gcache.New(1000).Simple().Build()
 var whitelist = map[string]bool{
 	"51.210.0.171": true,
 }
 
-var bannedIPs = bart.Table[int]{}
+var bannedIPs = &bart.Table[int]{}
 var blacklistedAsn = xsync.NewMapOf[int, bool]()
 var Logger = logger.GetLogger()
 
