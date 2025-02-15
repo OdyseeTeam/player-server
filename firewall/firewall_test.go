@@ -16,7 +16,7 @@ func TestCheckIPAccess(t *testing.T) {
 	endpoint := "/api/v1/example"
 	WindowSize = 7 * time.Second
 	// Test the first five accesses for an IP don't exceed the limit
-	for i := 1; i <= 6; i++ {
+	for i := 1; i <= MaxStringsPerIp; i++ {
 		result, _ := CheckAndRateLimitIp(ip, endpoint+strconv.Itoa(i))
 		assert.False(t, result, "Expected result to be false, got %v for endpoint %s", result, endpoint+strconv.Itoa(i))
 	}
