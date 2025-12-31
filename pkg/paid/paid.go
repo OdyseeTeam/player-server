@@ -10,14 +10,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
-
-	"github.com/OdyseeTeam/player-server/pkg/logger"
 
 	"github.com/golang-jwt/jwt/v4"
 )
-
-var Logger = logger.GetLogger()
 
 // Expfunc is a function type intended for CreateToken.
 // Should take stream size in bytes and return validity as Unix time
@@ -67,7 +64,7 @@ func GeneratePrivateKey() error {
 	if err != nil {
 		return err
 	}
-	Logger.Infof("generated an in-memory private key")
+	slog.Info("generated in-memory private key", "component", "paid")
 
 	km = k
 	err = InitPubKey(k.PublicKeyBytes())
@@ -89,7 +86,7 @@ func (k *keyManager) createToken(streamID string, txid string, streamSize uint64
 			IssuedAt:  time.Now().UTC().Unix(),
 		},
 	})
-	Logger.Debugf("created a token %v / %v", token.Header, token.Claims)
+	slog.Debug("token created", "component", "paid", "header", token.Header, "claims", token.Claims)
 	return token.SignedString(k.privKey)
 }
 
@@ -103,7 +100,7 @@ func (k *keyManager) loadFromBytes(b []byte) error {
 		return err
 	}
 	k.privKey = key
-	Logger.Infof("loaded a private RSA key (%v bytes)", k.privKey.Size())
+	slog.Info("loaded private RSA key", "component", "paid", "size_bytes", k.privKey.Size())
 
 	k.pubKeyMarshaled, err = k.marshalPublicKey()
 	if err != nil {

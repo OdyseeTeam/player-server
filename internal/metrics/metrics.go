@@ -31,6 +31,14 @@ const (
 	ResolveSourceOApi           = "oapi"
 	ResolveFailureGeneral       = "general"
 	ResolveFailureClaimNotFound = "claim_not_found"
+
+	FirewallReasonIPBan         = "ip_ban"
+	FirewallReasonASNBan        = "asn_ban"
+	FirewallReasonRateLimit     = "rate_limit"
+	FirewallReasonDownloadLimit = "download_limit"
+
+	FirewallOutcomeFlagged = "flagged"
+	FirewallOutcomeBlocked = "blocked"
 )
 
 var (
@@ -134,6 +142,34 @@ var (
 		Name:      "info",
 		Help:      "Info about cache",
 	}, []string{"max_size"})
+
+	FirewallBlocked = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "firewall",
+		Name:      "blocked_total",
+		Help:      "Total blocked requests by reason",
+	}, []string{"reason"})
+
+	FirewallRateLimitHits = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "firewall",
+		Name:      "rate_limit_hits_total",
+		Help:      "Rate limit hits by outcome",
+	}, []string{"outcome"})
+
+	FirewallASNBlocked = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: ns,
+		Subsystem: "firewall",
+		Name:      "asn_blocked_total",
+		Help:      "Blocked requests by ASN organization",
+	}, []string{"org"})
+
+	FirewallTrackedIPs = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: ns,
+		Subsystem: "firewall",
+		Name:      "tracked_ips",
+		Help:      "Number of IPs currently being rate-tracked",
+	})
 )
 
 func PlayerCacheInfo(cacheSize uint64) {

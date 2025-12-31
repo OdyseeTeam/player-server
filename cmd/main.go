@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -22,11 +23,8 @@ import (
 	"github.com/lbryio/reflector.go/store"
 
 	"github.com/c2h5oh/datasize"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
-
-var Logger = logger.GetLogger()
 
 var (
 	bindAddress    string
@@ -114,12 +112,12 @@ func run(cmd *cobra.Command, args []string) {
 	var tcsize datasize.ByteSize
 	err := tcsize.UnmarshalText([]byte(transcoderVideoSize))
 	if err != nil {
-		Logger.Fatal(err)
+		logger.Fatal("failed to parse transcoder video size", "component", "cmd", "value", transcoderVideoSize, "error", err)
 	}
 	if transcoderVideoPath != "" && tcsize > 0 && transcoderAddr != "" {
 		err := os.Mkdir(transcoderVideoPath, os.ModePerm)
 		if err != nil && !os.IsExist(err) {
-			Logger.Fatal(err)
+			logger.Fatal("failed to create transcoder video directory", "component", "cmd", "path", transcoderVideoPath, "error", err)
 		}
 
 		tCfg := tclient.Configure().
@@ -134,12 +132,11 @@ func run(cmd *cobra.Command, args []string) {
 			tCfg = tCfg.RemoteServer(transcoderRemoteServer)
 		}
 		c := tclient.New(tCfg)
-		//TODO: this can probably be in a separate go routine so that startup isn't blocked
 		n, err := c.RestoreCache()
 		if err != nil {
-			Logger.Error(err)
+			slog.Error("failed to restore transcoder cache", "component", "cmd", "error", err)
 		} else {
-			Logger.Infof("restored %v items into transcoder cache", n)
+			slog.Info("transcoder cache restored", "component", "cmd", "items", n)
 		}
 
 		p.AddTranscoderClient(&c, transcoderVideoPath)
@@ -162,10 +159,10 @@ func initHotCache(origin store.BlobStore) *player.HotCache {
 	var hotCacheBytes datasize.ByteSize
 	err := hotCacheBytes.UnmarshalText([]byte(hotCacheSize))
 	if err != nil {
-		Logger.Fatal(err)
+		logger.Fatal("failed to parse hot cache size", "component", "cmd", "value", hotCacheSize, "error", err)
 	}
 	if hotCacheBytes <= 0 {
-		Logger.Fatal("hot cache size must be greater than 0. if you want to disable hot cache, you'll have to do a bit of coding")
+		logger.Fatal("hot cache size must be greater than 0", "component", "cmd")
 	}
 
 	metrics.PlayerCacheInfo(hotCacheBytes.Bytes())
@@ -191,23 +188,21 @@ func getBlobSource() store.BlobStore {
 		case "http":
 			blobSource = store.NewHttpStore(upstreamReflector, edgeToken)
 		default:
-			Logger.Fatalf("protocol is not recognized: %s", upstreamProtocol)
+			logger.Fatal("protocol not recognized", "component", "cmd", "protocol", upstreamProtocol)
 		}
 
 	} else if cloudFrontEndpoint != "" {
 		blobSource = store.NewCloudFrontROStore(cloudFrontEndpoint)
 	} else {
-		Logger.Fatal("one of [--upstream-reflector|--cloudfront-endpoint] is required")
+		logger.Fatal("one of [--upstream-reflector|--cloudfront-endpoint] is required", "component", "cmd")
 	}
 
-	diskCacheMaxSize, diskCachePath := diskCacheParams() //TODO: use reflector code instead of code duplication
-	//we are tracking blobs in memory with a 1 byte long boolean, which means that for each 2MB (a blob) we need 1Byte
-	// so if the underlying cache holds 10MB, 10MB/2MB=5Bytes which is also the exact count of objects to restore on startup
+	diskCacheMaxSize, diskCachePath := diskCacheParams()
 	realCacheSize := float64(diskCacheMaxSize) / float64(stream.MaxBlobSize)
 	if diskCacheMaxSize > 0 {
 		err := os.MkdirAll(diskCachePath, os.ModePerm)
 		if err != nil {
-			Logger.Fatal(err)
+			logger.Fatal("failed to create disk cache directory", "component", "cmd", "path", diskCachePath, "error", err)
 		}
 		blobSource = store.NewCachingStore(
 			"player",
@@ -220,58 +215,54 @@ func getBlobSource() store.BlobStore {
 }
 
 func diskCacheParams() (int, string) {
-	l := Logger
-
 	if diskCacheDir == "" {
 		return 0, ""
 	}
 
 	path := diskCacheDir
 	if len(path) == 0 || path[0] != '/' {
-		l.Fatal("--disk-cache-dir must start with '/'")
+		logger.Fatal("--disk-cache-dir must start with '/'", "component", "cmd")
 	}
 
 	var maxSize datasize.ByteSize
 	err := maxSize.UnmarshalText([]byte(diskCacheSize))
 	if err != nil {
-		l.Fatal(err)
+		logger.Fatal("failed to parse disk cache size", "component", "cmd", "value", diskCacheSize, "error", err)
 	}
 	if maxSize <= 0 {
-		l.Fatal("--disk-cache-size must be more than 0")
+		logger.Fatal("--disk-cache-size must be more than 0", "component", "cmd")
 	}
 
 	return int(maxSize), path
 }
 
 func initLogger() {
-	logLevel := logrus.InfoLevel
+	logLevel := slog.LevelInfo
 	if verboseOutput {
-		logLevel = logrus.DebugLevel
+		logLevel = slog.LevelDebug
 	}
 	logger.ConfigureDefaults(logLevel)
-	Logger.Infof("initializing %v\n", version.FullName())
+	slog.Info("player starting", "component", "cmd", "version", version.FullName())
 	logger.ConfigureSentry(version.Version(), logger.EnvProd)
 }
 
 func initPubkey() {
-	l := Logger
-
 	r, err := http.Get(paidPubKey)
 	if err != nil {
-		l.Fatal(err)
+		logger.Fatal("failed to fetch pubkey", "component", "cmd", "url", paidPubKey, "error", err)
 	}
 	rawKey, err := io.ReadAll(r.Body)
 	if err != nil {
-		l.Fatal(err)
+		logger.Fatal("failed to read pubkey response", "component", "cmd", "error", err)
 	}
 	err = paid.InitPubKey(rawKey)
 	if err != nil {
-		l.Fatal(err)
+		logger.Fatal("failed to initialize pubkey", "component", "cmd", "error", err)
 	}
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		Logger.Fatalf("error: %v\n", err)
+		logger.Fatal("command execution failed", "component", "cmd", "error", err)
 	}
 }

@@ -3,12 +3,12 @@ package player
 import (
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/OdyseeTeam/player-server/internal/metrics"
-	"github.com/OdyseeTeam/player-server/pkg/logger"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -26,10 +26,7 @@ const (
 	defaultSdkAddress    = "https://api.na-backend.odysee.com/api/v1/proxy"
 )
 
-var (
-	Logger  = logger.GetLogger()
-	reClaim = regexp.MustCompile("^[a-z0-9]{40}$")
-)
+var reClaim = regexp.MustCompile("^[a-z0-9]{40}$")
 
 type PlayerOptions struct {
 	edgeToken        string
@@ -253,7 +250,7 @@ func (p *Player) VerifyAccess(stream *Stream, ctx *gin.Context) error {
 		return nil
 	}
 
-	Logger.WithField("uri", stream.URI).Info("paid stream requested")
+	slog.Info("paid stream requested", "component", "player", "uri", stream.URI)
 	if token == "" {
 		return ErrPaidStream
 	}

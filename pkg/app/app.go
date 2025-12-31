@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -22,7 +23,6 @@ import (
 )
 
 var (
-	Logger         = logger.GetLogger()
 	connContextKey = &contextKey{"conn"}
 	ReadTimeout    = uint(10)
 	WriteTimeout   = uint(15)
@@ -129,10 +129,10 @@ func (a *App) defaultHeadersMiddleware() gin.HandlerFunc {
 // Start starts a HTTP server and returns immediately.
 func (a *App) Start() {
 	go func() {
-		Logger.Infof("starting app server on %v", a.Address)
+		slog.Info("starting app server", "component", "app", "address", a.Address)
 		if err := a.server.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
-				Logger.Fatal(err)
+				logger.Fatal("app server failed", "component", "app", "error", err)
 			}
 		}
 	}()
@@ -140,21 +140,21 @@ func (a *App) Start() {
 	if a.peerServer != nil {
 		err := a.peerServer.Start(":5567")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			Logger.Fatal(err)
+			logger.Fatal("peer server failed to start", "component", "app", "error", err)
 		}
 	}
 
 	if a.http3Server != nil {
 		err := a.http3Server.Start(":5568")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			Logger.Fatal(err)
+			logger.Fatal("http3 server failed to start", "component", "app", "error", err)
 		}
 	}
 
 	if a.httpServer != nil {
 		err := a.httpServer.Start(":5569")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			Logger.Fatal(err)
+			logger.Fatal("http reflector server failed to start", "component", "app", "error", err)
 		}
 	}
 }
@@ -164,13 +164,13 @@ func (a *App) ServeUntilShutdown() {
 	signal.Notify(a.stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-a.stopChan
 
-	Logger.Printf("caught a signal (%v), shutting down http server...", sig)
+	slog.Info("shutting down http server", "component", "app", "signal", sig.String())
 
 	err := a.Shutdown()
 	if err != nil {
-		Logger.Error("error shutting down http server: ", err)
+		slog.Error("error shutting down http server", "component", "app", "error", err)
 	} else {
-		Logger.Info("http server shut down")
+		slog.Info("http server shut down", "component", "app")
 	}
 
 	if a.peerServer != nil {

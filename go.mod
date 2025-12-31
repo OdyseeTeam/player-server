@@ -25,7 +25,6 @@ require (
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/prometheus/client_golang v1.19.0
 	github.com/puzpuzpuz/xsync/v3 v3.4.0
-	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
@@ -99,6 +98,7 @@ require (
 	github.com/quic-go/quic-go v0.42.0 // indirect
 	github.com/rubenv/sql-migrate v1.5.2 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

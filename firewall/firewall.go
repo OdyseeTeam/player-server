@@ -5,16 +5,18 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/OdyseeTeam/player-server/internal/iapi"
-	"github.com/OdyseeTeam/player-server/pkg/logger"
+	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/bluele/gcache"
 	"github.com/gaissmai/bart"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
@@ -29,19 +31,46 @@ type blacklist struct {
 
 func init() {
 	ReloadBlacklist()
+	go trackIPCacheSize()
+}
+
+func trackIPCacheSize() {
+	ticker := time.NewTicker(15 * time.Second)
+	for range ticker.C {
+		metrics.FirewallTrackedIPs.Set(float64(resourcesForIPCache.Len(true)))
+	}
+}
+
+func LogAbuseEvent(eventType, ip string, asn int, org, claimID string, count int) {
+	args := []any{
+		"component", "firewall",
+		"event", "abuse",
+		"type", eventType,
+		"ip", ip,
+	}
+	if asn > 0 {
+		args = append(args, "asn", asn, "org", org)
+	}
+	if claimID != "" {
+		args = append(args, "claim_id", claimID)
+	}
+	if count > 0 {
+		args = append(args, "count", count)
+	}
+	slog.Warn("abuse detected", args...)
 }
 
 func ReloadBlacklist() {
 	f, err := os.ReadFile("blacklist.json")
 	if err != nil {
-		Logger.Warn("no blacklist file found, skipping blacklist")
+		slog.Warn("no blacklist file found, skipping blacklist", "component", "firewall")
 		return
 	}
 
 	var bl blacklist
 	err = json.Unmarshal(f, &bl)
 	if err != nil {
-		Logger.Errorf("failed to unmarshal blacklist: %v", err)
+		slog.Error("failed to unmarshal blacklist", "component", "firewall", "error", err)
 		return
 	}
 	blacklistedAsn.Clear()
@@ -52,7 +81,7 @@ func ReloadBlacklist() {
 	for _, v := range bl.BlacklistedIPs {
 		parsedPrefix, err := netip.ParsePrefix(v)
 		if err != nil {
-			Logger.Warnf("Error parsing IP %s: %s", v, err)
+			slog.Warn("error parsing IP in blacklist", "component", "firewall", "ip", v, "error", err)
 			continue
 		}
 		bannedIPs.Insert(parsedPrefix, 1)
@@ -70,23 +99,25 @@ var whitelist = map[string]bool{
 
 var bannedIPs = &bart.Table[int]{}
 var blacklistedAsn = xsync.NewMapOf[int, bool]()
-var Logger = logger.GetLogger()
 
 func CheckBans(ip string) bool {
 	parsedIp, err := netip.ParseAddr(ip)
 	if err != nil {
-		Logger.Warnf("Error parsing IP %s: %s", ip, err)
+		slog.Warn("error parsing IP", "component", "firewall", "ip", ip, "error", err)
 		return false
 	}
 	_, ok := bannedIPs.Lookup(parsedIp)
 	if ok {
-		Logger.Warnf("IP %s matches an entry in the banned list", ip)
+		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonIPBan).Inc()
+		LogAbuseEvent(metrics.FirewallReasonIPBan, ip, 0, "", "", 0)
 		return true
 	}
 	org, asn, err := GetProviderForIP(ip)
 	if err == nil {
 		if _, found := blacklistedAsn.Load(asn); found {
-			Logger.Warnf("IP %s matches abusive ANS-%d (%s)", ip, asn, org)
+			metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBan).Inc()
+			metrics.FirewallASNBlocked.WithLabelValues(strings.ToLower(org)).Inc()
+			LogAbuseEvent(metrics.FirewallReasonASNBan, ip, asn, org, "", 0)
 			return true
 		}
 	}
@@ -126,6 +157,9 @@ func CheckAndRateLimitIp(ip string, endpoint string) (bool, int) {
 		}
 		return true
 	})
+	if flagged {
+		metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeFlagged).Inc()
+	}
 	return flagged, resourcesCount
 }
 
@@ -174,7 +208,6 @@ func initISPGeoIPDB() (*maxminddb.Reader, error) {
 	}
 	info, err := os.Stat(geoIpDbLocation)
 	if os.IsNotExist(err) || (err == nil && info.IsDir()) {
-		// Get the data
 		resp, err := http.Get("https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN&license_key=" + key + "&suffix=tar.gz")
 		if err != nil {
 			return nil, errors.Err(err)

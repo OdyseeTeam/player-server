@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -47,7 +48,7 @@ func (k *pubKeyManager) loadFromBytes(b []byte) error {
 		return err
 	}
 	k.key = key
-	Logger.Infof("loaded a private RSA key (%v bytes)", key.Size())
+	slog.Info("loaded public RSA key", "component", "paid", "size_bytes", key.Size())
 	return nil
 }
 
@@ -57,11 +58,10 @@ func (k *pubKeyManager) ValidateToken(stringToken string) (*StreamToken, error) 
 		return k.key, nil
 	})
 	if err != nil {
-		Logger.Debugf("token is not valid")
+		slog.Warn("token validation failed", "component", "paid", "error", err)
 		return nil, err
 	}
 	if streamToken, ok := token.Claims.(*StreamToken); ok && token.Valid {
-		Logger.Debugf("token validated")
 		return streamToken, nil
 	}
 	return nil, err

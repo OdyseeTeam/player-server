@@ -1,9 +1,9 @@
 package player
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -21,7 +21,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 // SpeechPrefix is root level prefix for speech URLs.
@@ -204,12 +203,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 
 	if isDownload {
-		// log all headers for download requests
-		//encode headers in a json string
-		headers, err := json.MarshalIndent(c.Request.Header, "", "  ")
-		if err == nil {
-			logrus.Infof("download request for %s with IP %s and headers: %+v", uri, ip, string(headers))
-		}
+		slog.Info("download request", "component", "player", "uri", uri, "ip", ip)
 	}
 	//don't allow downloads if either flagged or disabled
 	if isDownload && (!h.player.options.downloadsEnabled || flagged) {
@@ -235,13 +229,18 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	abusiveIP, abuseCount := firewall.CheckAndRateLimitIp(ip, stream.ClaimID)
 	if abusiveIP {
-		Logger.Warnf("IP %s is abusing resources (count: %d): %s - %s", ip, abuseCount, stream.ClaimID, stream.Claim.Name)
+		firewall.LogAbuseEvent(metrics.FirewallReasonRateLimit, ip, 0, "", stream.ClaimID, abuseCount)
 		if abuseCount > 10 {
+			metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonRateLimit).Inc()
+			metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeBlocked).Inc()
 			c.String(http.StatusTooManyRequests, "Try again later")
 			return
 		}
 	}
 	if isDownload && abuseCount > 2 {
+		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonDownloadLimit).Inc()
+		metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeBlocked).Inc()
+		firewall.LogAbuseEvent(metrics.FirewallReasonDownloadLimit, ip, 0, "", stream.ClaimID, abuseCount)
 		c.String(http.StatusTooManyRequests, "Try again later")
 		return
 	}
@@ -281,11 +280,11 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	conn, err := app.GetConnection(c.Request)
 	if err != nil {
-		Logger.Warn("can't set write timeout: ", err)
+		slog.Warn("can't get connection", "component", "player", "error", err)
 	} else {
 		err = conn.SetWriteDeadline(time.Now().Add(time.Duration(StreamWriteTimeout) * time.Second))
 		if err != nil {
-			Logger.Error("can't set write timeout: ", err)
+			slog.Error("can't set write timeout", "component", "player", "error", err)
 		}
 	}
 
@@ -351,7 +350,7 @@ func writeHeaders(c *gin.Context, s *Stream) {
 	}
 }
 
-func processStreamError(errorType string, gctx *gin.Context, uri string, err error, extra ...string) {
+func processStreamError(errorType string, gctx *gin.Context, uri string, err error, extra ...any) {
 	req := gctx.Request
 	w := gctx.Writer
 	if err == tclient.ErrChannelNotEnabled {
@@ -359,11 +358,11 @@ func processStreamError(errorType string, gctx *gin.Context, uri string, err err
 	}
 
 	if w == nil {
-		Logger.Errorf("%s stream GET - %s error: %v", uri, errorType, err)
+		slog.Error("stream error", "component", "player", "uri", uri, "error_type", errorType, "error", err)
 		return
 	}
 
-	Logger.Errorf("%s stream %v - %s error: %v", gctx.Request.Method, uri, errorType, err)
+	slog.Error("stream error", "component", "player", "uri", uri, "method", gctx.Request.Method, "error_type", errorType, "error", err)
 
 	if errors.Is(err, ErrPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())

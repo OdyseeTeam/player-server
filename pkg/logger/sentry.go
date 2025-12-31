@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -16,7 +18,6 @@ var SentryHandler = sentrygin.New(sentrygin.Options{
 })
 
 func ConfigureSentry(release, env string) {
-	l := GetLogger()
 	dsn := os.Getenv("SENTRY_DSN")
 	playerName := os.Getenv("PLAYER_NAME")
 	opts := sentry.ClientOptions{
@@ -30,27 +31,26 @@ func ConfigureSentry(release, env string) {
 	if env == EnvTest {
 		opts.Transport = TestSentryTransport
 	} else if dsn == "" {
-		l.Info("sentry disabled")
+		slog.Info("sentry disabled", "component", "logger")
 		return
 	}
 
 	err := sentry.Init(opts)
 	if err != nil {
-		l.Fatalf("sentry initialization failed: %v", err)
+		Fatal("sentry initialization failed", "component", "logger", "error", err)
 	} else {
-		l.Info("sentry initialized")
+		slog.Info("sentry initialized", "component", "logger")
 	}
 }
 
-// SendToSentry sends an error to Sentry with optional extra details.
-func SendToSentry(err error, request *http.Request, details ...string) *sentry.EventID {
-	extra := map[string]string{}
+func SendToSentry(err error, request *http.Request, details ...any) *sentry.EventID {
+	extra := map[string]any{}
 	var eventID *sentry.EventID
 	for i := 0; i < len(details); i += 2 {
 		if i+1 > len(details)-1 {
 			break
 		}
-		extra[details[i]] = details[i+1]
+		extra[fmt.Sprint(details[i])] = details[i+1]
 	}
 
 	sentry.WithScope(func(scope *sentry.Scope) {

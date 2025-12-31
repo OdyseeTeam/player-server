@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"time"
 
@@ -105,7 +106,7 @@ func (s *Stream) setSize() {
 		return
 	}
 
-	Logger.Infof("couldn't figure out stream %v size from last chunk: %v", s.URI(), err)
+	slog.Info("couldn't figure out stream size from last chunk", "component", "stream", "uri", s.URI(), "error", err)
 	for _, blob := range s.sdBlob.BlobInfos {
 		if blob.Length == stream.MaxBlobSize {
 			size += MaxChunkSize
@@ -162,12 +163,12 @@ func (s *Stream) Read(dest []byte) (n int, err error) {
 	metrics.OutBytes.Add(float64(n))
 
 	if err != nil {
-		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI(), s.seekOffset, errors.FullTrace(err))
+		slog.Error("stream read failed", "component", "stream", "uri", s.URI(), "offset", s.seekOffset, "error", err)
 	}
 
 	if n == 0 && err == nil {
 		err = errors.Err("read 0 bytes triggering an endless loop, exiting stream")
-		Logger.Errorf("failed to read from stream %v at offset %v: %v", s.URI(), s.seekOffset, err)
+		slog.Error("stream read failed", "component", "stream", "uri", s.URI(), "offset", s.seekOffset, "error", err)
 	}
 
 	return n, err
@@ -182,7 +183,7 @@ func (s *Stream) readFromChunks(sr streamRange, dest []byte) (int, error) {
 		return read, err
 	}
 	if read <= 0 {
-		Logger.Warnf("Read 0 bytes for %s at blob index %d/%d at offset %d", s.URI(), int(index), len(s.sdBlob.BlobInfos), s.seekOffset)
+		slog.Warn("read 0 bytes from stream", "component", "stream", "uri", s.URI(), "blob_index", index, "total_blobs", len(s.sdBlob.BlobInfos), "offset", s.seekOffset)
 	}
 
 	return read, nil
@@ -249,19 +250,17 @@ func (s *Stream) prefetchChunk(chunkIdx int) {
 		return
 	}
 
-	Logger.Debugf("prefetching %d chunks to local cache", prefetchLen)
+	slog.Debug("prefetching chunks", "component", "stream", "count", prefetchLen)
 	for _, bi := range s.sdBlob.BlobInfos[chunkIdx : chunkIdx+prefetchLen] {
 		hash := hex.EncodeToString(bi.BlobHash)
 
 		if s.player.blobSource.IsCached(hash) {
-			Logger.Debugf("chunk %v found in cache, not prefetching", hash)
 			continue
 		}
 
-		Logger.Debugf("prefetching chunk %s", hash)
 		_, err := s.player.blobSource.GetChunk(hash, s.sdBlob.Key, bi.IV)
 		if err != nil {
-			Logger.Errorf("failed to prefetch chunk %s: %s", hash, err.Error())
+			slog.Warn("prefetch failed", "component", "stream", "chunk", hash, "error", err)
 			return
 		}
 	}

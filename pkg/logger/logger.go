@@ -2,8 +2,9 @@ package logger
 
 import (
 	"io"
-
-	"github.com/sirupsen/logrus"
+	"log/slog"
+	"os"
+	"sync/atomic"
 )
 
 const (
@@ -12,30 +13,42 @@ const (
 )
 
 var (
-	JsonFormatter = &logrus.JSONFormatter{DisableTimestamp: true}
-	TextFormatter = &logrus.TextFormatter{FullTimestamp: true, TimestampFormat: "15:04:05"}
-	level         = logrus.InfoLevel
-	formatter     = TextFormatter
-	loggers       []*logrus.Logger
+	defaultLevel = new(slog.LevelVar)
+	defaultLogger atomic.Pointer[slog.Logger]
 )
 
-func ConfigureDefaults(logLevel logrus.Level) {
-	level = logLevel
-	for _, logger := range loggers {
-		logger.SetLevel(level)
-	}
+func init() {
+	defaultLevel.Set(slog.LevelInfo)
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: defaultLevel,
+	})
+	logger := slog.New(handler)
+	defaultLogger.Store(logger)
+	slog.SetDefault(logger)
 }
 
-func GetLogger() *logrus.Logger {
-	logger := logrus.New()
-	logger.SetLevel(level)
-	logger.SetFormatter(JsonFormatter)
-	loggers = append(loggers, logger)
-	return logger
+func ConfigureDefaults(level slog.Level) {
+	defaultLevel.Set(level)
 }
 
-// DisableLogger turns off logging output for this module logger
-func DisableLogger(l *logrus.Logger) {
-	l.SetLevel(logrus.PanicLevel)
-	l.SetOutput(io.Discard)
+func GetLogger() *slog.Logger {
+	return defaultLogger.Load()
+}
+
+func WithComponent(component string) *slog.Logger {
+	return defaultLogger.Load().With("component", component)
+}
+
+func DisableLogger() {
+	handler := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelError + 1,
+	})
+	logger := slog.New(handler)
+	defaultLogger.Store(logger)
+}
+
+func Fatal(msg string, args ...any) {
+	slog.Error(msg, args...)
+	Flush()
+	os.Exit(1)
 }

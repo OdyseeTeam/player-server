@@ -8,10 +8,10 @@ import (
 	"github.com/OdyseeTeam/gody-cdn/configs"
 	objectStore "github.com/OdyseeTeam/gody-cdn/store"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
+	"github.com/OdyseeTeam/player-server/pkg/logger"
 	"github.com/lbryio/lbry.go/v2/extras/errors"
 	"github.com/lbryio/lbry.go/v2/extras/stop"
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/sirupsen/logrus"
 
 	"github.com/lbryio/reflector.go/shared"
 	"github.com/lbryio/reflector.go/store"
@@ -38,16 +38,16 @@ func NewDecryptedCache(origin store.BlobStore) *DecryptedCache {
 	if err != nil {
 		err := configs.Init("../config.json")
 		if err != nil {
-			logrus.Fatalln(errors.FullTrace(err))
+			logger.Fatal("failed to load config", "component", "cache", "error", errors.FullTrace(err))
 		}
 	}
 	err = os.MkdirAll(configs.Configuration.DiskCache.Path, os.ModePerm)
 	if err != nil {
-		logrus.Fatal(errors.FullTrace(err))
+		logger.Fatal("failed to create cache directory", "component", "cache", "path", configs.Configuration.DiskCache.Path, "error", errors.FullTrace(err))
 	}
 	ds, err := objectStore.NewDiskStore(configs.Configuration.DiskCache.Path, 2)
 	if err != nil {
-		logrus.Fatal(errors.FullTrace(err))
+		logger.Fatal("failed to create disk store", "component", "cache", "path", configs.Configuration.DiskCache.Path, "error", errors.FullTrace(err))
 	}
 	localDB := configs.Configuration.LocalDB
 	localDsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s", localDB.User, localDB.Password, localDB.Host, localDB.Database)
