@@ -203,7 +203,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 
 	if isDownload {
-		slog.Info("download request", "component", "player", "uri", uri, "ip", ip)
+		slog.Info("download request", "component", "player", "uri", uri, "sd_hash", c.Param("sd_hash"), "range", c.GetHeader("Range"), "ip", ip)
 	}
 	//don't allow downloads if either flagged or disabled
 	if isDownload && (!h.player.options.downloadsEnabled || flagged) {
@@ -280,11 +280,11 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	conn, err := app.GetConnection(c.Request)
 	if err != nil {
-		slog.Warn("can't get connection", "component", "player", "error", err)
+		slog.Warn("can't get connection", "component", "player", "uri", uri, "ip", ip, "error", err)
 	} else {
 		err = conn.SetWriteDeadline(time.Now().Add(time.Duration(StreamWriteTimeout) * time.Second))
 		if err != nil {
-			slog.Error("can't set write timeout", "component", "player", "error", err)
+			slog.Error("can't set write timeout", "component", "player", "uri", uri, "ip", ip, "error", err)
 		}
 	}
 
@@ -357,12 +357,16 @@ func processStreamError(errorType string, gctx *gin.Context, uri string, err err
 		return
 	}
 
+	baseArgs := []any{"component", "player", "uri", uri, "ip", gctx.ClientIP(), "error_type", errorType}
+	baseArgs = append(baseArgs, extra...)
+	baseArgs = append(baseArgs, "error", err)
+
 	if w == nil {
-		slog.Error("stream error", "component", "player", "uri", uri, "error_type", errorType, "error", err)
+		slog.Error("stream error", baseArgs...)
 		return
 	}
 
-	slog.Error("stream error", "component", "player", "uri", uri, "method", gctx.Request.Method, "error_type", errorType, "error", err)
+	slog.Error("stream error", append(baseArgs, "method", gctx.Request.Method)...)
 
 	if errors.Is(err, ErrPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
