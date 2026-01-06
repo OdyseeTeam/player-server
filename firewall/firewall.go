@@ -41,7 +41,7 @@ func trackIPCacheSize() {
 	}
 }
 
-func LogAbuseEvent(eventType, ip string, asn int, org, claimID string, count int) {
+func LogAbuseEvent(eventType, ip string, asn int, org, claimID, path string, count int) {
 	args := []any{
 		"component", "firewall",
 		"event", "abuse",
@@ -53,6 +53,9 @@ func LogAbuseEvent(eventType, ip string, asn int, org, claimID string, count int
 	}
 	if claimID != "" {
 		args = append(args, "claim_id", claimID)
+	}
+	if path != "" {
+		args = append(args, "path", path)
 	}
 	if count > 0 {
 		args = append(args, "count", count)
@@ -100,7 +103,7 @@ var whitelist = map[string]bool{
 var bannedIPs = &bart.Table[int]{}
 var blacklistedAsn = xsync.NewMapOf[int, bool]()
 
-func CheckBans(ip string) bool {
+func CheckBans(ip, path, claimID string) bool {
 	parsedIp, err := netip.ParseAddr(ip)
 	if err != nil {
 		slog.Warn("error parsing IP", "component", "firewall", "ip", ip, "error", err)
@@ -109,7 +112,7 @@ func CheckBans(ip string) bool {
 	_, ok := bannedIPs.Lookup(parsedIp)
 	if ok {
 		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonIPBan).Inc()
-		LogAbuseEvent(metrics.FirewallReasonIPBan, ip, 0, "", "", 0)
+		LogAbuseEvent(metrics.FirewallReasonIPBan, ip, 0, "", claimID, path, 0)
 		return true
 	}
 	org, asn, err := GetProviderForIP(ip)
@@ -117,7 +120,7 @@ func CheckBans(ip string) bool {
 		if _, found := blacklistedAsn.Load(asn); found {
 			metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBan).Inc()
 			metrics.FirewallASNBlocked.WithLabelValues(strings.ToLower(org)).Inc()
-			LogAbuseEvent(metrics.FirewallReasonASNBan, ip, asn, org, "", 0)
+			LogAbuseEvent(metrics.FirewallReasonASNBan, ip, asn, org, claimID, path, 0)
 			return true
 		}
 	}

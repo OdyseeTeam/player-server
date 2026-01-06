@@ -13,7 +13,7 @@ import (
 )
 
 func TestHotCache_BlobNotFound(t *testing.T) {
-	origin := store.NewMemStore()
+	origin := store.NewMemStore(store.MemParams{})
 	ds := NewDecryptedCache(origin)
 	hc := NewHotCache(*ds, 100000000)
 	assert.NotNil(t, hc)
@@ -23,7 +23,7 @@ func TestHotCache_BlobNotFound(t *testing.T) {
 }
 
 func TestHotCache_Stream(t *testing.T) {
-	origin := store.NewMemStore()
+	origin := store.NewMemStore(store.MemParams{})
 	ds := NewDecryptedCache(origin)
 
 	data := randomString(MaxChunkSize * 3)
@@ -32,7 +32,8 @@ func TestHotCache_Stream(t *testing.T) {
 	require.Equal(t, 4, len(s)) // make sure we got an sd blob plus 3 content blobs
 
 	for _, b := range s {
-		origin.Put(b.HashHex(), b)
+		err = origin.Put(b.HashHex(), b)
+		require.NoError(t, err)
 	}
 
 	hc := NewHotCache(*ds, 100000000)
@@ -54,7 +55,7 @@ func TestHotCache_Stream(t *testing.T) {
 
 // new LRU library has no size method
 //func TestHotCache_Size(t *testing.T) {
-//	origin := store.NewMemStore()
+//	origin := store.NewMemStore(store.MemParams{})
 //	dataLen := 444
 //	data, err := stream.NewBlob([]byte(randomString(dataLen)), stream.NullIV(), stream.NullIV())
 //	require.NoError(t, err)

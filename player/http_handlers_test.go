@@ -215,7 +215,8 @@ func TestHandleHeadStreamsV2(t *testing.T) {
 	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
-	paid.GeneratePrivateKey()
+	err = paid.GeneratePrivateKey()
+	require.NoError(t, err)
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 	require.NoError(t, err)
 
@@ -247,7 +248,8 @@ func TestHandleHeadStreamsV3(t *testing.T) {
 	body, _ = io.ReadAll(r.Body)
 	assert.Equal(t, http.StatusPaymentRequired, r.StatusCode, string(body))
 
-	paid.GeneratePrivateKey()
+	err = paid.GeneratePrivateKey()
+	require.NoError(t, err)
 	expiredToken, err := paid.CreateToken("iOS-13-AdobeXD/9cd2e93bfc752dd6560e43623f36d0c3504dbca6", "000", 120_000_000, func(uint64) int64 { return 1 })
 	require.NoError(t, err)
 

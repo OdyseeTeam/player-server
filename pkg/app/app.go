@@ -77,9 +77,9 @@ func New(opts Opts) *App {
 	a.server = a.newServer()
 
 	if a.BlobStore != nil {
-		a.peerServer = peer.NewServer(a.BlobStore)
-		a.http3Server = http3.NewServer(a.BlobStore, 200)
-		a.httpServer = reflectorHttp.NewServer(a.BlobStore, 200, opts.EdgeToken)
+		a.peerServer = peer.NewServer(a.BlobStore, ":5567")
+		a.http3Server = http3.NewServer(a.BlobStore, 200, ":5568")
+		a.httpServer = reflectorHttp.NewServer(a.BlobStore, 200, opts.EdgeToken, ":5569")
 	}
 
 	return a
@@ -138,21 +138,21 @@ func (a *App) Start() {
 	}()
 
 	if a.peerServer != nil {
-		err := a.peerServer.Start(":5567")
+		err := a.peerServer.Start()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatal("peer server failed to start", "component", "app", "error", err)
 		}
 	}
 
 	if a.http3Server != nil {
-		err := a.http3Server.Start(":5568")
+		err := a.http3Server.Start()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatal("http3 server failed to start", "component", "app", "error", err)
 		}
 	}
 
 	if a.httpServer != nil {
-		err := a.httpServer.Start(":5569")
+		err := a.httpServer.Start()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatal("http reflector server failed to start", "component", "app", "error", err)
 		}

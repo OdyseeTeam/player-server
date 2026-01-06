@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -13,6 +14,10 @@ type TestTransport struct {
 }
 
 func (t *TestTransport) Flush(timeout time.Duration) bool {
+	return true
+}
+
+func (t *TestTransport) FlushWithContext(ctx context.Context) bool {
 	return true
 }
 

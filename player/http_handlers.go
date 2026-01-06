@@ -182,7 +182,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	//this is here temporarily due to abuse. a better solution will be found
 	ip := c.ClientIP()
-	if firewall.CheckBans(ip) {
+	if firewall.CheckBans(ip, c.FullPath(), c.Param("claim_id")) {
 		c.AbortWithStatus(http.StatusTooManyRequests)
 		return
 	}
@@ -229,7 +229,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	abusiveIP, abuseCount := firewall.CheckAndRateLimitIp(ip, stream.ClaimID)
 	if abusiveIP {
-		firewall.LogAbuseEvent(metrics.FirewallReasonRateLimit, ip, 0, "", stream.ClaimID, abuseCount)
+		firewall.LogAbuseEvent(metrics.FirewallReasonRateLimit, ip, 0, "", stream.ClaimID, c.FullPath(), abuseCount)
 		if abuseCount > 10 {
 			metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonRateLimit).Inc()
 			metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeBlocked).Inc()
@@ -240,7 +240,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	if isDownload && abuseCount > 2 {
 		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonDownloadLimit).Inc()
 		metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeBlocked).Inc()
-		firewall.LogAbuseEvent(metrics.FirewallReasonDownloadLimit, ip, 0, "", stream.ClaimID, abuseCount)
+		firewall.LogAbuseEvent(metrics.FirewallReasonDownloadLimit, ip, 0, "", stream.ClaimID, c.FullPath(), abuseCount)
 		c.String(http.StatusTooManyRequests, "Try again later")
 		return
 	}
@@ -399,7 +399,7 @@ func processStreamError(errorType string, gctx *gin.Context, uri string, err err
 
 func writeErrorResponse(w http.ResponseWriter, statusCode int, msg string) {
 	w.WriteHeader(statusCode)
-	w.Write([]byte(msg))
+	_, _ = w.Write([]byte(msg))
 }
 
 func addBreadcrumb(r *http.Request, category, message string) {

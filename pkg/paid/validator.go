@@ -20,7 +20,10 @@ var pubKM *pubKeyManager
 // InitPubKey should be called with pubkey url as an argument before VerifyStreamAccess can be called
 func InitPubKey(rawKey []byte) error {
 	k := &pubKeyManager{}
-	k.loadFromBytes(rawKey)
+	err := k.loadFromBytes(rawKey)
+	if err != nil {
+		return err
+	}
 	pubKM = k
 	return nil
 }

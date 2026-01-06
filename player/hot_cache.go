@@ -11,8 +11,6 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-const longTTL = 365 * 24 * time.Hour
-
 // HotCache is basically an in-memory BlobStore but it stores the blobs decrypted
 // You have to know which blobs you expect to be sd blobs when using HotCache
 type HotCache struct {
