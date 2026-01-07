@@ -245,6 +245,14 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		return
 	}
 
+	if blocked, asn, org, _, _ := firewall.CheckASNBandwidthLimit(ip); blocked {
+		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, stream.ClaimID, c.FullPath(), 0)
+		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
+		c.Header("Retry-After", strconv.Itoa(firewall.GetWindowSizeSeconds()))
+		c.String(http.StatusTooManyRequests, "Try again later")
+		return
+	}
+
 	err = h.player.VerifyAccess(stream, c)
 	if err != nil {
 		processStreamError("access", c, uri, err)
@@ -322,17 +330,29 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return
 	}
+
+	ip := c.ClientIP()
+	if blocked, asn, org, _, _ := firewall.CheckASNBandwidthLimit(ip); blocked {
+		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, uri, c.FullPath(), 0)
+		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
+		c.Header("Retry-After", strconv.Itoa(firewall.GetWindowSizeSeconds()))
+		c.String(http.StatusTooManyRequests, "Try again later")
+		return
+	}
+
 	err = h.player.VerifyAccess(stream, c)
 	if err != nil {
 		processStreamError("access", c, uri, err)
 		return
 	}
+
 	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
 		processStreamError("transcoder", c, uri, err, "sd_hash", c.Param("sd_hash"), "fragment", c.Param("fragment"))
 		return
 	}
 	metrics.TcOutBytes.Add(float64(size))
+	firewall.TrackBandwidth(c.ClientIP(), int64(size))
 }
 
 func writeHeaders(c *gin.Context, s *Stream) {

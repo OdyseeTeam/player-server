@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -11,8 +12,10 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/OdyseeTeam/player-server/internal/iapi"
@@ -32,6 +35,9 @@ type blacklist struct {
 func init() {
 	ReloadBlacklist()
 	go trackIPCacheSize()
+	asnBandwidthMultiplier.Store(10)
+	asnBandwidthMinThreshold.Store(defaultMinASNThreshold)
+	asnBandwidthWarmup.Store(defaultWarmupCycles)
 }
 
 func trackIPCacheSize() {
@@ -102,6 +108,49 @@ var whitelist = map[string]bool{
 
 var bannedIPs = &bart.Table[int]{}
 var blacklistedAsn = xsync.NewMapOf[int, bool]()
+
+type asnBandwidth struct {
+	org   string
+	bytes int64
+}
+
+type asnCacheEntry struct {
+	asn int
+	org string
+}
+
+type ipEntry struct {
+	IP    string `json:"ip"`
+	Bytes int64  `json:"bytes"`
+}
+
+type asnEntry struct {
+	ASN   string `json:"asn"`
+	Org   string `json:"org"`
+	Bytes int64  `json:"bytes"`
+}
+
+var (
+	bandwidthPerIP      atomic.Pointer[xsync.MapOf[string, *int64]]
+	bandwidthPerASN     atomic.Pointer[xsync.MapOf[string, *asnBandwidth]]
+	ipToASNCache        gcache.Cache
+	bandwidthStop       chan struct{}
+	bandwidthMu         sync.Mutex
+	bandwidthRunning    bool
+	asnLookupDisabled   atomic.Bool
+
+	asnBandwidthThreshold    atomic.Int64
+	asnBandwidthMultiplier   atomic.Int64
+	asnBandwidthMinThreshold atomic.Int64
+	asnBandwidthWarmup       atomic.Int32
+)
+
+const (
+	defaultMinASNThreshold = 1 << 30 // 1GB
+	minASNCount            = 5
+	topASNsForMedian       = 10
+	defaultWarmupCycles    = 3
+)
 
 func CheckBans(ip, path, claimID string) bool {
 	parsedIp, err := netip.ParseAddr(ip)
@@ -182,15 +231,20 @@ func IsStreamBlocked(claimId string, channelClaimId *string) bool {
 
 var geoIpDbLocation = filepath.Join(os.TempDir(), "GeoLite2-ASN.mmdb")
 var providerDB *maxminddb.Reader
+var providerDBInitOnce sync.Once
+var providerDBInitErr error
 
 func GetProviderForIP(ipStr string) (string, int, error) {
 	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return "", 0, errors.Err("invalid ip")
+	}
+	providerDBInitOnce.Do(initProviderDB)
+	if providerDBInitErr != nil {
+		return "", 0, providerDBInitErr
+	}
 	if providerDB == nil {
-		p, err := initISPGeoIPDB()
-		if err != nil {
-			return "", 0, err
-		}
-		providerDB = p
+		return "", 0, errors.Err("provider db not initialized")
 	}
 	var ASN struct {
 		AutonomousSystemOrganization string `maxminddb:"autonomous_system_organization"`
@@ -202,6 +256,15 @@ func GetProviderForIP(ipStr string) (string, int, error) {
 		return "", 0, errors.Err(err)
 	}
 	return ASN.AutonomousSystemOrganization, ASN.AutonomousSystemNumber, nil
+}
+
+func initProviderDB() {
+	var err error
+	providerDB, err = initISPGeoIPDB()
+	if err != nil {
+		providerDBInitErr = err
+		asnLookupDisabled.Store(true)
+	}
 }
 
 func initISPGeoIPDB() (*maxminddb.Reader, error) {
@@ -295,4 +358,326 @@ func extractFile(tr *tar.Reader, target string, header *tar.Header) error {
 		return errors.Err(err)
 	}
 	return nil
+}
+
+func initBandwidthMaps() {
+	ipToASNCache = gcache.New(10000).LRU().Build()
+	ipMap := xsync.NewMapOf[string, *int64]()
+	asnMap := xsync.NewMapOf[string, *asnBandwidth]()
+	bandwidthPerIP.Store(ipMap)
+	bandwidthPerASN.Store(asnMap)
+}
+
+func TrackBandwidth(ip string, bytes int64) {
+	if ip == "" || bytes <= 0 {
+		return
+	}
+
+	ipMap := bandwidthPerIP.Load()
+	if ipMap == nil {
+		return
+	}
+	ipMap.Compute(ip, func(oldVal *int64, exists bool) (*int64, bool) {
+		if exists {
+			atomic.AddInt64(oldVal, bytes)
+			return oldVal, false
+		}
+		val := new(int64)
+		*val = bytes
+		return val, false
+	})
+
+	if asnLookupDisabled.Load() {
+		return
+	}
+
+	cache := ipToASNCache
+	if cache == nil {
+		return
+	}
+
+	var asn int
+	var org string
+	cached, err := cache.Get(ip)
+	if err == nil {
+		entry := cached.(asnCacheEntry)
+		if entry.asn <= 0 {
+			return
+		}
+		asn = entry.asn
+		org = entry.org
+	} else {
+		org, asn, err = GetProviderForIP(ip)
+		if err != nil {
+			_ = cache.Set(ip, asnCacheEntry{asn: -1})
+			return
+		}
+		_ = cache.Set(ip, asnCacheEntry{asn: asn, org: org})
+	}
+
+	asnKey := fmt.Sprintf("AS%d", asn)
+	asnMap := bandwidthPerASN.Load()
+	if asnMap == nil {
+		return
+	}
+	asnMap.Compute(asnKey, func(oldVal *asnBandwidth, exists bool) (*asnBandwidth, bool) {
+		if exists {
+			atomic.AddInt64(&oldVal.bytes, bytes)
+			return oldVal, false
+		}
+		return &asnBandwidth{org: org, bytes: bytes}, false
+	})
+}
+
+func StartBandwidthReporter() {
+	bandwidthMu.Lock()
+	defer bandwidthMu.Unlock()
+
+	if bandwidthRunning {
+		return
+	}
+
+	initBandwidthMaps()
+	bandwidthStop = make(chan struct{})
+	bandwidthRunning = true
+	stopCh := bandwidthStop
+	go bandwidthReporterLoop(stopCh)
+}
+
+func StopBandwidthReporter() {
+	bandwidthMu.Lock()
+	defer bandwidthMu.Unlock()
+
+	if !bandwidthRunning {
+		return
+	}
+
+	close(bandwidthStop)
+	bandwidthRunning = false
+}
+
+func bandwidthReporterLoop(stopCh <-chan struct{}) {
+	ticker := time.NewTicker(2 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			logBandwidthReport()
+		case <-stopCh:
+			return
+		}
+	}
+}
+
+func logBandwidthReport() {
+	newIPMap := xsync.NewMapOf[string, *int64]()
+	newASNMap := xsync.NewMapOf[string, *asnBandwidth]()
+
+	oldIPMap := bandwidthPerIP.Swap(newIPMap)
+	oldASNMap := bandwidthPerASN.Swap(newASNMap)
+
+	if oldIPMap == nil || oldASNMap == nil {
+		return
+	}
+
+	var ipEntries []ipEntry
+	oldIPMap.Range(func(ip string, val *int64) bool {
+		ipEntries = append(ipEntries, ipEntry{IP: ip, Bytes: atomic.LoadInt64(val)})
+		return true
+	})
+	sort.Slice(ipEntries, func(i, j int) bool {
+		return ipEntries[i].Bytes > ipEntries[j].Bytes
+	})
+	if len(ipEntries) > 10 {
+		ipEntries = ipEntries[:10]
+	}
+
+	var asnEntries []asnEntry
+	oldASNMap.Range(func(asnKey string, val *asnBandwidth) bool {
+		asnEntries = append(asnEntries, asnEntry{ASN: asnKey, Org: val.org, Bytes: atomic.LoadInt64(&val.bytes)})
+		return true
+	})
+	sort.Slice(asnEntries, func(i, j int) bool {
+		return asnEntries[i].Bytes > asnEntries[j].Bytes
+	})
+
+	updateASNBandwidthThreshold(asnEntries)
+
+	if len(asnEntries) > 5 {
+		asnEntries = asnEntries[:5]
+	}
+
+	if len(ipEntries) == 0 && len(asnEntries) == 0 {
+		return
+	}
+
+	slog.Info("bandwidth report",
+		"component", "firewall",
+		"top_ips", ipEntries,
+		"top_asns", asnEntries,
+		"asn_throttle_threshold", asnBandwidthThreshold.Load(),
+		"asn_throttle_enabled", asnBandwidthMultiplier.Load() > 0 && asnBandwidthThreshold.Load() > 0,
+	)
+}
+
+func updateASNBandwidthThreshold(entries []asnEntry) {
+	if warmup := asnBandwidthWarmup.Load(); warmup > 0 {
+		asnBandwidthWarmup.Add(-1)
+		asnBandwidthThreshold.Store(0)
+		return
+	}
+
+	if len(entries) < minASNCount {
+		asnBandwidthThreshold.Store(0)
+		return
+	}
+
+	if len(entries) > topASNsForMedian {
+		entries = entries[:topASNsForMedian]
+	}
+
+	n := len(entries)
+	var median int64
+	if n%2 == 1 {
+		median = entries[n/2].Bytes
+	} else {
+		median = (entries[n/2-1].Bytes + entries[n/2].Bytes) / 2
+	}
+
+	if median == 0 {
+		asnBandwidthThreshold.Store(0)
+		return
+	}
+
+	multiplier := asnBandwidthMultiplier.Load()
+	if multiplier <= 0 {
+		asnBandwidthThreshold.Store(0)
+		return
+	}
+
+	threshold := median * multiplier
+
+	minThreshold := asnBandwidthMinThreshold.Load()
+	if threshold < minThreshold {
+		asnBandwidthThreshold.Store(0)
+		return
+	}
+
+	asnBandwidthThreshold.Store(threshold)
+}
+
+func CheckASNBandwidthLimit(ip string) (blocked bool, asn int, org string, currentBytes int64, threshold int64) {
+	if ip == "" || whitelist[ip] {
+		return false, 0, "", 0, 0
+	}
+
+	if asnBandwidthMultiplier.Load() <= 0 {
+		return false, 0, "", 0, 0
+	}
+
+	threshold = asnBandwidthThreshold.Load()
+	if threshold <= 0 {
+		return false, 0, "", 0, 0
+	}
+
+	if asnLookupDisabled.Load() {
+		return false, 0, "", 0, 0
+	}
+
+	cache := ipToASNCache
+	if cache == nil {
+		return false, 0, "", 0, 0
+	}
+
+	cached, err := cache.Get(ip)
+	if err == nil {
+		entry := cached.(asnCacheEntry)
+		if entry.asn <= 0 {
+			return false, 0, "", 0, threshold
+		}
+		asn = entry.asn
+		org = entry.org
+	} else {
+		org, asn, err = GetProviderForIP(ip)
+		if err != nil {
+			_ = cache.Set(ip, asnCacheEntry{asn: -1})
+			return false, 0, "", 0, threshold
+		}
+		_ = cache.Set(ip, asnCacheEntry{asn: asn, org: org})
+	}
+
+	asnKey := fmt.Sprintf("AS%d", asn)
+	asnMap := bandwidthPerASN.Load()
+	if asnMap == nil {
+		return false, asn, org, 0, threshold
+	}
+
+	val, ok := asnMap.Load(asnKey)
+	if !ok {
+		return false, asn, org, 0, threshold
+	}
+
+	currentBytes = atomic.LoadInt64(&val.bytes)
+	if currentBytes > threshold {
+		return true, asn, org, currentBytes, threshold
+	}
+
+	return false, asn, org, currentBytes, threshold
+}
+
+func GetWindowSizeSeconds() int {
+	return int(WindowSize.Seconds())
+}
+
+func SetASNBandwidthMultiplier(m int64) {
+	asnBandwidthMultiplier.Store(m)
+	if m <= 0 {
+		asnBandwidthThreshold.Store(0)
+	}
+}
+
+func GetASNBandwidthMultiplier() int64 {
+	return asnBandwidthMultiplier.Load()
+}
+
+func GetASNBandwidthThreshold() int64 {
+	return asnBandwidthThreshold.Load()
+}
+
+func GetASNBandwidthMinThreshold() int64 {
+	return asnBandwidthMinThreshold.Load()
+}
+
+func SetASNBandwidthMinThreshold(t int64) {
+	asnBandwidthMinThreshold.Store(t)
+}
+
+func GetASNBandwidthWarmup() int32 {
+	return asnBandwidthWarmup.Load()
+}
+
+func ResetASNBandwidthWarmup() {
+	asnBandwidthWarmup.Store(defaultWarmupCycles)
+}
+
+func GetASNsOverThreshold() []string {
+	threshold := asnBandwidthThreshold.Load()
+	if threshold <= 0 {
+		return nil
+	}
+
+	asnMap := bandwidthPerASN.Load()
+	if asnMap == nil {
+		return nil
+	}
+
+	var over []string
+	asnMap.Range(func(asnKey string, val *asnBandwidth) bool {
+		if atomic.LoadInt64(&val.bytes) > threshold {
+			over = append(over, asnKey)
+		}
+		return true
+	})
+	return over
 }

@@ -48,7 +48,7 @@ func randomString(n int) string {
 }
 
 func getTestPlayer() *Player {
-	origin := store.NewUpstreamStore(store.UpstreamParams{Upstream: "source.odycdn.com:5569"})
+	origin := store.NewUpstreamStore(store.UpstreamParams{Upstream: "http://source.odycdn.com:5569"})
 	ds := NewDecryptedCache(origin)
 	return NewPlayer(
 		NewHotCache(*ds, 100000000),

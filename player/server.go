@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/firewall"
+
 	"github.com/aybabtme/iocontrol"
 	"github.com/gin-gonic/gin"
 )
@@ -98,12 +100,14 @@ func ServeStream(c *gin.Context, content *Stream) {
 	c.Status(code)
 
 	if c.Request.Method != http.MethodHead {
+		var written int64
 		if ThrottleSwitch {
 			throttledW := iocontrol.ThrottledWriter(c.Writer, int(ThrottleScale*iocontrol.MiB), 1*time.Second)
-			_, _ = io.CopyN(throttledW, sendContent, sendSize)
+			written, _ = io.CopyN(throttledW, sendContent, sendSize)
 		} else {
-			_, _ = io.CopyN(c.Writer, sendContent, sendSize)
+			written, _ = io.CopyN(c.Writer, sendContent, sendSize)
 		}
+		firewall.TrackBandwidth(c.ClientIP(), written)
 	}
 }
 

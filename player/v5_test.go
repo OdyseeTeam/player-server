@@ -45,7 +45,7 @@ func (s *apiV5Suite) SetupSuite() {
 	if !ok {
 		s.T().Skip("TEST_EDGE_TOKEN not set, skipping")
 	}
-	origin := store.NewUpstreamStore(store.UpstreamParams{Upstream: "source.odycdn.com:5569", EdgeToken: et})
+	origin := store.NewUpstreamStore(store.UpstreamParams{Upstream: "http://source.odycdn.com:5569", EdgeToken: et})
 	ds := NewDecryptedCache(origin)
 	p := NewPlayer(NewHotCache(*ds, 100000000), WithDownloads(true), WithEdgeToken(testEdgeToken))
 	s.player = p

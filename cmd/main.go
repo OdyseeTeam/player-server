@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/firewall"
 	"github.com/OdyseeTeam/player-server/internal/config"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/internal/version"
@@ -150,6 +151,7 @@ func run(cmd *cobra.Command, args []string) {
 		player.InstallProfilingRoutes(a.Router)
 	}
 
+	firewall.StartBandwidthReporter()
 	a.Start()
 	a.ServeUntilShutdown()
 }
