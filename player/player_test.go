@@ -48,7 +48,7 @@ func randomString(n int) string {
 }
 
 func getTestPlayer() *Player {
-	origin := store.NewHttpStore("source.odycdn.com:5569", "")
+	origin := store.NewUpstreamStore(store.UpstreamParams{Upstream: "http://source.odycdn.com:5569"})
 	ds := NewDecryptedCache(origin)
 	return NewPlayer(
 		NewHotCache(*ds, 100000000),
@@ -111,7 +111,7 @@ func TestStreamSeek(t *testing.T) {
 		require.NoError(t, err)
 		assert.EqualValues(t, 0, n)
 
-		s.Seek(0, io.SeekEnd)
+		_, _ = s.Seek(0, io.SeekEnd)
 		n, err = s.Seek(-999999999, io.SeekEnd)
 		assert.EqualValues(t, 0, n)
 		assert.Equal(t, ErrSeekOutOfBounds, err)
@@ -154,7 +154,8 @@ func TestStreamRead(t *testing.T) {
 func TestStreamFilenameOldMime(t *testing.T) {
 	r := loadResponseFixture(t, "old_mime.json")
 	res := &ljsonrpc.ResolveResponse{}
-	ljsonrpc.Decode(r.Result, res)
+	err := ljsonrpc.Decode(r.Result, res)
+	require.NoError(t, err)
 	uri := "lbry://@Deterrence-Dispensed#2/Ivans100DIY30rdAR-15MagazineV10-DeterrenceDispensed#1"
 	claim := (*res)[uri]
 	s := NewStream(&Player{}, &claim)
@@ -164,7 +165,8 @@ func TestStreamFilenameOldMime(t *testing.T) {
 func TestStreamFilenameNew(t *testing.T) {
 	r := loadResponseFixture(t, "new_stream.json")
 	res := &ljsonrpc.ResolveResponse{}
-	ljsonrpc.Decode(r.Result, res)
+	err := ljsonrpc.Decode(r.Result, res)
+	require.NoError(t, err)
 	uri := "what"
 	claim := (*res)[uri]
 	s := NewStream(&Player{}, &claim)

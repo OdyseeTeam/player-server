@@ -6,8 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/OdyseeTeam/player-server/firewall"
 	"github.com/OdyseeTeam/player-server/internal/config"
 	"github.com/OdyseeTeam/player-server/internal/metrics"
 	"github.com/OdyseeTeam/player-server/internal/version"
@@ -15,11 +17,9 @@ import (
 	"github.com/OdyseeTeam/player-server/pkg/logger"
 	"github.com/OdyseeTeam/player-server/pkg/paid"
 	"github.com/OdyseeTeam/player-server/player"
-	"github.com/lbryio/reflector.go/server/http3"
 
 	tclient "github.com/OdyseeTeam/transcoder/client"
 	"github.com/lbryio/lbry.go/v2/stream"
-	"github.com/lbryio/reflector.go/server/peer"
 	"github.com/lbryio/reflector.go/store"
 
 	"github.com/c2h5oh/datasize"
@@ -151,6 +151,7 @@ func run(cmd *cobra.Command, args []string) {
 		player.InstallProfilingRoutes(a.Router)
 	}
 
+	firewall.StartBandwidthReporter()
 	a.Start()
 	a.ServeUntilShutdown()
 }
@@ -176,23 +177,30 @@ func getBlobSource() store.BlobStore {
 	if upstreamReflector != "" {
 		switch upstreamProtocol {
 		case "tcp":
-			blobSource = peer.NewStore(peer.StoreOpts{
+			blobSource = store.NewPeerStore(store.PeerParams{
 				Address: upstreamReflector,
 				Timeout: 30 * time.Second,
 			})
 		case "http3":
-			blobSource = http3.NewStore(http3.StoreOpts{
+			blobSource = store.NewHttp3Store(store.Http3Params{
 				Address: upstreamReflector,
 				Timeout: 30 * time.Second,
 			})
 		case "http":
-			blobSource = store.NewHttpStore(upstreamReflector, edgeToken)
+			upstream := upstreamReflector
+			if !strings.HasPrefix(upstream, "http://") && !strings.HasPrefix(upstream, "https://") {
+				upstream = "http://" + upstream
+			}
+			blobSource = store.NewUpstreamStore(store.UpstreamParams{
+				Upstream:  upstream,
+				EdgeToken: edgeToken,
+			})
 		default:
 			logger.Fatal("protocol not recognized", "component", "cmd", "protocol", upstreamProtocol)
 		}
 
 	} else if cloudFrontEndpoint != "" {
-		blobSource = store.NewCloudFrontROStore(cloudFrontEndpoint)
+		blobSource = store.NewHttpStore(store.HttpParams{Endpoint: cloudFrontEndpoint})
 	} else {
 		logger.Fatal("one of [--upstream-reflector|--cloudfront-endpoint] is required", "component", "cmd")
 	}
@@ -204,11 +212,16 @@ func getBlobSource() store.BlobStore {
 		if err != nil {
 			logger.Fatal("failed to create disk cache directory", "component", "cmd", "path", diskCachePath, "error", err)
 		}
-		blobSource = store.NewCachingStore(
-			"player",
-			blobSource,
-			store.NewGcacheStore("player", store.NewDiskStore(diskCachePath, 2), int(realCacheSize), store.LRU),
-		)
+		blobSource = store.NewCachingStore(store.CachingParams{
+			Name:   "player",
+			Origin: blobSource,
+			Cache: store.NewGcacheStore(store.GcacheParams{
+				Name:     "player",
+				Store:    store.NewDiskStore(store.DiskParams{MountPoint: diskCachePath, ShardingSize: 2}),
+				MaxSize:  int(realCacheSize),
+				Strategy: store.LRU,
+			}),
+		})
 	}
 
 	return blobSource

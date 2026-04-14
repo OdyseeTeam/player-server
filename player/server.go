@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/textproto"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/OdyseeTeam/player-server/firewall"
 
 	"github.com/aybabtme/iocontrol"
 	"github.com/gin-gonic/gin"
@@ -99,12 +100,14 @@ func ServeStream(c *gin.Context, content *Stream) {
 	c.Status(code)
 
 	if c.Request.Method != http.MethodHead {
+		var written int64
 		if ThrottleSwitch {
 			throttledW := iocontrol.ThrottledWriter(c.Writer, int(ThrottleScale*iocontrol.MiB), 1*time.Second)
-			io.CopyN(throttledW, sendContent, sendSize)
+			written, _ = io.CopyN(throttledW, sendContent, sendSize)
 		} else {
-			io.CopyN(c.Writer, sendContent, sendSize)
+			written, _ = io.CopyN(c.Writer, sendContent, sendSize)
 		}
+		firewall.TrackBandwidth(c.ClientIP(), written)
 	}
 }
 
@@ -203,11 +206,4 @@ func sumRangesSize(ranges []httpRange) (size int64) {
 
 func (r httpRange) contentRange(size int64) string {
 	return fmt.Sprintf("bytes %d-%d/%d", r.start, r.start+r.length-1, size)
-}
-
-func (r httpRange) mimeHeader(contentType string, size int64) textproto.MIMEHeader {
-	return textproto.MIMEHeader{
-		"Content-Range": {r.contentRange(size)},
-		"Content-Type":  {contentType},
-	}
 }

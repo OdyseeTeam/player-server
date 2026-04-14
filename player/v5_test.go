@@ -16,11 +16,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const (
-	rentalClaim   = "81b1749f773bad5b9b53d21508051560f2746cdc"
-	purchaseClaim = "2742f9e8eea0c4654ea8b51507dbb7f23f1f5235"
-)
-
 var testEdgeToken = randomdata.Alphanumeric(32)
 
 type httpTest struct {
@@ -50,7 +45,7 @@ func (s *apiV5Suite) SetupSuite() {
 	if !ok {
 		s.T().Skip("TEST_EDGE_TOKEN not set, skipping")
 	}
-	origin := store.NewHttpStore("source.odycdn.com:5569", et)
+	origin := store.NewUpstreamStore(store.UpstreamParams{Upstream: "http://source.odycdn.com:5569", EdgeToken: et})
 	ds := NewDecryptedCache(origin)
 	p := NewPlayer(NewHotCache(*ds, 100000000), WithDownloads(true), WithEdgeToken(testEdgeToken))
 	s.player = p

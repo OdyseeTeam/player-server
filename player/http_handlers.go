@@ -182,7 +182,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	//this is here temporarily due to abuse. a better solution will be found
 	ip := c.ClientIP()
-	if firewall.CheckBans(ip) {
+	if firewall.CheckBans(ip, c.FullPath(), c.Param("claim_id")) {
 		c.AbortWithStatus(http.StatusTooManyRequests)
 		return
 	}
@@ -203,7 +203,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	isDownload, _ := strconv.ParseBool(c.Query(paramDownload))
 
 	if isDownload {
-		slog.Info("download request", "component", "player", "uri", uri, "ip", ip)
+		slog.Info("download request", "component", "player", "uri", uri, "sd_hash", c.Param("sd_hash"), "range", c.GetHeader("Range"), "ip", ip)
 	}
 	//don't allow downloads if either flagged or disabled
 	if isDownload && (!h.player.options.downloadsEnabled || flagged) {
@@ -229,7 +229,7 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	abusiveIP, abuseCount := firewall.CheckAndRateLimitIp(ip, stream.ClaimID)
 	if abusiveIP {
-		firewall.LogAbuseEvent(metrics.FirewallReasonRateLimit, ip, 0, "", stream.ClaimID, abuseCount)
+		firewall.LogAbuseEvent(metrics.FirewallReasonRateLimit, ip, 0, "", stream.ClaimID, c.FullPath(), abuseCount)
 		if abuseCount > 10 {
 			metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonRateLimit).Inc()
 			metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeBlocked).Inc()
@@ -240,7 +240,15 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 	if isDownload && abuseCount > 2 {
 		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonDownloadLimit).Inc()
 		metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeBlocked).Inc()
-		firewall.LogAbuseEvent(metrics.FirewallReasonDownloadLimit, ip, 0, "", stream.ClaimID, abuseCount)
+		firewall.LogAbuseEvent(metrics.FirewallReasonDownloadLimit, ip, 0, "", stream.ClaimID, c.FullPath(), abuseCount)
+		c.String(http.StatusTooManyRequests, "Try again later")
+		return
+	}
+
+	if blocked, asn, org, _, _ := firewall.CheckASNBandwidthLimit(ip); blocked {
+		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, stream.ClaimID, c.FullPath(), 0)
+		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
+		c.Header("Retry-After", strconv.Itoa(firewall.GetWindowSizeSeconds()))
 		c.String(http.StatusTooManyRequests, "Try again later")
 		return
 	}
@@ -280,11 +288,11 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 
 	conn, err := app.GetConnection(c.Request)
 	if err != nil {
-		slog.Warn("can't get connection", "component", "player", "error", err)
+		slog.Warn("can't get connection", "component", "player", "uri", uri, "ip", ip, "error", err)
 	} else {
 		err = conn.SetWriteDeadline(time.Now().Add(time.Duration(StreamWriteTimeout) * time.Second))
 		if err != nil {
-			slog.Error("can't set write timeout", "component", "player", "error", err)
+			slog.Error("can't set write timeout", "component", "player", "uri", uri, "ip", ip, "error", err)
 		}
 	}
 
@@ -322,17 +330,29 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
 		return
 	}
+
+	ip := c.ClientIP()
+	if blocked, asn, org, _, _ := firewall.CheckASNBandwidthLimit(ip); blocked {
+		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, uri, c.FullPath(), 0)
+		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
+		c.Header("Retry-After", strconv.Itoa(firewall.GetWindowSizeSeconds()))
+		c.String(http.StatusTooManyRequests, "Try again later")
+		return
+	}
+
 	err = h.player.VerifyAccess(stream, c)
 	if err != nil {
 		processStreamError("access", c, uri, err)
 		return
 	}
+
 	size, err := h.player.tclient.PlayFragment(uri, c.Param("sd_hash"), c.Param("fragment"), c.Writer, c.Request)
 	if err != nil {
 		processStreamError("transcoder", c, uri, err, "sd_hash", c.Param("sd_hash"), "fragment", c.Param("fragment"))
 		return
 	}
 	metrics.TcOutBytes.Add(float64(size))
+	firewall.TrackBandwidth(c.ClientIP(), int64(size))
 }
 
 func writeHeaders(c *gin.Context, s *Stream) {
@@ -357,12 +377,16 @@ func processStreamError(errorType string, gctx *gin.Context, uri string, err err
 		return
 	}
 
+	baseArgs := []any{"component", "player", "uri", uri, "ip", gctx.ClientIP(), "error_type", errorType}
+	baseArgs = append(baseArgs, extra...)
+	baseArgs = append(baseArgs, "error", err)
+
 	if w == nil {
-		slog.Error("stream error", "component", "player", "uri", uri, "error_type", errorType, "error", err)
+		slog.Error("stream error", baseArgs...)
 		return
 	}
 
-	slog.Error("stream error", "component", "player", "uri", uri, "method", gctx.Request.Method, "error_type", errorType, "error", err)
+	slog.Error("stream error", append(baseArgs, "method", gctx.Request.Method)...)
 
 	if errors.Is(err, ErrPaidStream) {
 		writeErrorResponse(w, http.StatusPaymentRequired, err.Error())
@@ -395,7 +419,7 @@ func processStreamError(errorType string, gctx *gin.Context, uri string, err err
 
 func writeErrorResponse(w http.ResponseWriter, statusCode int, msg string) {
 	w.WriteHeader(statusCode)
-	w.Write([]byte(msg))
+	_, _ = w.Write([]byte(msg))
 }
 
 func addBreadcrumb(r *http.Request, category, message string) {

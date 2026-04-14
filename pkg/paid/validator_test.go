@@ -32,7 +32,7 @@ func TestVerifyStreamAccess(t *testing.T) {
 				expFunc := func(uint64) int64 { return 1 } //  Returns the 1st second of Unix epoch
 				return CreateToken(testStreamID, testTxID, 120_000_000, expFunc)
 			},
-			checkError: func(t *testing.T, err error) { assert.Regexp(t, "token is expired by \\d+h\\d+m\\d+s", err) },
+			checkError: func(t *testing.T, err error) { assert.Regexp(t, `token is expired by \d+h\d+m[\d.]+s`, err) },
 		},
 		{
 			name: "missigned",

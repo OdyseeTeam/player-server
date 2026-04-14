@@ -32,10 +32,11 @@ const (
 	ResolveFailureGeneral       = "general"
 	ResolveFailureClaimNotFound = "claim_not_found"
 
-	FirewallReasonIPBan         = "ip_ban"
-	FirewallReasonASNBan        = "asn_ban"
-	FirewallReasonRateLimit     = "rate_limit"
-	FirewallReasonDownloadLimit = "download_limit"
+	FirewallReasonIPBan             = "ip_ban"
+	FirewallReasonASNBan            = "asn_ban"
+	FirewallReasonRateLimit         = "rate_limit"
+	FirewallReasonDownloadLimit     = "download_limit"
+	FirewallReasonASNBandwidthLimit = "asn_bandwidth_limit"
 
 	FirewallOutcomeFlagged = "flagged"
 	FirewallOutcomeBlocked = "blocked"

@@ -26,7 +26,7 @@ type Expfunc func(uint64) int64
 type StreamToken struct {
 	StreamID string `json:"sid"`
 	TxID     string `json:"txid"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 type keyManager struct {
@@ -79,11 +79,11 @@ func (k *keyManager) createToken(streamID string, txid string, streamSize uint64
 		return "", fmt.Errorf("cannot create a token, private key is not initialized (call InitPrivateKey)")
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, &StreamToken{
-		streamID,
-		txid,
-		jwt.StandardClaims{
-			ExpiresAt: expfunc(streamSize),
-			IssuedAt:  time.Now().UTC().Unix(),
+		StreamID: streamID,
+		TxID:     txid,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Unix(expfunc(streamSize), 0)),
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},
 	})
 	slog.Debug("token created", "component", "paid", "header", token.Header, "claims", token.Claims)

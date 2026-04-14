@@ -250,7 +250,7 @@ func (p *Player) VerifyAccess(stream *Stream, ctx *gin.Context) error {
 		return nil
 	}
 
-	slog.Info("paid stream requested", "component", "player", "uri", stream.URI)
+	slog.Info("paid stream requested", "component", "player", "uri", stream.URI, "ip", ctx.ClientIP())
 	if token == "" {
 		return ErrPaidStream
 	}

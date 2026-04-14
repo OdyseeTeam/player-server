@@ -52,9 +52,9 @@ func Test_checkBannedIp(t *testing.T) {
 	}
 	ip := "207.182.29.47"
 	ReloadBlacklist()
-	if !assert.True(t, CheckBans(ip)) {
+	if !assert.True(t, CheckBans(ip, "/test", "")) {
 		return
 	}
 	ip = "1.1.1.1"
-	assert.False(t, CheckBans(ip))
+	assert.False(t, CheckBans(ip, "/test", ""))
 }
