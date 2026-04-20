@@ -229,7 +229,15 @@ func IsStreamBlocked(claimId string, channelClaimId *string) bool {
 	return false
 }
 
-var geoIpDbLocation = filepath.Join(os.TempDir(), "GeoLite2-ASN.mmdb")
+var geoIpDbLocation = getGeoIPDbLocation()
+
+func getGeoIPDbLocation() string {
+	if dir := os.Getenv("GEOIP_DB_DIR"); dir != "" {
+		return filepath.Join(dir, "GeoLite2-ASN.mmdb")
+	}
+	return filepath.Join(os.TempDir(), "GeoLite2-ASN.mmdb")
+}
+
 var providerDB *maxminddb.Reader
 var providerDBInitOnce sync.Once
 var providerDBInitErr error
