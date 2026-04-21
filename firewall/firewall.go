@@ -99,6 +99,8 @@ func ReloadBlacklist() {
 
 var WindowSize = 120 * time.Second
 
+var asnBandwidthReportInterval = 2 * time.Minute
+
 const MaxStringsPerIp = 4
 
 var resourcesForIPCache = gcache.New(1000).Simple().Build()
@@ -130,19 +132,43 @@ type asnEntry struct {
 	Bytes int64  `json:"bytes"`
 }
 
-var (
-	bandwidthPerIP      atomic.Pointer[xsync.MapOf[string, *int64]]
-	bandwidthPerASN     atomic.Pointer[xsync.MapOf[string, *asnBandwidth]]
-	ipToASNCache        gcache.Cache
-	bandwidthStop       chan struct{}
-	bandwidthMu         sync.Mutex
-	bandwidthRunning    bool
-	asnLookupDisabled   atomic.Bool
+type asnSnapshotEntry struct {
+	Org   string
+	Bytes int64
+}
 
-	asnBandwidthThreshold    atomic.Int64
+type asnBlockEntry struct {
+	Until time.Time
+	Org   string
+}
+
+type bandwidthSnapshot struct {
+	entries         map[string]asnSnapshotEntry
+	consecutiveOver map[string]int
+	blockedUntil    map[string]asnBlockEntry
+	threshold       int64
+	windowStart     time.Time
+	windowEnd       time.Time
+}
+
+var (
+	bandwidthPerIP             atomic.Pointer[xsync.MapOf[string, *int64]]
+	bandwidthPerASN            atomic.Pointer[xsync.MapOf[string, *asnBandwidth]]
+	completedBandwidthSnapshot atomic.Pointer[bandwidthSnapshot]
+	ipToASNCache               gcache.Cache
+	bandwidthStop              chan struct{}
+	bandwidthMu                sync.Mutex
+	bandwidthRunning           bool
+	asnLookupDisabled          atomic.Bool
+
 	asnBandwidthMultiplier   atomic.Int64
 	asnBandwidthMinThreshold atomic.Int64
 	asnBandwidthWarmup       atomic.Int32
+)
+
+var (
+	blockCooldown = 10 * time.Minute
+	nowFunc       = time.Now
 )
 
 const (
@@ -150,6 +176,7 @@ const (
 	minASNCount            = 5
 	topASNsForMedian       = 10
 	defaultWarmupCycles    = 3
+	hysteresisCount        = 2
 )
 
 func CheckBans(ip, path, claimID string) bool {
@@ -176,7 +203,7 @@ func CheckBans(ip, path, claimID string) bool {
 	return false
 }
 
-func CheckAndRateLimitIp(ip string, endpoint string) (bool, int) {
+func CheckAndRateLimitIp(ip string, claimID string) (bool, int) {
 	if ip == "" {
 		return false, 0
 	}
@@ -186,7 +213,7 @@ func CheckAndRateLimitIp(ip string, endpoint string) (bool, int) {
 	resources, err := resourcesForIPCache.Get(ip)
 	if errors.Is(err, gcache.KeyNotFoundError) {
 		tokensMap := &sync.Map{}
-		tokensMap.Store(endpoint, time.Now())
+		tokensMap.Store(claimID, time.Now())
 		err := resourcesForIPCache.SetWithExpire(ip, tokensMap, WindowSize*10)
 		if err != nil {
 			return false, 1
@@ -195,7 +222,7 @@ func CheckAndRateLimitIp(ip string, endpoint string) (bool, int) {
 	}
 	tokensForIP, _ := resources.(*sync.Map)
 	currentTime := time.Now()
-	tokensForIP.Store(endpoint, currentTime)
+	tokensForIP.Store(claimID, currentTime)
 	resourcesCount := 0
 	flagged := false
 	tokensForIP.Range(func(k, v interface{}) bool {
@@ -465,7 +492,7 @@ func StopBandwidthReporter() {
 }
 
 func bandwidthReporterLoop(stopCh <-chan struct{}) {
-	ticker := time.NewTicker(2 * time.Minute)
+	ticker := time.NewTicker(asnBandwidthReportInterval)
 	defer ticker.Stop()
 
 	for {
@@ -479,72 +506,86 @@ func bandwidthReporterLoop(stopCh <-chan struct{}) {
 }
 
 func logBandwidthReport() {
+	now := nowFunc()
+	prev := completedBandwidthSnapshot.Load()
+
 	newIPMap := xsync.NewMapOf[string, *int64]()
 	newASNMap := xsync.NewMapOf[string, *asnBandwidth]()
-
 	oldIPMap := bandwidthPerIP.Swap(newIPMap)
 	oldASNMap := bandwidthPerASN.Swap(newASNMap)
 
-	if oldIPMap == nil || oldASNMap == nil {
-		return
-	}
-
-	var ipEntries []ipEntry
-	oldIPMap.Range(func(ip string, val *int64) bool {
-		ipEntries = append(ipEntries, ipEntry{IP: ip, Bytes: atomic.LoadInt64(val)})
-		return true
-	})
-	sort.Slice(ipEntries, func(i, j int) bool {
-		return ipEntries[i].Bytes > ipEntries[j].Bytes
-	})
-	if len(ipEntries) > 10 {
-		ipEntries = ipEntries[:10]
-	}
-
+	observed := map[string]asnSnapshotEntry{}
 	var asnEntries []asnEntry
-	oldASNMap.Range(func(asnKey string, val *asnBandwidth) bool {
-		asnEntries = append(asnEntries, asnEntry{ASN: asnKey, Org: val.org, Bytes: atomic.LoadInt64(&val.bytes)})
-		return true
-	})
+	if oldASNMap != nil {
+		oldASNMap.Range(func(asnKey string, val *asnBandwidth) bool {
+			bytes := atomic.LoadInt64(&val.bytes)
+			observed[asnKey] = asnSnapshotEntry{Org: val.org, Bytes: bytes}
+			asnEntries = append(asnEntries, asnEntry{ASN: asnKey, Org: val.org, Bytes: bytes})
+			return true
+		})
+	}
 	sort.Slice(asnEntries, func(i, j int) bool {
 		return asnEntries[i].Bytes > asnEntries[j].Bytes
 	})
 
-	updateASNBandwidthThreshold(asnEntries)
+	var ipEntries []ipEntry
+	if oldIPMap != nil {
+		oldIPMap.Range(func(ip string, val *int64) bool {
+			ipEntries = append(ipEntries, ipEntry{IP: ip, Bytes: atomic.LoadInt64(val)})
+			return true
+		})
+	}
+	sort.Slice(ipEntries, func(i, j int) bool {
+		return ipEntries[i].Bytes > ipEntries[j].Bytes
+	})
 
-	if len(asnEntries) > 5 {
-		asnEntries = asnEntries[:5]
+	threshold := computeASNBandwidthThreshold(asnEntries)
+	consecutiveOver, blockedUntil := buildHysteresisState(prev, observed, threshold, now)
+
+	windowStart := now.Add(-asnBandwidthReportInterval)
+	if prev != nil {
+		windowStart = prev.windowEnd
 	}
 
-	if len(ipEntries) == 0 && len(asnEntries) == 0 {
+	completedBandwidthSnapshot.Store(&bandwidthSnapshot{
+		entries:         observed,
+		consecutiveOver: consecutiveOver,
+		blockedUntil:    blockedUntil,
+		threshold:       threshold,
+		windowStart:     windowStart,
+		windowEnd:       now,
+	})
+
+	if len(ipEntries) > 10 {
+		ipEntries = ipEntries[:10]
+	}
+	topASNs := asnEntries
+	if len(topASNs) > 5 {
+		topASNs = topASNs[:5]
+	}
+	if len(ipEntries) == 0 && len(topASNs) == 0 {
 		return
 	}
-
 	slog.Info("bandwidth report",
 		"component", "firewall",
 		"top_ips", ipEntries,
-		"top_asns", asnEntries,
-		"asn_throttle_threshold", asnBandwidthThreshold.Load(),
-		"asn_throttle_enabled", asnBandwidthMultiplier.Load() > 0 && asnBandwidthThreshold.Load() > 0,
+		"top_asns", topASNs,
+		"asn_throttle_threshold", threshold,
+		"asn_throttle_enabled", asnBandwidthMultiplier.Load() > 0 && threshold > 0,
 	)
 }
 
-func updateASNBandwidthThreshold(entries []asnEntry) {
+func computeASNBandwidthThreshold(entries []asnEntry) int64 {
 	if warmup := asnBandwidthWarmup.Load(); warmup > 0 {
 		asnBandwidthWarmup.Add(-1)
-		asnBandwidthThreshold.Store(0)
-		return
+		return 0
 	}
-
 	if len(entries) < minASNCount {
-		asnBandwidthThreshold.Store(0)
-		return
+		return 0
 	}
-
 	if len(entries) > topASNsForMedian {
 		entries = entries[:topASNsForMedian]
 	}
-
 	n := len(entries)
 	var median int64
 	if n%2 == 1 {
@@ -552,97 +593,117 @@ func updateASNBandwidthThreshold(entries []asnEntry) {
 	} else {
 		median = (entries[n/2-1].Bytes + entries[n/2].Bytes) / 2
 	}
-
 	if median == 0 {
-		asnBandwidthThreshold.Store(0)
-		return
+		return 0
 	}
-
 	multiplier := asnBandwidthMultiplier.Load()
 	if multiplier <= 0 {
-		asnBandwidthThreshold.Store(0)
-		return
+		return 0
 	}
-
 	threshold := median * multiplier
-
-	minThreshold := asnBandwidthMinThreshold.Load()
-	if threshold < minThreshold {
-		asnBandwidthThreshold.Store(0)
-		return
+	if threshold < asnBandwidthMinThreshold.Load() {
+		return 0
 	}
-
-	asnBandwidthThreshold.Store(threshold)
+	return threshold
 }
 
-func CheckASNBandwidthLimit(ip string) (blocked bool, asn int, org string, currentBytes int64, threshold int64) {
-	if ip == "" || whitelist[ip] {
-		return false, 0, "", 0, 0
+func buildHysteresisState(
+	prev *bandwidthSnapshot,
+	observed map[string]asnSnapshotEntry,
+	threshold int64,
+	now time.Time,
+) (map[string]int, map[string]asnBlockEntry) {
+	consecutiveOver := map[string]int{}
+	blockedUntil := map[string]asnBlockEntry{}
+
+	if prev != nil {
+		for asn, entry := range prev.blockedUntil {
+			if entry.Until.After(now) {
+				blockedUntil[asn] = entry
+			}
+		}
 	}
 
-	if asnBandwidthMultiplier.Load() <= 0 {
-		return false, 0, "", 0, 0
-	}
-
-	threshold = asnBandwidthThreshold.Load()
 	if threshold <= 0 {
-		return false, 0, "", 0, 0
+		return consecutiveOver, blockedUntil
 	}
 
+	for asn, entry := range observed {
+		if entry.Bytes <= threshold {
+			continue
+		}
+		prevCount := 0
+		if prev != nil {
+			prevCount = prev.consecutiveOver[asn]
+		}
+		count := prevCount + 1
+		consecutiveOver[asn] = count
+		if count >= hysteresisCount {
+			blockedUntil[asn] = asnBlockEntry{
+				Until: now.Add(blockCooldown),
+				Org:   entry.Org,
+			}
+		}
+	}
+
+	return consecutiveOver, blockedUntil
+}
+
+func CheckASNBandwidthLimit(ip string) (blocked bool, asn int, org string) {
+	if ip == "" || whitelist[ip] {
+		return false, 0, ""
+	}
+	if asnBandwidthMultiplier.Load() <= 0 {
+		return false, 0, ""
+	}
 	if asnLookupDisabled.Load() {
-		return false, 0, "", 0, 0
+		return false, 0, ""
 	}
-
+	snap := completedBandwidthSnapshot.Load()
+	if snap == nil || len(snap.blockedUntil) == 0 {
+		return false, 0, ""
+	}
 	cache := ipToASNCache
 	if cache == nil {
-		return false, 0, "", 0, 0
+		return false, 0, ""
 	}
 
+	var asnNum int
+	var orgName string
 	cached, err := cache.Get(ip)
 	if err == nil {
 		entry := cached.(asnCacheEntry)
 		if entry.asn <= 0 {
-			return false, 0, "", 0, threshold
+			return false, 0, ""
 		}
-		asn = entry.asn
-		org = entry.org
+		asnNum = entry.asn
+		orgName = entry.org
 	} else {
-		org, asn, err = GetProviderForIP(ip)
+		orgName, asnNum, err = GetProviderForIP(ip)
 		if err != nil {
 			_ = cache.Set(ip, asnCacheEntry{asn: -1})
-			return false, 0, "", 0, threshold
+			return false, 0, ""
 		}
-		_ = cache.Set(ip, asnCacheEntry{asn: asn, org: org})
+		_ = cache.Set(ip, asnCacheEntry{asn: asnNum, org: orgName})
 	}
 
-	asnKey := fmt.Sprintf("AS%d", asn)
-	asnMap := bandwidthPerASN.Load()
-	if asnMap == nil {
-		return false, asn, org, 0, threshold
-	}
-
-	val, ok := asnMap.Load(asnKey)
+	asnKey := fmt.Sprintf("AS%d", asnNum)
+	blockEntry, ok := snap.blockedUntil[asnKey]
 	if !ok {
-		return false, asn, org, 0, threshold
+		return false, asnNum, orgName
 	}
-
-	currentBytes = atomic.LoadInt64(&val.bytes)
-	if currentBytes > threshold {
-		return true, asn, org, currentBytes, threshold
+	if !nowFunc().Before(blockEntry.Until) {
+		return false, asnNum, orgName
 	}
-
-	return false, asn, org, currentBytes, threshold
+	return true, asnNum, orgName
 }
 
-func GetWindowSizeSeconds() int {
-	return int(WindowSize.Seconds())
+func GetASNBandwidthReportIntervalSeconds() int {
+	return int(asnBandwidthReportInterval.Seconds())
 }
 
 func SetASNBandwidthMultiplier(m int64) {
 	asnBandwidthMultiplier.Store(m)
-	if m <= 0 {
-		asnBandwidthThreshold.Store(0)
-	}
 }
 
 func GetASNBandwidthMultiplier() int64 {
@@ -650,7 +711,11 @@ func GetASNBandwidthMultiplier() int64 {
 }
 
 func GetASNBandwidthThreshold() int64 {
-	return asnBandwidthThreshold.Load()
+	snap := completedBandwidthSnapshot.Load()
+	if snap == nil {
+		return 0
+	}
+	return snap.threshold
 }
 
 func GetASNBandwidthMinThreshold() int64 {
@@ -670,22 +735,92 @@ func ResetASNBandwidthWarmup() {
 }
 
 func GetASNsOverThreshold() []string {
-	threshold := asnBandwidthThreshold.Load()
-	if threshold <= 0 {
+	snap := completedBandwidthSnapshot.Load()
+	if snap == nil || snap.threshold <= 0 {
 		return nil
 	}
-
-	asnMap := bandwidthPerASN.Load()
-	if asnMap == nil {
-		return nil
-	}
-
 	var over []string
-	asnMap.Range(func(asnKey string, val *asnBandwidth) bool {
-		if atomic.LoadInt64(&val.bytes) > threshold {
-			over = append(over, asnKey)
+	for asn, entry := range snap.entries {
+		if entry.Bytes > snap.threshold {
+			over = append(over, asn)
 		}
-		return true
-	})
+	}
+	sort.Strings(over)
 	return over
+}
+
+type BlockedASN struct {
+	ASN          string    `json:"asn"`
+	Org          string    `json:"org"`
+	BlockedUntil time.Time `json:"blocked_until"`
+}
+
+type SnapshotView struct {
+	WindowStart     time.Time      `json:"window_start"`
+	WindowEnd       time.Time      `json:"window_end"`
+	Threshold       int64          `json:"threshold_bytes"`
+	Entries         []asnEntry     `json:"entries"`
+	OverThreshold   []string       `json:"over_threshold"`
+	ConsecutiveOver map[string]int `json:"consecutive_over,omitempty"`
+	BlockedASNs     []BlockedASN   `json:"blocked_asns"`
+}
+
+func GetBandwidthSnapshotView() *SnapshotView {
+	snap := completedBandwidthSnapshot.Load()
+	if snap == nil {
+		return nil
+	}
+	entries := make([]asnEntry, 0, len(snap.entries))
+	var over []string
+	for asn, e := range snap.entries {
+		entries = append(entries, asnEntry{ASN: asn, Org: e.Org, Bytes: e.Bytes})
+		if snap.threshold > 0 && e.Bytes > snap.threshold {
+			over = append(over, asn)
+		}
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Bytes > entries[j].Bytes
+	})
+	sort.Strings(over)
+	var counters map[string]int
+	if len(snap.consecutiveOver) > 0 {
+		counters = make(map[string]int, len(snap.consecutiveOver))
+		for k, v := range snap.consecutiveOver {
+			counters[k] = v
+		}
+	}
+	return &SnapshotView{
+		WindowStart:     snap.windowStart,
+		WindowEnd:       snap.windowEnd,
+		Threshold:       snap.threshold,
+		Entries:         entries,
+		OverThreshold:   over,
+		ConsecutiveOver: counters,
+		BlockedASNs:     blockedASNsFromSnapshot(snap),
+	}
+}
+
+func blockedASNsFromSnapshot(snap *bandwidthSnapshot) []BlockedASN {
+	if snap == nil {
+		return nil
+	}
+	now := nowFunc()
+	var result []BlockedASN
+	for asn, entry := range snap.blockedUntil {
+		if entry.Until.After(now) {
+			result = append(result, BlockedASN{
+				ASN:          asn,
+				Org:          entry.Org,
+				BlockedUntil: entry.Until,
+			})
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ASN < result[j].ASN
+	})
+	return result
+}
+
+func GetBlockedASNs() []BlockedASN {
+	return blockedASNsFromSnapshot(completedBandwidthSnapshot.Load())
 }

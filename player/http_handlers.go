@@ -245,10 +245,10 @@ func (h *RequestHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	if blocked, asn, org, _, _ := firewall.CheckASNBandwidthLimit(ip); blocked {
+	if blocked, asn, org := firewall.CheckASNBandwidthLimit(ip); blocked {
 		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, stream.ClaimID, c.FullPath(), 0)
 		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
-		c.Header("Retry-After", strconv.Itoa(firewall.GetWindowSizeSeconds()))
+		c.Header("Retry-After", strconv.Itoa(firewall.GetASNBandwidthReportIntervalSeconds()))
 		c.String(http.StatusTooManyRequests, "Try again later")
 		return
 	}
@@ -332,10 +332,10 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	}
 
 	ip := c.ClientIP()
-	if blocked, asn, org, _, _ := firewall.CheckASNBandwidthLimit(ip); blocked {
+	if blocked, asn, org := firewall.CheckASNBandwidthLimit(ip); blocked {
 		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, uri, c.FullPath(), 0)
 		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
-		c.Header("Retry-After", strconv.Itoa(firewall.GetWindowSizeSeconds()))
+		c.Header("Retry-After", strconv.Itoa(firewall.GetASNBandwidthReportIntervalSeconds()))
 		c.String(http.StatusTooManyRequests, "Try again later")
 		return
 	}

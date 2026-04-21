@@ -54,19 +54,19 @@ func reloadBlacklist(c *gin.Context) {
 }
 
 func getASNBandwidthLimit(c *gin.Context) {
+	view := firewall.GetBandwidthSnapshotView()
 	multiplier := firewall.GetASNBandwidthMultiplier()
-	threshold := firewall.GetASNBandwidthThreshold()
-	minThreshold := firewall.GetASNBandwidthMinThreshold()
-	warmup := firewall.GetASNBandwidthWarmup()
-	over := firewall.GetASNsOverThreshold()
-
+	var threshold int64
+	if view != nil {
+		threshold = view.Threshold
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"enabled":               multiplier > 0 && threshold > 0,
-		"multiplier":            multiplier,
-		"threshold_bytes":       threshold,
-		"min_threshold_bytes":   minThreshold,
-		"warmup_cycles_remaining": warmup,
-		"over_threshold":        over,
+		"enabled":                 multiplier > 0 && threshold > 0,
+		"multiplier":              multiplier,
+		"threshold_bytes":         threshold,
+		"min_threshold_bytes":     firewall.GetASNBandwidthMinThreshold(),
+		"warmup_cycles_remaining": firewall.GetASNBandwidthWarmup(),
+		"snapshot":                view,
 	})
 }
 
@@ -118,9 +118,9 @@ func setASNBandwidthLimit(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"enabled":             firewall.GetASNBandwidthMultiplier() > 0 && firewall.GetASNBandwidthThreshold() > 0,
-		"multiplier":          firewall.GetASNBandwidthMultiplier(),
-		"min_threshold_bytes": firewall.GetASNBandwidthMinThreshold(),
+		"enabled":                 firewall.GetASNBandwidthMultiplier() > 0 && firewall.GetASNBandwidthThreshold() > 0,
+		"multiplier":              firewall.GetASNBandwidthMultiplier(),
+		"min_threshold_bytes":     firewall.GetASNBandwidthMinThreshold(),
 		"warmup_cycles_remaining": firewall.GetASNBandwidthWarmup(),
 	})
 }
