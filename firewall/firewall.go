@@ -315,7 +315,7 @@ func initISPGeoIPDB() (*maxminddb.Reader, error) {
 		}
 		defer resp.Body.Close()
 
-		err = extractGeoIPDB(resp.Body, "GeoLite2-ASN.mmdb")
+		err = extractGeoIPDB(resp.Body, "GeoLite2-ASN.mmdb", filepath.Dir(geoIpDbLocation))
 		if err != nil {
 			return nil, errors.Err(err)
 		}
@@ -330,7 +330,7 @@ func initISPGeoIPDB() (*maxminddb.Reader, error) {
 	return providerDB, nil
 }
 
-func extractGeoIPDB(r io.Reader, dbName string) error {
+func extractGeoIPDB(r io.Reader, dbName, targetDir string) error {
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return errors.Err(err)
@@ -352,7 +352,7 @@ func extractGeoIPDB(r io.Reader, dbName string) error {
 			continue
 		}
 
-		target := filepath.Join(os.TempDir(), filepath.Base(header.Name))
+		target := filepath.Join(targetDir, filepath.Base(header.Name))
 
 		switch header.Typeflag {
 		case tar.TypeReg:
