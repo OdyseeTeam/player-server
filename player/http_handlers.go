@@ -315,6 +315,31 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Inc()
 	defer metrics.StreamsRunning.WithLabelValues(metrics.StreamTranscoded).Dec()
 
+	ip := c.ClientIP()
+	if firewall.CheckBans(ip, c.FullPath(), uri) {
+		c.AbortWithStatus(http.StatusTooManyRequests)
+		return
+	}
+
+	abusiveIP, abuseCount := firewall.CheckAndRateLimitIp(ip, uri)
+	if abusiveIP {
+		firewall.LogAbuseEvent(metrics.FirewallReasonRateLimit, ip, 0, "", uri, c.FullPath(), abuseCount)
+		if abuseCount > 10 {
+			metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonRateLimit).Inc()
+			metrics.FirewallRateLimitHits.WithLabelValues(metrics.FirewallOutcomeBlocked).Inc()
+			c.String(http.StatusTooManyRequests, "Try again later")
+			return
+		}
+	}
+
+	if blocked, asn, org := firewall.CheckASNBandwidthLimit(ip); blocked {
+		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, uri, c.FullPath(), 0)
+		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
+		c.Header("Retry-After", strconv.Itoa(firewall.GetASNBandwidthReportIntervalSeconds()))
+		c.String(http.StatusTooManyRequests, "Try again later")
+		return
+	}
+
 	stream, err := h.player.ResolveStream(uri)
 	addBreadcrumb(c.Request, "sdk", fmt.Sprintf("resolve %v", uri))
 	if err != nil {
@@ -328,15 +353,6 @@ func (h *RequestHandler) HandleTranscodedFragment(c *gin.Context) {
 	}
 	if firewall.IsStreamBlocked(uri, channelClaimId) {
 		c.String(http.StatusForbidden, "this content cannot be accessed")
-		return
-	}
-
-	ip := c.ClientIP()
-	if blocked, asn, org := firewall.CheckASNBandwidthLimit(ip); blocked {
-		firewall.LogAbuseEvent(metrics.FirewallReasonASNBandwidthLimit, ip, asn, org, uri, c.FullPath(), 0)
-		metrics.FirewallBlocked.WithLabelValues(metrics.FirewallReasonASNBandwidthLimit).Inc()
-		c.Header("Retry-After", strconv.Itoa(firewall.GetASNBandwidthReportIntervalSeconds()))
-		c.String(http.StatusTooManyRequests, "Try again later")
 		return
 	}
 

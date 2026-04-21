@@ -203,6 +203,24 @@ func CheckBans(ip, path, claimID string) bool {
 	return false
 }
 
+// rateLimitKey collapses IPv6 to /64 so crawlers that rotate lower bits share
+// a claim-diversity bucket. IPv4 (including v4-mapped v6) is returned in its
+// canonical v4 form. Unparseable inputs pass through verbatim.
+func rateLimitKey(ip string) string {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ip
+	}
+	if !addr.Is6() || addr.Is4In6() {
+		return addr.Unmap().String()
+	}
+	prefix, err := addr.Prefix(64)
+	if err != nil {
+		return ip
+	}
+	return prefix.Addr().String()
+}
+
 func CheckAndRateLimitIp(ip string, claimID string) (bool, int) {
 	if ip == "" {
 		return false, 0
@@ -210,11 +228,12 @@ func CheckAndRateLimitIp(ip string, claimID string) (bool, int) {
 	if whitelist[ip] {
 		return false, 0
 	}
-	resources, err := resourcesForIPCache.Get(ip)
+	key := rateLimitKey(ip)
+	resources, err := resourcesForIPCache.Get(key)
 	if errors.Is(err, gcache.KeyNotFoundError) {
 		tokensMap := &sync.Map{}
 		tokensMap.Store(claimID, time.Now())
-		err := resourcesForIPCache.SetWithExpire(ip, tokensMap, WindowSize*10)
+		err := resourcesForIPCache.SetWithExpire(key, tokensMap, WindowSize*10)
 		if err != nil {
 			return false, 1
 		}
